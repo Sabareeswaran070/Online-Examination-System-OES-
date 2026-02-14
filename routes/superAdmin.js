@@ -26,6 +26,7 @@ const {
   createQuestionSet,
   updateQuestionSet,
   deleteQuestionSet,
+  bulkUploadUsers,
   createDepartmentForCollege,
   updateDepartmentForCollege,
   deleteDepartmentFromCollege,
@@ -100,6 +101,8 @@ router
   .route('/users')
   .get(getAllUsers)
   .post(auditLog('create', 'User'), createUser);
+
+router.post('/users/bulk-upload', upload.single('file'), auditLog('bulk-upload', 'User'), bulkUploadUsers);
 
 router
   .route('/users/:id')

@@ -355,6 +355,134 @@ exports.createUser = async (req, res, next) => {
   }
 };
 
+// @desc    Bulk upload users from CSV or Excel
+// @route   POST /api/superadmin/users/bulk-upload
+// @access  Private/SuperAdmin
+exports.bulkUploadUsers = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Please upload a file' });
+    }
+
+    const filePath = req.file.path;
+    const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
+    const users = [];
+    const errors = [];
+    let processedCount = 0;
+
+    if (fileExtension === 'csv') {
+      const csv = require('csv-parser');
+      const fs = require('fs');
+
+      await new Promise((resolve, reject) => {
+        fs.createReadStream(filePath)
+          .pipe(csv())
+          .on('data', (data) => users.push(data))
+          .on('end', resolve)
+          .on('error', reject);
+      });
+    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      const ExcelJS = require('exceljs');
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(filePath);
+      const worksheet = workbook.getWorksheet(1);
+
+      const headers = [];
+      worksheet.getRow(1).eachCell((cell, colNumber) => {
+        headers[colNumber] = cell.value;
+      });
+
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return; // Skip headers
+        const rowData = {};
+        row.eachCell((cell, colNumber) => {
+          rowData[headers[colNumber]] = cell.value;
+        });
+        users.push(rowData);
+      });
+    } else {
+      return res.status(400).json({ success: false, message: 'Invalid file format. Please upload CSV or Excel.' });
+    }
+
+    const results = {
+      success: [],
+      failed: [],
+    };
+
+    const defaultPassword = 'Welcome@123';
+
+    for (const userData of users) {
+      try {
+        const { name, email, role, collegeId, departmentId, password, phone, enrollmentNumber, employeeId } = userData;
+
+        if (!name || !email || !role) {
+          results.failed.push({
+            user: email || name || 'Unknown',
+            reason: 'Missing required fields (name, email, or role)',
+          });
+          continue;
+        }
+
+        // Check if user already exists
+        const userExists = await User.findOne({ email: email.toLowerCase() });
+        if (userExists) {
+          results.failed.push({
+            user: email,
+            reason: 'User with this email already exists',
+          });
+          continue;
+        }
+
+        const newUser = await User.create({
+          name,
+          email: email.toLowerCase(),
+          role: role.toLowerCase(),
+          collegeId: collegeId || null,
+          departmentId: departmentId || null,
+          password: password || defaultPassword,
+          phone: phone || '',
+          enrollmentNumber: enrollmentNumber || '',
+          employeeId: employeeId || '',
+          status: 'active',
+        });
+
+        results.success.push({
+          email: newUser.email,
+          id: newUser._id,
+        });
+        processedCount++;
+      } catch (error) {
+        results.failed.push({
+          user: userData.email || 'Unknown',
+          reason: error.message,
+        });
+      }
+    }
+
+    // Clean up file
+    const fs = require('fs');
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    logger.info(`Bulk user upload completed. Success: ${results.success.length}, Failed: ${results.failed.length}`);
+
+    res.status(200).json({
+      success: true,
+      message: `Processed ${users.length} users. ${results.success.length} created, ${results.failed.length} failed.`,
+      summary: {
+        total: users.length,
+        created: results.success.length,
+        failed: results.failed.length,
+      },
+      errors: results.failed,
+    });
+  } catch (error) {
+    logger.error('Bulk upload users error:', error);
+    next(error);
+  }
+};
+
 // @desc    Assign college admin
 // @route   PUT /api/superadmin/colleges/:id/assign-admin
 // @access  Private/SuperAdmin

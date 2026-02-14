@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiEdit, FiTrash2, FiSearch } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiSearch, FiUpload, FiDownload } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Table from '@/components/common/Table.jsx';
@@ -18,7 +18,13 @@ const Users = () => {
   const [filters, setFilters] = useState({
     role: '',
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [showModal, setShowModal] = useState(false);
+  const [showResultsModal, setShowResultsModal] = useState(false);
+  const [bulkResults, setBulkResults] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -35,8 +41,12 @@ const Users = () => {
   }, []);
 
   useEffect(() => {
-    fetchUsers();
+    setCurrentPage(1); // Reset to first page on search/filter change
   }, [searchTerm, filters]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [searchTerm, filters, currentPage, limit]);
 
   const fetchInitialData = async () => {
     try {
@@ -51,10 +61,14 @@ const Users = () => {
     try {
       const params = {
         search: searchTerm,
+        page: currentPage,
+        limit: limit,
         ...filters,
       };
       const response = await superAdminService.getUsers(params);
       setUsers(response.data || []);
+      setTotalPages(response.totalPages || 1);
+      setTotalUsers(response.count || 0);
     } catch (error) {
       console.error('Fetch users error:', error);
       toast.error('Failed to load users');
@@ -137,6 +151,42 @@ const Users = () => {
       console.error('Toggle status error:', error);
       toast.error('Failed to update status');
     }
+  };
+
+  const handleBulkUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const loadingToast = toast.loading('Uploading users...');
+    try {
+      const response = await superAdminService.bulkUploadUsers(file);
+      setBulkResults(response);
+      setShowResultsModal(true);
+      toast.success(response.message, { id: loadingToast, duration: 5000 });
+      fetchUsers();
+    } catch (error) {
+      console.error('Bulk upload error:', error);
+      toast.error(error.response?.data?.message || 'Bulk upload failed', { id: loadingToast });
+    }
+    // Reset input
+    e.target.value = '';
+  };
+
+  const downloadTemplate = () => {
+    const headers = ['name', 'email', 'role', 'collegeId', 'departmentId', 'password', 'phone', 'enrollmentNumber', 'employeeId'];
+    const sampleData = [
+      'John Doe,john@example.com,student,COLLEGE_ID,DEPT_ID,Welcome@123,9876543210,ENR001,',
+      'Jane Smith,jane@example.com,faculty,COLLEGE_ID,DEPT_ID,Welcome@123,9876543211,,EMP001'
+    ];
+    const csvContent = [headers.join(','), ...sampleData].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'user_import_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const getRoleBadgeColor = (role) => {
@@ -223,10 +273,37 @@ const Users = () => {
           <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
           <p className="text-gray-600 mt-1">Manage all system users</p>
         </div>
-        <Button onClick={() => setShowModal(true)} className="w-full sm:w-auto">
-          <FiPlus className="mr-2" />
-          Create User
-        </Button>
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button
+            variant="secondary"
+            onClick={() => downloadTemplate()}
+            className="flex-1 sm:flex-none"
+          >
+            <FiDownload className="mr-2" />
+            Template
+          </Button>
+          <div className="relative flex-1 sm:flex-none">
+            <input
+              type="file"
+              id="bulk-user-upload"
+              className="hidden"
+              accept=".csv,.xlsx,.xls"
+              onChange={(e) => handleBulkUpload(e)}
+            />
+            <Button
+              variant="secondary"
+              onClick={() => document.getElementById('bulk-user-upload').click()}
+              className="w-full"
+            >
+              <FiUpload className="mr-2" />
+              Import
+            </Button>
+          </div>
+          <Button onClick={() => setShowModal(true)} className="flex-1 sm:flex-none">
+            <FiPlus className="mr-2" />
+            Create User
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -256,6 +333,63 @@ const Users = () => {
 
         <div className="overflow-x-auto">
           <Table columns={columns} data={users} emptyMessage="No users found" />
+        </div>
+
+        {/* Pagination and Row Limit Selection */}
+        <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="text-sm text-gray-600 order-2 sm:order-1">
+            Showing <span className="font-medium">{(currentPage - 1) * limit + 1}</span> to{' '}
+            <span className="font-medium">
+              {Math.min(currentPage * limit, totalUsers)}
+            </span>{' '}
+            of <span className="font-medium">{totalUsers}</span> users
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 order-1 sm:order-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Rows per page:</span>
+              <select
+                className="border border-gray-300 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white"
+                value={limit}
+                onChange={(e) => {
+                  setLimit(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+              >
+                {[10, 25, 50, 100, 500, 1000].map((pageSize) => (
+                  <option key={pageSize} value={pageSize}>
+                    {pageSize}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <div className="flex items-center gap-1">
+                <span className="text-sm font-medium text-gray-700">Page</span>
+                <span className="bg-primary-50 text-primary-700 px-2 py-1 rounded text-sm font-bold min-w-[2rem] text-center">
+                  {currentPage}
+                </span>
+                <span className="text-sm font-medium text-gray-700">of {totalPages}</span>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </div>
       </Card>
 
@@ -346,6 +480,61 @@ const Users = () => {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={showResultsModal}
+        onClose={() => setShowResultsModal(false)}
+        title="Bulk Upload Results"
+      >
+        {bulkResults && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-blue-50 p-3 rounded-lg text-center">
+                <p className="text-xs text-blue-600 font-medium uppercase">Total</p>
+                <p className="text-2xl font-bold text-blue-800">{bulkResults.summary?.total || 0}</p>
+              </div>
+              <div className="bg-green-50 p-3 rounded-lg text-center">
+                <p className="text-xs text-green-600 font-medium uppercase">Success</p>
+                <p className="text-2xl font-bold text-green-800">{bulkResults.summary?.created || 0}</p>
+              </div>
+              <div className="bg-red-50 p-3 rounded-lg text-center">
+                <p className="text-xs text-red-600 font-medium uppercase">Failed</p>
+                <p className="text-2xl font-bold text-red-800">{bulkResults.summary?.failed || 0}</p>
+              </div>
+            </div>
+
+            {bulkResults.errors && bulkResults.errors.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-sm font-semibold text-gray-900 mb-2">Error Details</h4>
+                <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">User/Email</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {bulkResults.errors.map((error, index) => (
+                        <tr key={index}>
+                          <td className="px-4 py-2 text-sm text-gray-900 border-r">{error.user}</td>
+                          <td className="px-4 py-2 text-sm text-red-600">{error.reason}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end mt-6">
+              <Button onClick={() => setShowResultsModal(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

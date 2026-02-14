@@ -164,6 +164,14 @@ export const superAdminService = {
     const response = await api.delete(`/superadmin/colleges/${collegeId}/departments/${deptId}`);
     return response.data;
   },
+  bulkUploadUsers: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/superadmin/users/bulk-upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
 };
 
 // College Admin Services
