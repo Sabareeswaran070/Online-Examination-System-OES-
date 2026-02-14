@@ -1,0 +1,127 @@
+const express = require('express');
+const {
+  getDashboard,
+  createExam,
+  getExams,
+  getExam,
+  updateExam,
+  deleteExam,
+  addQuestionToExam,
+  publishExam,
+  createQuestion,
+  getQuestions,
+  updateQuestion,
+  deleteQuestion,
+  getExamResults,
+  evaluateAnswer,
+  generateRandomQuestions,
+} = require('../controllers/facultyController');
+const { protect } = require('../middleware/auth');
+const { authorize, auditLog } = require('../middleware/rbac');
+const {
+  validate,
+  createExamValidation,
+  createQuestionValidation,
+  validateObjectId,
+} = require('../middleware/validation');
+
+const router = express.Router();
+
+// Protect all routes and authorize only faculty
+router.use(protect);
+router.use(authorize('faculty'));
+
+router.get('/dashboard', getDashboard);
+
+// Exam routes
+router
+  .route('/exams')
+  .get(getExams)
+  .post(
+    createExamValidation,
+    validate,
+    auditLog('create', 'Exam'),
+    createExam
+  );
+
+router
+  .route('/exams/:id')
+  .get(validateObjectId('id'), validate, getExam)
+  .put(
+    validateObjectId('id'),
+    validate,
+    auditLog('update', 'Exam'),
+    updateExam
+  )
+  .delete(
+    validateObjectId('id'),
+    validate,
+    auditLog('delete', 'Exam'),
+    deleteExam
+  );
+
+router.post(
+  '/exams/:id/questions',
+  validateObjectId('id'),
+  validate,
+  addQuestionToExam
+);
+
+router.post(
+  '/exams/:id/publish',
+  validateObjectId('id'),
+  validate,
+  auditLog('publish', 'Exam'),
+  publishExam
+);
+
+router.post(
+  '/exams/:id/generate-questions',
+  validateObjectId('id'),
+  validate,
+  generateRandomQuestions
+);
+
+router.get(
+  '/exams/:id/results',
+  validateObjectId('id'),
+  validate,
+  getExamResults
+);
+
+// Question routes
+router
+  .route('/questions')
+  .get(getQuestions)
+  .post(
+    createQuestionValidation,
+    validate,
+    auditLog('create', 'Question'),
+    createQuestion
+  );
+
+router
+  .route('/questions/:id')
+  .put(
+    validateObjectId('id'),
+    validate,
+    auditLog('update', 'Question'),
+    updateQuestion
+  )
+  .delete(
+    validateObjectId('id'),
+    validate,
+    auditLog('delete', 'Question'),
+    deleteQuestion
+  );
+
+// Evaluation
+router.post(
+  '/evaluate/:resultId',
+  validateObjectId('resultId'),
+  validate,
+  auditLog('evaluate', 'Result'),
+  evaluateAnswer
+);
+
+module.exports = router;
