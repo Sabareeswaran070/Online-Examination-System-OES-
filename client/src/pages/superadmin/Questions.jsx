@@ -19,6 +19,7 @@ const AdminQuestions = () => {
     const [questionSets, setQuestionSets] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [showFolderModal, setShowFolderModal] = useState(false);
+    const [showCodingModal, setShowCodingModal] = useState(false);
     const [editingQuestion, setEditingQuestion] = useState(null);
     const [submitting, setSubmitting] = useState(false);
 
@@ -44,6 +45,17 @@ const AdminQuestions = () => {
         programmingLanguage: 'javascript',
         codeSnippet: '',
         testCases: [{ input: '', expectedOutput: '' }],
+        // Coding-specific fields
+        inputFormat: '',
+        outputFormat: '',
+        constraints: '',
+        visibleTestCases: [{ input: '', expectedOutput: '', explanation: '' }],
+        hiddenTestCases: [{ input: '', expectedOutput: '' }],
+        timeLimit: 1000, // milliseconds
+        memoryLimit: 256, // MB
+        starterCode: '',
+        sampleInput: '',
+        sampleOutput: '',
     });
 
     const [filters, setFilters] = useState({
@@ -66,6 +78,12 @@ const AdminQuestions = () => {
 
     const fileInputRef = useRef(null);
     const [uploading, setUploading] = useState(false);
+
+    // Validation states
+    const [formErrors, setFormErrors] = useState({});
+    const [isValidating, setIsValidating] = useState(false);
+    const [showPreview, setShowPreview] = useState(false);
+    const [previewQuestion, setPreviewQuestion] = useState(null);
 
     useEffect(() => {
         fetchSubjects();
@@ -207,8 +225,153 @@ const AdminQuestions = () => {
         setFormData({ ...formData, testCases: newTestCases });
     };
 
+    // Visible Test Cases Management
+    const addVisibleTestCase = () => {
+        setFormData({
+            ...formData,
+            visibleTestCases: [...formData.visibleTestCases, { input: '', expectedOutput: '', explanation: '' }]
+        });
+    };
+
+    const removeVisibleTestCase = (index) => {
+        const newTestCases = formData.visibleTestCases.filter((_, i) => i !== index);
+        setFormData({ ...formData, visibleTestCases: newTestCases });
+    };
+
+    const handleVisibleTestCaseChange = (index, field, value) => {
+        const newTestCases = [...formData.visibleTestCases];
+        newTestCases[index][field] = value;
+        setFormData({ ...formData, visibleTestCases: newTestCases });
+    };
+
+    // Hidden Test Cases Management
+    const addHiddenTestCase = () => {
+        setFormData({
+            ...formData,
+            hiddenTestCases: [...formData.hiddenTestCases, { input: '', expectedOutput: '' }]
+        });
+    };
+
+    const removeHiddenTestCase = (index) => {
+        const newTestCases = formData.hiddenTestCases.filter((_, i) => i !== index);
+        setFormData({ ...formData, hiddenTestCases: newTestCases });
+    };
+
+    const handleHiddenTestCaseChange = (index, field, value) => {
+        const newTestCases = [...formData.hiddenTestCases];
+        newTestCases[index][field] = value;
+        setFormData({ ...formData, hiddenTestCases: newTestCases });
+    };
+
+    // Validation function
+    const validateForm = () => {
+        const errors = {};
+
+        // Question text validation
+        if (!formData.questionText || formData.questionText.trim().length < 10) {
+            errors.questionText = 'Question text must be at least 10 characters';
+        }
+
+        // Marks validation
+        if (!formData.marks || formData.marks <= 0) {
+            errors.marks = 'Marks must be greater than 0';
+        }
+
+        // Negative marks validation
+        if (formData.negativeMarks < 0) {
+            errors.negativeMarks = 'Negative marks cannot be less than 0';
+        }
+
+        // Type-specific validation
+        if (formData.type === 'MCQ') {
+            // Check if all options are filled
+            const emptyOptions = formData.options.filter(opt => !opt || opt.trim() === '');
+            if (emptyOptions.length > 0) {
+                errors.options = 'All 4 options must be filled';
+            }
+
+            // Check if correct answer is selected
+            if (formData.correctAnswer === null || formData.correctAnswer === undefined) {
+                errors.correctAnswer = 'Please select the correct answer';
+            }
+        }
+
+        if (formData.type === 'TrueFalse') {
+            if (!formData.correctAnswer) {
+                errors.correctAnswer = 'Please select True or False';
+            }
+        }
+
+        if (formData.type === 'Descriptive' && (!formData.idealAnswer || formData.idealAnswer.trim() === '')) {
+            errors.idealAnswer = 'Ideal answer is required for descriptive questions';
+        }
+
+        if (formData.type === 'Coding') {
+            if (!formData.programmingLanguage) {
+                errors.programmingLanguage = 'Programming language is required';
+            }
+            if (formData.testCases.length === 0) {
+                errors.testCases = 'At least one test case is required';
+            } else {
+                const invalidTestCases = formData.testCases.filter(
+                    tc => !tc.input || !tc.expectedOutput
+                );
+                if (invalidTestCases.length > 0) {
+                    errors.testCases = 'All test cases must have input and expected output';
+                }
+            }
+        }
+
+        setFormErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
+    // Check for duplicate questions
+    const checkDuplicate = async (questionText) => {
+        try {
+            const response = await superAdminService.getQuestions({
+                search: questionText,
+                page: 1,
+                limit: 5
+            });
+
+            const exactMatch = response.data?.find(
+                q => q.questionText.toLowerCase().trim() === questionText.toLowerCase().trim()
+            );
+
+            return exactMatch;
+        } catch (error) {
+            console.error('Error checking duplicates:', error);
+            return null;
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Clear previous errors
+        setFormErrors({});
+
+        // Validate form
+        if (!validateForm()) {
+            toast.error('Please fix the errors in the form');
+            return;
+        }
+
+        // Check for duplicates (only for new questions)
+        if (!editingQuestion) {
+            setIsValidating(true);
+            const duplicate = await checkDuplicate(formData.questionText);
+            setIsValidating(false);
+
+            if (duplicate) {
+                const proceed = window.confirm(
+                    `A similar question already exists:\n\n"${duplicate.questionText}"\n\nDo you want to create this question anyway?`
+                );
+                if (!proceed) return;
+            }
+        }
+
         setSubmitting(true);
         try {
             const payload = {
@@ -236,16 +399,23 @@ const AdminQuestions = () => {
 
             if (editingQuestion) {
                 await superAdminService.updateQuestion(editingQuestion._id, payload);
-                toast.success('Question updated successfully');
+                toast.success('✅ Question updated successfully');
             } else {
                 await superAdminService.createQuestion(payload);
-                toast.success('Question added to bank');
+                toast.success('✅ Question added to bank');
             }
             setShowModal(false);
             resetForm();
             fetchQuestions();
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to save question');
+            console.error('Submit error:', error);
+            const errorMessage = error.response?.data?.message || 'Failed to save question';
+            toast.error(`❌ ${errorMessage}`);
+
+            // Show specific field errors if available
+            if (error.response?.data?.errors) {
+                setFormErrors(error.response.data.errors);
+            }
         } finally {
             setSubmitting(false);
         }
@@ -276,19 +446,49 @@ const AdminQuestions = () => {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Delete this question permanently?')) return;
+        const question = questions.find(q => q._id === id);
+        if (!question) return;
+
+        const confirmMessage = `⚠️ Delete this question permanently?\n\n"${question.questionText.substring(0, 100)}${question.questionText.length > 100 ? '...' : ''}"\n\nType: ${question.type} | Difficulty: ${question.difficulty} | Marks: ${question.marks}\n\nThis action cannot be undone.`;
+
+        if (!window.confirm(confirmMessage)) return;
+
         try {
             await superAdminService.deleteQuestion(id);
-            toast.success('Question removed');
+            toast.success('✅ Question deleted successfully');
             fetchQuestions();
         } catch (error) {
-            toast.error('Failed to delete');
+            console.error('Delete error:', error);
+            toast.error(`❌ ${error.response?.data?.message || 'Failed to delete question'}`);
         }
+    };
+
+    // Preview question function
+    const handlePreview = (question) => {
+        setPreviewQuestion(question);
+        setShowPreview(true);
     };
 
     const handleBulkUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        // Validate file type
+        const validTypes = ['.csv', 'text/csv', 'application/vnd.ms-excel'];
+        const fileExtension = file.name.split('.').pop().toLowerCase();
+
+        if (fileExtension !== 'csv' && !validTypes.includes(file.type)) {
+            toast.error('❌ Invalid file type. Please upload a CSV file.');
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            return;
+        }
+
+        // Check file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('❌ File size exceeds 5MB limit');
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            return;
+        }
 
         const uploadData = new FormData();
         uploadData.append('file', file);
@@ -299,13 +499,41 @@ const AdminQuestions = () => {
 
         try {
             setUploading(true);
+            toast.loading('Uploading questions...', { id: 'bulk-upload' });
+
             const res = await superAdminService.bulkUploadQuestions(uploadData);
-            toast.success(res.message || 'Questions uploaded successfully');
+
+            toast.dismiss('bulk-upload');
+
+            // Show detailed results
+            const successCount = res.successCount || res.data?.length || 0;
+            const failureCount = res.failureCount || 0;
+            const totalRows = res.totalRows || successCount + failureCount;
+
+            if (failureCount > 0) {
+                toast.success(
+                    `✅ Uploaded ${successCount}/${totalRows} questions\n❌ ${failureCount} failed`,
+                    { duration: 5000 }
+                );
+
+                // Log errors for debugging
+                if (res.errors && res.errors.length > 0) {
+                    console.log('Upload errors:', res.errors);
+                    toast.error(
+                        `First error: Row ${res.errors[0].row}: ${res.errors[0].error}`,
+                        { duration: 5000 }
+                    );
+                }
+            } else {
+                toast.success(`✅ Successfully uploaded ${successCount} questions!`);
+            }
+
             if (viewMode === 'questions') await fetchQuestions();
             else await fetchInitialData();
         } catch (error) {
             console.error('Upload error:', error);
-            toast.error(error.response?.data?.message || 'Bulk upload failed');
+            toast.dismiss('bulk-upload');
+            toast.error(`❌ ${error.response?.data?.message || 'Bulk upload failed'}`);
         } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -343,6 +571,7 @@ const AdminQuestions = () => {
             testCases: [{ input: '', expectedOutput: '' }],
         });
         setEditingQuestion(null);
+        setFormErrors({});
     };
 
     const getDifficultyBadge = (d) => {
@@ -381,6 +610,13 @@ const AdminQuestions = () => {
             header: 'Actions',
             render: (row) => (
                 <div className="flex gap-2">
+                    <button
+                        onClick={() => handlePreview(row)}
+                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                        title="Preview Question"
+                    >
+                        <FiHelpCircle className="w-4 h-4" />
+                    </button>
                     <button onClick={() => handleEdit(row)} className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
                         <FiEdit className="w-4 h-4" />
                     </button>
@@ -900,6 +1136,132 @@ const AdminQuestions = () => {
                         </Button>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Question Preview Modal */}
+            <Modal
+                isOpen={showPreview}
+                onClose={() => {
+                    setShowPreview(false);
+                    setPreviewQuestion(null);
+                }}
+                title="Question Preview"
+            >
+                {previewQuestion && (
+                    <div className="space-y-4">
+                        {/* Question Text */}
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                {previewQuestion.questionText}
+                            </h3>
+                        </div>
+
+                        {/* Metadata */}
+                        <div className="flex flex-wrap gap-2">
+                            <Badge variant={
+                                previewQuestion.type === 'MCQ' ? 'primary' :
+                                    previewQuestion.type === 'TrueFalse' ? 'success' :
+                                        previewQuestion.type === 'Descriptive' ? 'warning' : 'info'
+                            }>
+                                {previewQuestion.type}
+                            </Badge>
+                            {getDifficultyBadge(previewQuestion.difficulty)}
+                            <Badge variant="secondary">
+                                {previewQuestion.marks} {previewQuestion.marks === 1 ? 'Mark' : 'Marks'}
+                            </Badge>
+                            {previewQuestion.negativeMarks > 0 && (
+                                <Badge variant="danger">
+                                    -{previewQuestion.negativeMarks} Negative
+                                </Badge>
+                            )}
+                        </div>
+
+                        {/* Subject/Folder */}
+                        {(previewQuestion.subject || previewQuestion.questionSet) && (
+                            <div className="text-sm text-gray-600">
+                                <strong>Category:</strong> {previewQuestion.questionSet?.name || previewQuestion.subject?.name || 'Global Library'}
+                            </div>
+                        )}
+
+                        {/* Options for MCQ/TrueFalse */}
+                        {(previewQuestion.type === 'MCQ' || previewQuestion.type === 'TrueFalse') && previewQuestion.options && (
+                            <div>
+                                <h4 className="font-medium text-gray-700 mb-2">Options:</h4>
+                                <div className="space-y-2">
+                                    {previewQuestion.options.map((option, idx) => (
+                                        <div
+                                            key={idx}
+                                            className={`p-3 rounded-lg border-2 ${option.isCorrect
+                                                ? 'bg-green-50 border-green-500'
+                                                : 'bg-gray-50 border-gray-200'
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                {option.isCorrect && (
+                                                    <FiCheckCircle className="text-green-600 flex-shrink-0" />
+                                                )}
+                                                <span className={option.isCorrect ? 'font-semibold text-green-900' : 'text-gray-700'}>
+                                                    {String.fromCharCode(65 + idx)}. {option.text}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Ideal Answer for Descriptive */}
+                        {previewQuestion.type === 'Descriptive' && previewQuestion.correctAnswer && (
+                            <div>
+                                <h4 className="font-medium text-gray-700 mb-2">Ideal Answer:</h4>
+                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <p className="text-gray-800">{previewQuestion.correctAnswer}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Explanation */}
+                        {previewQuestion.explanation && (
+                            <div>
+                                <h4 className="font-medium text-gray-700 mb-2">Explanation:</h4>
+                                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                    <p className="text-gray-800">{previewQuestion.explanation}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Code Snippet for Coding Questions */}
+                        {previewQuestion.type === 'Coding' && previewQuestion.codeSnippet && (
+                            <div>
+                                <h4 className="font-medium text-gray-700 mb-2">Code Snippet:</h4>
+                                <pre className="p-3 bg-gray-900 text-gray-100 rounded-lg overflow-x-auto text-sm">
+                                    <code>{previewQuestion.codeSnippet}</code>
+                                </pre>
+                            </div>
+                        )}
+
+                        {/* Test Cases for Coding Questions */}
+                        {previewQuestion.type === 'Coding' && previewQuestion.testCases && previewQuestion.testCases.length > 0 && (
+                            <div>
+                                <h4 className="font-medium text-gray-700 mb-2">Test Cases:</h4>
+                                <div className="space-y-2">
+                                    {previewQuestion.testCases.map((tc, idx) => (
+                                        <div key={idx} className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                                <div>
+                                                    <span className="font-medium">Input:</span> {tc.input}
+                                                </div>
+                                                <div>
+                                                    <span className="font-medium">Output:</span> {tc.expectedOutput}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </Modal>
         </div>
     );
