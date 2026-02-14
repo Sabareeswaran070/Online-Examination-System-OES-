@@ -5,6 +5,7 @@ const {
   createCollege,
   getAllColleges,
   getCollege,
+  getCollegeStats,
   updateCollege,
   deleteCollege,
   toggleCollegeStatus,
@@ -74,6 +75,13 @@ router
     auditLog('delete', 'College'),
     deleteCollege
   );
+
+router.get(
+  '/colleges/:id/stats',
+  validateObjectId('id'),
+  validate,
+  getCollegeStats
+);
 
 router.put(
   '/colleges/:id/status',

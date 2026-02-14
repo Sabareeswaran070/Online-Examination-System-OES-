@@ -17,6 +17,11 @@ const Colleges = () => {
   const [showHierarchyModal, setShowHierarchyModal] = useState(false);
   const [selectedCollege, setSelectedCollege] = useState(null);
   const [editingCollege, setEditingCollege] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [collegeToDelete, setCollegeToDelete] = useState(null);
+  const [deleteStats, setDeleteStats] = useState(null);
+  const [fetchingStats, setFetchingStats] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState({
     collegeName: '',
     collegeCode: '',
@@ -24,18 +29,46 @@ const Colleges = () => {
     state: '',
     country: '',
     addressLine: '',
+    zipCode: '',
     contactEmail: '',
     contactPhone: '',
+    website: '',
+    establishedYear: '',
   });
+
+  // Pagination and Filter states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalColleges, setTotalColleges] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   useEffect(() => {
     fetchColleges();
-  }, []);
+  }, [currentPage, pageSize, statusFilter]);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (currentPage !== 1) setCurrentPage(1);
+      else fetchColleges();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const fetchColleges = async () => {
+    setLoading(true);
     try {
-      const response = await superAdminService.getColleges();
+      const response = await superAdminService.getColleges({
+        page: currentPage,
+        limit: pageSize,
+        search: searchTerm,
+        status: statusFilter,
+      });
       setColleges(response.data || []);
+      setTotalPages(response.totalPages || 1);
+      setTotalColleges(response.count || 0);
     } catch (error) {
       toast.error('Failed to load colleges');
     } finally {
@@ -57,6 +90,7 @@ const Colleges = () => {
             city: formData.city,
             state: formData.state,
             country: formData.country,
+            zipCode: formData.zipCode,
           }
         };
         await superAdminService.createCollege(payload);
@@ -78,21 +112,44 @@ const Colleges = () => {
       city: college.address?.city || '',
       state: college.address?.state || '',
       country: college.address?.country || '',
-      addressLine: college.address?.street || '', // Mapped from backend 'street' to frontend 'addressLine'
-      contactEmail: college.contactEmail,
-      contactPhone: college.contactPhone,
+      addressLine: college.address?.street || '',
+      zipCode: college.address?.zipCode || '',
+      contactEmail: college.contactEmail || '',
+      contactPhone: college.contactPhone || '',
+      website: college.website || '',
+      establishedYear: college.establishedYear || '',
     });
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure? This will delete all associated data.')) return;
+  const handleDeleteClick = async (college) => {
+    setCollegeToDelete(college);
+    setFetchingStats(true);
+    setShowDeleteModal(true);
     try {
-      await superAdminService.deleteCollege(id);
-      toast.success('College deleted successfully');
+      const response = await superAdminService.getCollegeStats(college._id);
+      setDeleteStats(response.data);
+    } catch (error) {
+      toast.error('Failed to load deletion impact stats');
+      setShowDeleteModal(false);
+    } finally {
+      setFetchingStats(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await superAdminService.deleteCollege(collegeToDelete._id);
+      toast.success('College and all associated data deleted successfully');
+      setShowDeleteModal(false);
       fetchColleges();
     } catch (error) {
       toast.error('Failed to delete college');
+    } finally {
+      setIsDeleting(false);
+      setCollegeToDelete(null);
+      setDeleteStats(null);
     }
   };
 
@@ -115,8 +172,11 @@ const Colleges = () => {
       state: '',
       country: '',
       addressLine: '',
+      zipCode: '',
       contactEmail: '',
       contactPhone: '',
+      website: '',
+      establishedYear: '',
     });
     setEditingCollege(null);
   };
@@ -124,8 +184,9 @@ const Colleges = () => {
   const columns = [
     { header: 'College Name', accessor: 'collegeName' },
     { header: 'Code', accessor: 'collegeCode' },
-    { header: 'Email', accessor: 'contactEmail' },
-    { header: 'Phone', accessor: 'contactPhone' },
+    { header: 'City', accessor: 'address.city' },
+    { header: 'Year', accessor: 'establishedYear' },
+    { header: 'Depts', render: (row) => row.departments?.length || 0 },
     {
       header: 'Status',
       render: (row) => (
@@ -152,7 +213,7 @@ const Colleges = () => {
           <button onClick={() => toggleStatus(row)} className="text-yellow-600 hover:text-yellow-800 p-1 hover:bg-yellow-50 rounded transition-colors">
             {row.status === 'active' ? <FiToggleRight /> : <FiToggleLeft />}
           </button>
-          <button onClick={() => handleDelete(row._id)} className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded transition-colors">
+          <button onClick={() => handleDeleteClick(row)} className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded transition-colors">
             <FiTrash />
           </button>
         </div>
@@ -164,15 +225,90 @@ const Colleges = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Colleges</h1>
-        <Button onClick={() => setShowModal(true)}>
-          <FiPlus className="mr-2" /> Add College
-        </Button>
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+        <div className="flex flex-1 w-full md:max-w-md relative">
+          <FiPlus className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 rotate-45" /> {/* Using FiPlus as search icon shortcut */}
+          <input
+            type="text"
+            placeholder="Search by name or code..."
+            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-3 w-full md:w-auto">
+          <select
+            className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <Button onClick={() => setShowModal(true)}>
+            <FiPlus className="mr-2" /> Add College
+          </Button>
+        </div>
       </div>
 
       <Card>
         <Table columns={columns} data={colleges} />
+
+        {/* Pagination Controls */}
+        <div className="mt-6 flex flex-col md:flex-row justify-between items-center bg-gray-50 p-4 rounded-lg border border-gray-100 gap-4">
+          <div className="flex items-center space-x-3">
+            <span className="text-sm text-gray-600">Rows per page:</span>
+            <select
+              className="px-3 py-1.5 border rounded-md text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+            >
+              {[10, 25, 50, 100].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-gray-500">
+              Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalColleges)} of {totalColleges}
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Previous
+            </button>
+            <div className="flex items-center space-x-1">
+              {[...Array(totalPages)].map((_, i) => (
+                <button
+                  key={i + 1}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${currentPage === i + 1
+                      ? 'bg-primary-600 text-white shadow-sm'
+                      : 'hover:bg-gray-100 text-gray-700'
+                    }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </Card>
 
       <Modal
@@ -218,10 +354,30 @@ const Colleges = () => {
               required
             />
             <Input
-              label="Address Line"
-              value={formData.addressLine}
-              onChange={(e) => setFormData({ ...formData, addressLine: e.target.value })}
+              label="Zip Code"
+              value={formData.zipCode}
+              onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
               required
+            />
+          </div>
+          <Input
+            label="Address Line"
+            value={formData.addressLine}
+            onChange={(e) => setFormData({ ...formData, addressLine: e.target.value })}
+            required
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Website"
+              value={formData.website}
+              placeholder="https://example.com"
+              onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+            />
+            <Input
+              label="Established Year"
+              type="number"
+              value={formData.establishedYear}
+              onChange={(e) => setFormData({ ...formData, establishedYear: e.target.value })}
             />
           </div>
           <Input
@@ -254,6 +410,81 @@ const Colleges = () => {
         college={selectedCollege}
         onUpdate={fetchColleges}
       />
+
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => !isDeleting && setShowDeleteModal(false)}
+        title="Delete Entire College?"
+      >
+        <div className="space-y-4">
+          <div className="bg-red-50 border-l-4 border-red-400 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <FiTrash className="h-5 w-5 text-red-400" aria-hidden="true" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-700">
+                  <span className="font-bold">Warning:</span> This action is permanent and will delete all data linked to <span className="font-bold">{collegeToDelete?.collegeName}</span>.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {fetchingStats ? (
+            <div className="py-4 flex flex-col items-center justify-center space-y-2">
+              <Loader size="sm" />
+              <p className="text-xs text-gray-500 italic">Calculating impact...</p>
+            </div>
+          ) : deleteStats ? (
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-gray-900">Total data to be deleted:</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                  <span className="text-xs text-gray-500 uppercase">Users</span>
+                  <span className="font-bold text-gray-800">{deleteStats.users}</span>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                  <span className="text-xs text-gray-500 uppercase">Departments</span>
+                  <span className="font-bold text-gray-800">{deleteStats.departments}</span>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                  <span className="text-xs text-gray-500 uppercase">Subjects</span>
+                  <span className="font-bold text-gray-800">{deleteStats.subjects}</span>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                  <span className="text-xs text-gray-500 uppercase">Exams</span>
+                  <span className="font-bold text-gray-800">{deleteStats.exams}</span>
+                </div>
+              </div>
+              <div className="bg-blue-50 p-3 rounded-lg flex justify-between items-center border border-blue-100">
+                <span className="text-xs text-blue-600 font-bold uppercase tracking-wider">Total Impact</span>
+                <span className="text-lg font-black text-blue-800">{deleteStats.totalImpact} Records</span>
+              </div>
+            </div>
+          ) : null}
+
+          <p className="text-sm text-gray-600">
+            Are you absolutely sure you want to proceed with deleting the entire college?
+          </p>
+
+          <div className="flex justify-end space-x-3 mt-6">
+            <Button
+              variant="secondary"
+              onClick={() => setShowDeleteModal(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={confirmDelete}
+              disabled={isDeleting || fetchingStats}
+            >
+              {isDeleting ? 'Deleting Everything...' : 'Yes, Delete Everything'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

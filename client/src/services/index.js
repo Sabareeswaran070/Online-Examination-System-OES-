@@ -45,6 +45,11 @@ export const superAdminService = {
     return response.data;
   },
 
+  getCollegeStats: async (id) => {
+    const response = await api.get(`/superadmin/colleges/${id}/stats`);
+    return response.data;
+  },
+
   createCollege: async (data) => {
     const response = await api.post('/superadmin/colleges', data);
     return response.data;

@@ -18,6 +18,8 @@ import Users from './pages/superadmin/Users';
 import AuditLogs from './pages/superadmin/AuditLogs';
 import AdminCompetitions from './pages/superadmin/Competitions';
 import AdminQuestions from './pages/superadmin/Questions';
+import SuperAdminStudents from './pages/superadmin/Students';
+import SuperAdminFaculty from './pages/superadmin/Faculty';
 
 // College Admin Pages
 import CollegeAdminDashboard from './pages/admin/Dashboard';
@@ -55,6 +57,8 @@ const navigationConfig = {
   [USER_ROLES.SUPER_ADMIN]: [
     { path: '/super-admin/dashboard', label: 'Dashboard', icon: FiHome },
     { path: '/super-admin/colleges', label: 'Colleges', icon: FiBook },
+    { path: '/super-admin/students', label: 'Students', icon: FiUsers },
+    { path: '/super-admin/faculty', label: 'Faculty', icon: FiUsers },
     { path: '/super-admin/users', label: 'Users', icon: FiUsers },
     { path: '/super-admin/analytics', label: 'Analytics', icon: FiBarChart },
     { path: '/super-admin/competitions', label: 'Competitions', icon: FiAward },
@@ -128,6 +132,8 @@ const SuperAdminRoutes = () => {
       <Routes>
         <Route path="dashboard" element={<SuperAdminDashboard />} />
         <Route path="colleges" element={<Colleges />} />
+        <Route path="students" element={<SuperAdminStudents />} />
+        <Route path="faculty" element={<SuperAdminFaculty />} />
         <Route path="users" element={<Users />} />
         <Route path="analytics" element={<SuperAdminAnalytics />} />
         <Route path="competitions" element={<AdminCompetitions />} />

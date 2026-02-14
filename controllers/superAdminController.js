@@ -55,7 +55,23 @@ exports.getDashboard = async (req, res, next) => {
 // @access  Private/SuperAdmin
 exports.createCollege = async (req, res, next) => {
   try {
-    const college = await College.create(req.body);
+    const collegeData = { ...req.body };
+
+    // Handle address fields if sent at root level (consistency with frontend)
+    if (collegeData.addressLine || collegeData.city || collegeData.state || collegeData.country) {
+      collegeData.address = {
+        street: collegeData.addressLine || collegeData.address?.street || '',
+        city: collegeData.city || collegeData.address?.city || '',
+        state: collegeData.state || collegeData.address?.state || '',
+        country: collegeData.country || collegeData.address?.country || 'India',
+        zipCode: collegeData.zipCode || collegeData.address?.zipCode || '',
+      };
+
+      // Clean up root level address fields
+      delete collegeData.addressLine;
+    }
+
+    const college = await College.create(collegeData);
 
     logger.info(`College created: ${college.collegeName} by ${req.user.email}`);
 
@@ -133,6 +149,42 @@ exports.getCollege = async (req, res, next) => {
   }
 };
 
+// @desc    Get college impact statistics (for deletion preview)
+// @route   GET /api/superadmin/colleges/:id/stats
+// @access  Private/SuperAdmin
+exports.getCollegeStats = async (req, res, next) => {
+  try {
+    const collegeId = req.params.id;
+    const college = await College.findById(collegeId);
+
+    if (!college) {
+      return res.status(404).json({
+        success: false,
+        message: 'College not found',
+      });
+    }
+
+    const counts = {
+      departments: await Department.countDocuments({ collegeId }),
+      users: await User.countDocuments({ collegeId }),
+      subjects: await Subject.countDocuments({ collegeId }),
+      exams: await Exam.countDocuments({ collegeId }),
+    };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        collegeName: college.collegeName,
+        ...counts,
+        totalImpact: Object.values(counts).reduce((a, b) => a + b, 0),
+      },
+    });
+  } catch (error) {
+    logger.error('Get college stats error:', error);
+    next(error);
+  }
+};
+
 // @desc    Update college
 // @route   PUT /api/superadmin/colleges/:id
 // @access  Private/SuperAdmin
@@ -147,7 +199,23 @@ exports.updateCollege = async (req, res, next) => {
       });
     }
 
-    college = await College.findByIdAndUpdate(req.params.id, req.body, {
+    const updateData = { ...req.body };
+
+    // Handle address fields if sent at root level (consistency with frontend)
+    if (updateData.addressLine || updateData.city || updateData.state || updateData.country) {
+      updateData.address = {
+        ...college.address,
+        street: updateData.addressLine || updateData.address?.street || college.address?.street,
+        city: updateData.city || updateData.address?.city || college.address?.city,
+        state: updateData.state || updateData.address?.state || college.address?.state,
+        country: updateData.country || updateData.address?.country || college.address?.country,
+      };
+
+      // Clean up root level address fields
+      delete updateData.addressLine;
+    }
+
+    college = await College.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true,
     });
@@ -184,13 +252,19 @@ exports.deleteCollege = async (req, res, next) => {
     // Delete all users associated with the college
     await User.deleteMany({ collegeId: req.params.id });
 
+    // Delete all subjects associated with the college
+    await Subject.deleteMany({ collegeId: req.params.id });
+
+    // Delete all exams associated with the college
+    await Exam.deleteMany({ collegeId: req.params.id });
+
     await college.deleteOne();
 
-    logger.info(`College deleted: ${college.collegeName} by ${req.user.email}`);
+    logger.info(`College deleted: ${college.collegeName} (Cascaded: Departments, Users, Subjects, Exams) by ${req.user.email}`);
 
     res.status(200).json({
       success: true,
-      message: 'College deleted successfully',
+      message: 'College and all associated data deleted successfully',
     });
   } catch (error) {
     logger.error('Delete college error:', error);
@@ -531,14 +605,20 @@ exports.assignCollegeAdmin = async (req, res, next) => {
 // @access  Private/SuperAdmin
 exports.getAllUsers = async (req, res, next) => {
   try {
-    const { role, search, page = 1, limit = 10 } = req.query;
+    const { role, search, status, collegeId, departmentId, page = 1, limit = 10 } = req.query;
 
     const query = {};
     if (role) query.role = role;
+    if (status) query.status = status;
+    if (collegeId) query.collegeId = collegeId;
+    if (departmentId) query.departmentId = departmentId;
+
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
+        { enrollmentNumber: { $regex: search, $options: 'i' } },
+        { employeeId: { $regex: search, $options: 'i' } },
       ];
     }
 
