@@ -221,13 +221,27 @@ exports.deleteCompetition = async (req, res, next) => {
 // @access  Private/SuperAdmin
 exports.getAllCompetitions = async (req, res, next) => {
     try {
-        const competitions = await Exam.find({ examType: 'competition' })
+        const { status, search, page = 1, limit = 10 } = req.query;
+
+        const query = { examType: 'competition' };
+        if (status) query.status = status;
+        if (search) {
+            query.title = { $regex: search, $options: 'i' };
+        }
+
+        const competitions = await Exam.find(query)
             .sort({ createdAt: -1 })
-            .populate('facultyId', 'name email');
+            .populate('facultyId', 'name email')
+            .limit(limit * 1)
+            .skip((page - 1) * limit);
+
+        const count = await Exam.countDocuments(query);
 
         res.status(200).json({
             success: true,
-            count: competitions.length,
+            count,
+            totalPages: Math.ceil(count / limit),
+            currentPage: page,
             data: competitions,
         });
     } catch (error) {

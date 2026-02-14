@@ -139,8 +139,8 @@ export const superAdminService = {
     });
     return response.data;
   },
-  getQuestionSets: async () => {
-    const response = await api.get('/superadmin/question-sets');
+  getQuestionSets: async (params) => {
+    const response = await api.get('/superadmin/question-sets', { params });
     return response.data;
   },
   createQuestionSet: async (data) => {
@@ -216,8 +216,8 @@ export const collegeAdminService = {
     return response.data;
   },
 
-  getFaculty: async () => {
-    const response = await api.get('/admin/faculty');
+  getFaculty: async (params) => {
+    const response = await api.get('/admin/faculty', { params });
     return response.data;
   },
 

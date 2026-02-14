@@ -22,21 +22,45 @@ const Departments = () => {
   });
   const [submitting, setSubmitting] = useState(false);
 
+  // Pagination & Search state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [totalDepartments, setTotalDepartments] = useState(0);
+
   useEffect(() => {
-    fetchInitialData();
+    fetchFaculties();
   }, []);
 
-  const fetchInitialData = async () => {
+  useEffect(() => {
+    fetchDepartments();
+  }, [currentPage, pageSize, searchTerm]);
+
+  const fetchFaculties = async () => {
     try {
-      const [deptsRes, facultyRes] = await Promise.all([
-        collegeAdminService.getDepartments(),
-        collegeAdminService.getFaculty()
-      ]);
-      setDepartments(deptsRes.data || []);
+      const facultyRes = await collegeAdminService.getFaculty();
       setFaculties(facultyRes.data?.filter(f => f.role === 'depthead') || []);
     } catch (error) {
-      console.error('Fetch data error:', error);
-      toast.error('Failed to load initial data');
+      console.error('Fetch faculties error:', error);
+    }
+  };
+
+  const fetchDepartments = async () => {
+    try {
+      setLoading(true);
+      const deptsRes = await collegeAdminService.getDepartments({
+        page: currentPage,
+        limit: pageSize,
+        search: searchTerm
+      });
+      const data = deptsRes.data || deptsRes;
+      setDepartments(data.data || []);
+      setTotalPages(data.totalPages || 1);
+      setTotalDepartments(data.count || 0);
+    } catch (error) {
+      console.error('Fetch departments error:', error);
+      toast.error('Failed to load departments');
     } finally {
       setLoading(false);
     }
@@ -61,7 +85,7 @@ const Departments = () => {
       }
       setShowModal(false);
       resetForm();
-      fetchInitialData();
+      fetchDepartments();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Action failed');
     } finally {
@@ -84,7 +108,7 @@ const Departments = () => {
       try {
         await collegeAdminService.deleteDepartment(id);
         toast.success('Department deleted');
-        fetchInitialData();
+        fetchDepartments();
       } catch (error) {
         toast.error(error.response?.data?.message || 'Delete failed');
       }
@@ -100,80 +124,180 @@ const Departments = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Departments</h1>
-          <p className="text-gray-600 mt-1">Manage college organizational structure</p>
-        </div>
-        <Button onClick={() => setShowModal(true)}>
-          <FiPlus className="mr-2" />
-          Add Department
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {departments.length > 0 ? (
-          departments.map((dept) => (
-            <Card key={dept._id} className="hover:shadow-lg transition-shadow">
-              <div className="flex flex-col h-full">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900 uppercase tracking-tight">{dept.name}</h3>
-                    <p className="text-xs font-mono text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full inline-block mt-1">
-                      {dept.departmentCode}
-                    </p>
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => handleEdit(dept)}
-                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    >
-                      <FiEdit size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(dept._id)}
-                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <FiTrash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-auto pt-4 border-t border-gray-100 space-y-3">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mr-3 text-gray-400">
-                      <FiUser />
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase text-gray-400 font-semibold tracking-wider">Dept Head</p>
-                      <p className="font-medium text-gray-800">
-                        {dept.deptHeadId?.name || 'Not Assigned'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center text-sm text-gray-500">
-                    <FiUsers className="mr-2 text-primary-400" />
-                    <span>{dept.totalStudents || 0} Students</span>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          ))
-        ) : (
-          <div className="col-span-full">
-            <Card className="bg-gray-50 border-dashed border-2">
-              <div className="text-center py-12">
-                <FiPlus className="mx-auto text-gray-300 mb-4" size={48} />
-                <p className="text-gray-500 font-medium">No departments found</p>
-                <Button className="mt-4" onClick={() => setShowModal(true)}>
-                  Create Your First Department
-                </Button>
-              </div>
-            </Card>
+      <div className="bg-gradient-to-r from-blue-700 to-indigo-800 rounded-2xl shadow-lg p-6 text-white">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Departments</h1>
+            <p className="mt-1 opacity-90">Manage college organizational structure and department heads</p>
           </div>
-        )}
+          <Button
+            className="bg-white text-blue-700 hover:bg-blue-50 border-none shadow-md"
+            size="lg"
+            onClick={() => setShowModal(true)}
+          >
+            <FiPlus className="mr-2 w-5 h-5" />
+            Add Department
+          </Button>
+        </div>
       </div>
+
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search departments by name or code..."
+            className="w-full pl-10 pr-4 py-2 border border-blue-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
+          />
+        </div>
+        <div className="flex gap-2">
+          <select
+            className="px-4 py-2 border border-blue-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white shadow-sm"
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+          >
+            {[12, 24, 48, 96].map(size => (
+              <option key={size} value={size}>{size} per page</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {loading && departments.length === 0 ? (
+        <div className="py-20 flex justify-center">
+          <Loader />
+        </div>
+      ) : (
+        <>
+          <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+            {departments.length > 0 ? (
+              departments.map((dept) => (
+                <Card key={dept._id} className="hover:shadow-lg transition-transform hover:-translate-y-1 duration-300 border-none shadow-sm">
+                  <div className="flex flex-col h-full">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 uppercase tracking-tight">{dept.name}</h3>
+                        <p className="text-xs font-mono text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full inline-block mt-1 border border-primary-100">
+                          {dept.departmentCode}
+                        </p>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleEdit(dept)}
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                        >
+                          <FiEdit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(dept._id)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                        >
+                          <FiTrash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mt-auto pt-4 border-t border-gray-100 space-y-4">
+                      <div className="flex items-center text-sm text-gray-600 bg-gray-50/50 p-2 rounded-xl">
+                        <div className="w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center mr-3 text-primary-500 border border-gray-100">
+                          <FiUser />
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider mb-0.5">Dept Head</p>
+                          <p className="font-semibold text-gray-800">
+                            {dept.deptHeadId?.name || 'Not Assigned'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-sm text-gray-500 px-1">
+                        <div className="flex items-center">
+                          <FiUsers className="mr-2 text-primary-500" />
+                          <span className="font-medium text-gray-700">{dept.totalStudents || 0} Students</span>
+                        </div>
+                        <Badge variant="neutral" className="bg-gray-100 text-gray-600 border-none">
+                          Active
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-full">
+                <Card className="bg-white border-dashed border-2 border-gray-200 shadow-none">
+                  <div className="text-center py-20">
+                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
+                      <FiSearch className="text-gray-300 w-10 h-10" />
+                    </div>
+                    <p className="text-gray-500 font-medium text-lg">No departments found matching your search</p>
+                    <p className="text-gray-400 text-sm mt-1">Try adjusting your filters or search keywords</p>
+                    <Button
+                      variant="secondary"
+                      className="mt-6"
+                      onClick={() => {
+                        setSearchTerm('');
+                        setCurrentPage(1);
+                      }}
+                    >
+                      Clear Search
+                    </Button>
+                  </div>
+                </Card>
+              </div>
+            )}
+          </div>
+
+          {totalDepartments > 0 && (
+            <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+              <div className="text-sm text-gray-600 font-medium">
+                Showing <span className="text-gray-900 font-bold">{(currentPage - 1) * pageSize + 1}</span> to <span className="text-gray-900 font-bold">{Math.min(currentPage * pageSize, totalDepartments)}</span> of <span className="text-gray-900 font-bold">{totalDepartments}</span> departments
+              </div>
+
+              <div className="flex items-center space-x-1">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  Previous
+                </button>
+
+                <div className="flex gap-1">
+                  {[...Array(totalPages)].map((_, i) => (
+                    <button
+                      key={i + 1}
+                      onClick={() => setCurrentPage(i + 1)}
+                      className={`w-10 h-10 text-sm font-bold rounded-lg transition-all ${currentPage === i + 1
+                        ? 'bg-primary-600 text-white shadow-md'
+                        : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
+                        }`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       <Modal
         isOpen={showModal}

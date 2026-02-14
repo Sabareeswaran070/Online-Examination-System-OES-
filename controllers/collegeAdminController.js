@@ -164,15 +164,29 @@ exports.createDepartment = async (req, res, next) => {
 // @access  Private/Admin
 exports.getDepartments = async (req, res, next) => {
   try {
-    const departments = await Department.find({
-      collegeId: req.user.collegeId,
-    })
+    const { page = 1, limit = 10, search } = req.query;
+
+    const query = { collegeId: req.user.collegeId };
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { departmentCode: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const departments = await Department.find(query)
       .populate('deptHeadId', 'name email')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const count = await Department.countDocuments(query);
 
     res.status(200).json({
       success: true,
-      count: departments.length,
+      count,
+      totalPages: Math.ceil(count / limit),
+      currentPage: page,
       data: departments,
     });
   } catch (error) {
@@ -539,7 +553,7 @@ exports.getLeaderboard = async (req, res, next) => {
 // @access  Private/Admin
 exports.getStudents = async (req, res, next) => {
   try {
-    const { departmentId, page = 1, limit = 20 } = req.query;
+    const { departmentId, page = 1, limit = 20, search } = req.query;
 
     const query = {
       collegeId: req.user.collegeId,
@@ -548,6 +562,14 @@ exports.getStudents = async (req, res, next) => {
 
     if (departmentId) {
       query.departmentId = departmentId;
+    }
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { enrollmentNumber: { $regex: search, $options: 'i' } }
+      ];
     }
 
     const students = await User.find(query)
@@ -577,7 +599,7 @@ exports.getStudents = async (req, res, next) => {
 // @access  Private/Admin
 exports.getFaculty = async (req, res, next) => {
   try {
-    const { departmentId } = req.query;
+    const { departmentId, page = 1, limit = 10, search } = req.query;
 
     const query = {
       collegeId: req.user.collegeId,
@@ -588,14 +610,28 @@ exports.getFaculty = async (req, res, next) => {
       query.departmentId = departmentId;
     }
 
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { employeeId: { $regex: search, $options: 'i' } }
+      ];
+    }
+
     const faculty = await User.find(query)
       .populate('departmentId', 'name')
       .select('-password')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const count = await User.countDocuments(query);
 
     res.status(200).json({
       success: true,
-      count: faculty.length,
+      count,
+      totalPages: Math.ceil(count / limit),
+      currentPage: page,
       data: faculty,
     });
   } catch (error) {

@@ -102,10 +102,13 @@ exports.createExam = async (req, res, next) => {
 // @access  Private/Faculty
 exports.getExams = async (req, res, next) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
+    const { status, search, page = 1, limit = 10 } = req.query;
 
     const query = { facultyId: req.user._id };
     if (status) query.status = status;
+    if (search) {
+      query.title = { $regex: search, $options: 'i' };
+    }
 
     const exams = await Exam.find(query)
       .populate('subject', 'name subjectCode')
@@ -357,12 +360,15 @@ exports.createQuestion = async (req, res, next) => {
 // @access  Private/Faculty
 exports.getQuestions = async (req, res, next) => {
   try {
-    const { type, subject, difficulty, page = 1, limit = 20 } = req.query;
+    const { type, subject, difficulty, page = 1, limit = 20, search } = req.query;
 
     const query = { facultyId: req.user._id, isActive: true };
     if (type) query.type = type;
     if (subject) query.subject = subject;
     if (difficulty) query.difficulty = difficulty;
+    if (search) {
+      query.questionText = { $regex: search, $options: 'i' };
+    }
 
     const questions = await Question.find(query)
       .populate('subject', 'name')

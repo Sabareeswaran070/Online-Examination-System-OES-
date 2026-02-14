@@ -52,14 +52,28 @@ const AdminQuestions = () => {
         subject: '',
         questionSet: '',
         search: '',
+        page: 1,
+        limit: 20
     });
+
+    const [totalQuestions, setTotalQuestions] = useState(0);
+    const [totalQuestionPages, setTotalQuestionPages] = useState(1);
+
+    // Question Set Pagination
+    const [setPage, setSetPage] = useState(1);
+    const [totalSetPages, setTotalSetPages] = useState(1);
+    const [setsLoading, setSetsLoading] = useState(false);
 
     const fileInputRef = useRef(null);
     const [uploading, setUploading] = useState(false);
 
     useEffect(() => {
-        fetchInitialData();
+        fetchSubjects();
     }, []);
+
+    useEffect(() => {
+        fetchQuestionSets();
+    }, [setPage]);
 
     useEffect(() => {
         if (viewMode === 'questions') {
@@ -67,17 +81,35 @@ const AdminQuestions = () => {
         }
     }, [filters, viewMode]);
 
+    const fetchSubjects = async () => {
+        try {
+            const subRes = await superAdminService.getSubjects();
+            setSubjects(subRes.data || []);
+        } catch (error) {
+            console.error('Error fetching subjects:', error);
+        }
+    };
+
+    const fetchQuestionSets = async () => {
+        try {
+            setSetsLoading(true);
+            const response = await superAdminService.getQuestionSets({ page: setPage, limit: 12 });
+            setQuestionSets(response.data || []);
+            setTotalSetPages(response.totalPages || 1);
+        } catch (error) {
+            console.error('Error fetching question sets:', error);
+        } finally {
+            setSetsLoading(false);
+            setLoading(false);
+        }
+    };
+
     const fetchInitialData = async () => {
         try {
             setLoading(true);
-            const [subRes, setRes] = await Promise.all([
-                superAdminService.getSubjects(),
-                superAdminService.getQuestionSets()
-            ]);
-            setSubjects(subRes.data || []);
-            setQuestionSets(setRes.data || []);
+            await Promise.all([fetchSubjects(), fetchQuestionSets()]);
         } catch (error) {
-            console.error('Error fetching initial data:', error);
+            console.error('Error in initial fetch:', error);
         } finally {
             setLoading(false);
         }
@@ -87,7 +119,9 @@ const AdminQuestions = () => {
         try {
             setLoading(true);
             const response = await superAdminService.getQuestions(filters);
-            setQuestions(response.data);
+            setQuestions(response.data || []);
+            setTotalQuestionPages(response.totalPages || 1);
+            setTotalQuestions(response.count || 0);
         } catch (error) {
             toast.error('Failed to load questions');
             console.error(error);
@@ -101,7 +135,7 @@ const AdminQuestions = () => {
         setSelectedFolder(isGlobal ? { name: 'Global Library', _id: '' } : item);
         setFolderType(type);
 
-        const newFilters = { ...filters, subject: '', questionSet: '', search: '' };
+        const newFilters = { ...filters, subject: '', questionSet: '', search: '', page: 1 };
         if (!isGlobal) {
             if (type === 'subject') newFilters.subject = item._id;
             else newFilters.questionSet = item._id;
@@ -114,7 +148,7 @@ const AdminQuestions = () => {
     const resetView = () => {
         setViewMode('folders');
         setSelectedFolder(null);
-        setFilters({ ...filters, subject: '', questionSet: '', search: '' });
+        setFilters({ ...filters, subject: '', questionSet: '', search: '', page: 1 });
     };
 
     const handleCreateFolder = async (e) => {
@@ -122,14 +156,25 @@ const AdminQuestions = () => {
         setSubmitting(true);
         try {
             await superAdminService.createQuestionSet(folderData);
-            toast.success('Folder created successfully');
             setShowFolderModal(false);
             setFolderData({ name: '', description: '' });
-            fetchInitialData();
+            await fetchQuestionSets();
+            toast.success('Folder created successfully');
         } catch (error) {
             toast.error('Failed to create folder');
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleDeleteFolder = async (folderId, folderName) => {
+        if (!window.confirm(`Delete folder "${folderName}"?\n\nAll questions in this folder will be moved to Unassigned.`)) return;
+        try {
+            await superAdminService.deleteQuestionSet(folderId);
+            toast.success('Folder deleted successfully');
+            await fetchQuestionSets();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete folder');
         }
     };
 
@@ -256,8 +301,8 @@ const AdminQuestions = () => {
             setUploading(true);
             const res = await superAdminService.bulkUploadQuestions(uploadData);
             toast.success(res.message || 'Questions uploaded successfully');
-            if (viewMode === 'questions') fetchQuestions();
-            else fetchInitialData();
+            if (viewMode === 'questions') await fetchQuestions();
+            else await fetchInitialData();
         } catch (error) {
             console.error('Upload error:', error);
             toast.error(error.response?.data?.message || 'Bulk upload failed');
@@ -419,9 +464,19 @@ const AdminQuestions = () => {
                             {questionSets.map((set) => (
                                 <div
                                     key={set._id}
+                                    className="group relative flex flex-col items-center gap-3 p-6 rounded-2xl bg-white border-2 border-transparent hover:border-primary-500 hover:shadow-xl hover:shadow-primary-50 transition-all cursor-pointer"
                                     onClick={() => handleFolderClick(set, 'set')}
-                                    className="group flex flex-col items-center gap-3 p-6 rounded-2xl bg-white border-2 border-transparent hover:border-primary-500 hover:shadow-xl hover:shadow-primary-50 transition-all cursor-pointer"
                                 >
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteFolder(set._id, set.name);
+                                        }}
+                                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all z-10"
+                                        title="Delete folder"
+                                    >
+                                        <FiTrash2 className="w-4 h-4" />
+                                    </button>
                                     <div className="w-16 h-16 rounded-2xl bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors">
                                         <FiFolder className="w-8 h-8 text-primary-500" />
                                     </div>
@@ -429,6 +484,25 @@ const AdminQuestions = () => {
                                 </div>
                             ))}
                         </div>
+                        {totalSetPages > 1 && (
+                            <div className="mt-8 flex justify-center items-center gap-2">
+                                <button
+                                    onClick={() => setSetPage(p => Math.max(1, p - 1))}
+                                    disabled={setPage === 1}
+                                    className="p-2 border rounded-lg disabled:opacity-50 hover:bg-gray-50 transition-colors"
+                                >
+                                    <FiArrowLeft />
+                                </button>
+                                <span className="text-sm text-gray-600 font-medium">Page {setPage} of {totalSetPages}</span>
+                                <button
+                                    onClick={() => setSetPage(p => Math.min(totalSetPages, p + 1))}
+                                    disabled={setPage === totalSetPages}
+                                    className="p-2 border rounded-lg disabled:opacity-50 hover:bg-gray-50 transition-colors"
+                                >
+                                    <FiChevronRight />
+                                </button>
+                            </div>
+                        )}
                     </section>
 
                     {/* Academic Subjects */}
@@ -466,14 +540,23 @@ const AdminQuestions = () => {
                                     placeholder="Search in folder..."
                                     className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all text-sm"
                                     value={filters.search}
-                                    onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                                    onChange={(e) => setFilters({ ...filters, search: e.target.value, page: 1 })}
                                 />
                             </div>
                         </div>
                         <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+                            <select
+                                className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none"
+                                value={filters.limit}
+                                onChange={(e) => setFilters({ ...filters, limit: Number(e.target.value), page: 1 })}
+                            >
+                                {[20, 50, 100, 500].map(size => (
+                                    <option key={size} value={size}>{size} per page</option>
+                                ))}
+                            </select>
                             <Select
                                 value={filters.type}
-                                onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+                                onChange={(e) => setFilters({ ...filters, type: e.target.value, page: 1 })}
                                 options={[
                                     { value: '', label: 'All Types' },
                                     { value: 'MCQ', label: 'MCQ' },
@@ -485,7 +568,7 @@ const AdminQuestions = () => {
                             />
                             <Select
                                 value={filters.difficulty}
-                                onChange={(e) => setFilters({ ...filters, difficulty: e.target.value })}
+                                onChange={(e) => setFilters({ ...filters, difficulty: e.target.value, page: 1 })}
                                 options={[
                                     { value: '', label: 'Difficulty' },
                                     { value: 'easy', label: 'Easy' },
@@ -496,10 +579,61 @@ const AdminQuestions = () => {
                             />
                         </div>
                     </div>
-                    {loading ? (
+                    {loading && questions.length === 0 ? (
                         <div className="py-20 flex justify-center"><Loader /></div>
                     ) : questions.length > 0 ? (
-                        <Table columns={columns} data={questions} />
+                        <>
+                            <div className={loading ? 'opacity-50 pointer-events-none' : ''}>
+                                <Table columns={columns} data={questions} />
+                            </div>
+
+                            <div className="mt-6 flex flex-col md:flex-row justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-100 gap-4">
+                                <div className="text-sm text-gray-600 font-medium">
+                                    Displaying <span className="text-gray-900 font-bold">{(filters.page - 1) * filters.limit + 1}</span> to <span className="text-gray-900 font-bold">{Math.min(filters.page * filters.limit, totalQuestions)}</span> of <span className="text-gray-900 font-bold">{totalQuestions}</span> questions
+                                </div>
+
+                                <div className="flex items-center space-x-1">
+                                    <button
+                                        onClick={() => setFilters({ ...filters, page: Math.max(1, filters.page - 1) })}
+                                        disabled={filters.page === 1}
+                                        className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        Prev
+                                    </button>
+
+                                    <div className="flex gap-1">
+                                        {[...Array(Math.min(5, totalQuestionPages))].map((_, i) => {
+                                            let pageNum;
+                                            if (totalQuestionPages <= 5) pageNum = i + 1;
+                                            else if (filters.page <= 3) pageNum = i + 1;
+                                            else if (filters.page >= totalQuestionPages - 2) pageNum = totalQuestionPages - 4 + i;
+                                            else pageNum = filters.page - 2 + i;
+
+                                            return (
+                                                <button
+                                                    key={pageNum}
+                                                    onClick={() => setFilters({ ...filters, page: pageNum })}
+                                                    className={`w-9 h-9 text-sm font-medium rounded-lg transition-all ${filters.page === pageNum
+                                                        ? 'bg-primary-600 text-white shadow-md'
+                                                        : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
+                                                        }`}
+                                                >
+                                                    {pageNum}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <button
+                                        onClick={() => setFilters({ ...filters, page: Math.min(totalQuestionPages, filters.page + 1) })}
+                                        disabled={filters.page === totalQuestionPages}
+                                        className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            </div>
+                        </>
                     ) : (
                         <div className="py-20 text-center">
                             <div className="bg-gray-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">

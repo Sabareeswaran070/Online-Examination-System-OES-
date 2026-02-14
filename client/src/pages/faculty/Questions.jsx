@@ -34,16 +34,35 @@ const Questions = () => {
     subject: '',
   });
 
+  // Pagination & Search state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [totalQuestions, setTotalQuestions] = useState(0);
+
   useEffect(() => {
     fetchQuestions();
+  }, [filters, currentPage, pageSize, searchTerm]);
+
+  useEffect(() => {
     fetchSubjects();
-  }, [filters]);
+  }, []);
 
   const fetchQuestions = async () => {
     try {
       setLoading(true);
-      const response = await facultyService.getQuestions(filters);
-      setQuestions(response.data);
+      const params = {
+        ...filters,
+        page: currentPage,
+        limit: pageSize,
+        search: searchTerm || undefined
+      };
+      const response = await facultyService.getQuestions(params);
+      const data = response.data || response;
+      setQuestions(data.data || []);
+      setTotalPages(data.totalPages || 1);
+      setTotalQuestions(data.count || 0);
     } catch (error) {
       toast.error('Failed to load questions');
       console.error(error);
@@ -150,28 +169,28 @@ const Questions = () => {
   };
 
   const columns = [
-    { 
-      header: 'Question', 
+    {
+      header: 'Question',
       accessor: (row) => (
         <div className="max-w-md truncate" title={row.questionText}>
           {row.questionText}
         </div>
       )
     },
-    { 
-      header: 'Type', 
+    {
+      header: 'Type',
       accessor: 'type'
     },
-    { 
-      header: 'Subject', 
+    {
+      header: 'Subject',
       accessor: (row) => row.subject?.name || 'N/A'
     },
-    { 
-      header: 'Difficulty', 
+    {
+      header: 'Difficulty',
       accessor: (row) => getDifficultyBadge(row.difficulty)
     },
-    { 
-      header: 'Marks', 
+    {
+      header: 'Marks',
       accessor: 'marks'
     },
     {
@@ -202,24 +221,47 @@ const Questions = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Question Bank</h1>
-          <p className="text-gray-600 mt-1">Build and manage your question repository</p>
+      <div className="bg-gradient-to-r from-teal-600 to-emerald-700 rounded-2xl shadow-lg p-8 text-white">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div>
+            <h1 className="text-3xl font-bold font-display tracking-tight text-white mb-2">Question Bank</h1>
+            <p className="text-emerald-50 max-w-xl">Centralized repository for your examination questions. Create, organize, and filter content across subjects.</p>
+          </div>
+          <Button
+            className="bg-white text-teal-700 hover:bg-emerald-50 border-none shadow-xl transition-all hover:scale-105"
+            size="lg"
+            onClick={() => { resetForm(); setShowModal(true); }}
+          >
+            <FiPlus className="w-5 h-5 mr-2" />
+            Add New Question
+          </Button>
         </div>
-        <Button onClick={() => { resetForm(); setShowModal(true); }} size="lg">
-          <FiPlus className="w-5 h-5 mr-2" />
-          Add New Question
-        </Button>
       </div>
 
-      {/* Filters */}
-      <Card title="Filters">
+      {/* Control Bar */}
+      <div className="flex flex-col gap-4">
+        <div className="relative">
+          <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search questions by text..."
+            className="w-full pl-10 pr-4 py-2 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none shadow-sm transition-all"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
+          />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Select
-            placeholder="Filter by Type"
+            placeholder="All Types"
             value={filters.type}
-            onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+            onChange={(e) => {
+              setFilters({ ...filters, type: e.target.value });
+              setCurrentPage(1);
+            }}
             options={[
               { value: '', label: 'All Types' },
               { value: 'MCQ', label: 'Multiple Choice' },
@@ -230,9 +272,12 @@ const Questions = () => {
           />
 
           <Select
-            placeholder="Filter by Difficulty"
+            placeholder="All Difficulties"
             value={filters.difficulty}
-            onChange={(e) => setFilters({ ...filters, difficulty: e.target.value })}
+            onChange={(e) => {
+              setFilters({ ...filters, difficulty: e.target.value });
+              setCurrentPage(1);
+            }}
             options={[
               { value: '', label: 'All Difficulties' },
               { value: 'easy', label: 'Easy' },
@@ -242,40 +287,104 @@ const Questions = () => {
           />
 
           <Select
-            placeholder="Filter by Subject"
+            placeholder="All Subjects"
             value={filters.subject}
-            onChange={(e) => setFilters({ ...filters, subject: e.target.value })}
+            onChange={(e) => {
+              setFilters({ ...filters, subject: e.target.value });
+              setCurrentPage(1);
+            }}
             options={[
               { value: '', label: 'All Subjects' },
               ...subjects.map(s => ({ value: s._id, label: s.name }))
             ]}
           />
 
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-2 bg-primary-50 text-primary-700 rounded-lg text-sm font-medium">
-              Total: {questions.length} questions
-            </span>
-          </div>
+          <select
+            className="px-4 py-2 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none shadow-sm bg-white"
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+          >
+            {[20, 50, 100, 200].map(size => (
+              <option key={size} value={size}>{size} per page</option>
+            ))}
+          </select>
         </div>
-      </Card>
+      </div>
+
 
       {/* Questions Table */}
-      <Card>
-        {loading ? (
-          <div className="text-center py-12">
+      <Card className="overflow-hidden border-none shadow-sm">
+        {loading && questions.length === 0 ? (
+          <div className="text-center py-20">
             <Loader />
           </div>
         ) : questions.length > 0 ? (
-          <div className="overflow-x-auto">
-            <Table columns={columns} data={questions} />
-          </div>
+          <>
+            <div className={`overflow-x-auto ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+              <Table columns={columns} data={questions} />
+            </div>
+
+            {totalQuestions > 0 && (
+              <div className="mt-4 flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-50/50 p-4 rounded-b-xl border-t border-gray-100">
+                <div className="text-sm text-gray-600 font-medium">
+                  Showing <span className="text-gray-900 font-bold">{(currentPage - 1) * pageSize + 1}</span> to <span className="text-gray-900 font-bold">{Math.min(currentPage * pageSize, totalQuestions)}</span> of <span className="text-gray-900 font-bold">{totalQuestions}</span> questions
+                </div>
+
+                <div className="flex items-center space-x-1">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    Previous
+                  </button>
+
+                  <div className="flex gap-1">
+                    {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) pageNum = i + 1;
+                      else if (currentPage <= 3) pageNum = i + 1;
+                      else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                      else pageNum = currentPage - 2 + i;
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`w-10 h-10 text-sm font-bold rounded-lg transition-all ${currentPage === pageNum
+                            ? 'bg-emerald-600 text-white shadow-md'
+                            : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
+                            }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
-          <div className="text-center py-16">
-            <FiHelpCircle className="mx-auto w-16 h-16 text-gray-300" />
-            <h3 className="mt-4 text-lg font-medium text-gray-900">No questions found</h3>
-            <p className="mt-2 text-gray-500">Start building your question bank</p>
-            <Button 
-              className="mt-6"
+          <div className="text-center py-20 bg-white rounded-xl">
+            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
+              <FiHelpCircle className="text-gray-300 w-10 h-10" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">No questions found</h3>
+            <p className="text-gray-500 mt-1">Start building your question bank repository</p>
+            <Button
+              className="mt-6 shadow-lg"
               onClick={() => { resetForm(); setShowModal(true); }}
             >
               <FiPlus className="w-5 h-5 mr-2" />

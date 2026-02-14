@@ -41,11 +41,19 @@ const AdminCompetitions = () => {
         questions: [], // Array of { questionId: string, order: number }
     });
 
+    // Pagination & Search state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
+    const [totalCompetitions, setTotalCompetitions] = useState(0);
+
     useEffect(() => {
         fetchCompetitions();
         fetchQuestions();
         fetchFilters();
-    }, []);
+    }, [currentPage, pageSize, searchTerm, statusFilter]);
 
     const fetchFilters = async () => {
         try {
@@ -79,8 +87,17 @@ const AdminCompetitions = () => {
 
     const fetchCompetitions = async () => {
         try {
-            const response = await competitionService.getAllCompetitions();
-            setCompetitions(response.data);
+            setLoading(true);
+            const response = await competitionService.getAllCompetitions({
+                page: currentPage,
+                limit: pageSize,
+                search: searchTerm,
+                status: statusFilter
+            });
+            const data = response.data || response;
+            setCompetitions(data.data || []);
+            setTotalPages(data.totalPages || 1);
+            setTotalCompetitions(data.count || 0);
         } catch (error) {
             console.error('Error fetching competitions:', error);
             toast.error('Failed to load competitions');
@@ -248,19 +265,123 @@ const AdminCompetitions = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Manage Competitions</h1>
-                    <p className="text-gray-500 mt-1">Design and oversee global hackathons and coding challenges</p>
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-700 rounded-2xl shadow-lg p-6 text-white">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold">Manage Competitions</h1>
+                        <p className="mt-1 opacity-90">Design and oversee global hackathons and coding challenges</p>
+                    </div>
+                    <Button
+                        className="bg-white text-purple-600 hover:bg-purple-50 border-none shadow-md"
+                        size="lg"
+                        onClick={() => handleOpenModal()}
+                    >
+                        <FiPlus className="mr-2 w-5 h-5" />
+                        Create Competition
+                    </Button>
                 </div>
-                <Button variant="primary" size="lg" onClick={() => handleOpenModal()}>
-                    <FiPlus className="mr-2 w-5 h-5" />
-                    Create Competition
-                </Button>
             </div>
 
-            <Card className="overflow-hidden border-none shadow-lg">
-                <Table columns={columns} data={competitions} emptyMessage="No competitions created yet." />
+            <div className="flex flex-col md:flex-row gap-4 mb-2">
+                <div className="relative flex-1">
+                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Search competitions by title..."
+                        className="w-full pl-10 pr-4 py-2 border border-blue-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
+                        value={searchTerm}
+                        onChange={(e) => {
+                            setSearchTerm(e.target.value);
+                            setCurrentPage(1);
+                        }}
+                    />
+                </div>
+                <div className="flex gap-2">
+                    <select
+                        className="px-4 py-2 border border-blue-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white shadow-sm min-w-[140px]"
+                        value={statusFilter}
+                        onChange={(e) => {
+                            setStatusFilter(e.target.value);
+                            setCurrentPage(1);
+                        }}
+                    >
+                        <option value="">All Status</option>
+                        <option value="scheduled">Scheduled</option>
+                        <option value="active">Active</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                    <select
+                        className="px-4 py-2 border border-blue-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white shadow-sm"
+                        value={pageSize}
+                        onChange={(e) => {
+                            setPageSize(Number(e.target.value));
+                            setCurrentPage(1);
+                        }}
+                    >
+                        {[10, 25, 50, 100].map(size => (
+                            <option key={size} value={size}>{size} per page</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
+            <Card className="overflow-hidden border-none shadow-sm">
+                {loading && competitions.length === 0 ? (
+                    <div className="py-20 flex justify-center">
+                        <Loader />
+                    </div>
+                ) : (
+                    <>
+                        <div className={loading ? 'opacity-50 pointer-events-none' : ''}>
+                            <Table
+                                columns={columns}
+                                data={competitions}
+                                emptyMessage="No competitions found matching your search."
+                            />
+                        </div>
+
+                        {totalCompetitions > 0 && (
+                            <div className="mt-4 flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                <div className="text-sm text-gray-600 font-medium">
+                                    Showing <span className="text-gray-900">{(currentPage - 1) * pageSize + 1}</span> to <span className="text-gray-900">{Math.min(currentPage * pageSize, totalCompetitions)}</span> of <span className="text-gray-900">{totalCompetitions}</span> competitions
+                                </div>
+
+                                <div className="flex items-center space-x-1">
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        disabled={currentPage === 1}
+                                        className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        Prev
+                                    </button>
+
+                                    <div className="flex gap-1">
+                                        {[...Array(totalPages)].map((_, i) => (
+                                            <button
+                                                key={i + 1}
+                                                onClick={() => setCurrentPage(i + 1)}
+                                                className={`w-9 h-9 text-sm font-medium rounded-lg transition-all ${currentPage === i + 1
+                                                    ? 'bg-primary-600 text-white shadow-md'
+                                                    : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
+                                                    }`}
+                                            >
+                                                {i + 1}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={currentPage === totalPages}
+                                        className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
             </Card>
 
             <Modal

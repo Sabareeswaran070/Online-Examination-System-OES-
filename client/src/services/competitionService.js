@@ -31,8 +31,8 @@ export const competitionService = {
         return response.data;
     },
 
-    getAllCompetitions: async () => {
-        const response = await api.get('/competitions/admin/all');
+    getAllCompetitions: async (params) => {
+        const response = await api.get('/competitions/admin/all', { params });
         return response.data;
     },
 };

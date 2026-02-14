@@ -26,20 +26,43 @@ const Faculty = () => {
     phone: '',
   });
 
+  // Pagination & Search state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
+  const [totalFaculty, setTotalFaculty] = useState(0);
+
   useEffect(() => {
-    fetchInitialData();
+    fetchDepartments();
   }, []);
 
-  const fetchInitialData = async () => {
+  useEffect(() => {
+    fetchFaculty();
+  }, [currentPage, pageSize, searchTerm]);
+
+  const fetchDepartments = async () => {
     try {
-      const [facultyRes, deptsRes] = await Promise.all([
-        collegeAdminService.getFaculty(),
-        collegeAdminService.getDepartments()
-      ]);
-      setFaculty(facultyRes.data || []);
+      const deptsRes = await collegeAdminService.getDepartments();
       setDepartments(deptsRes.data || []);
     } catch (error) {
-      console.error('Fetch error:', error);
+      console.error('Fetch departments error:', error);
+    }
+  };
+
+  const fetchFaculty = async () => {
+    try {
+      setLoading(true);
+      const facultyRes = await collegeAdminService.getFaculty({
+        page: currentPage,
+        limit: pageSize,
+        search: searchTerm
+      });
+      const data = facultyRes.data || facultyRes;
+      setFaculty(data.data || []);
+      setTotalPages(data.totalPages || 1);
+      setTotalFaculty(data.count || 0);
+    } catch (error) {
+      console.error('Fetch faculty error:', error);
       toast.error('Failed to load faculty data');
     } finally {
       setLoading(false);
@@ -61,7 +84,7 @@ const Faculty = () => {
       }
       setShowModal(false);
       resetForm();
-      fetchInitialData();
+      fetchFaculty();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Save failed');
     } finally {
@@ -87,7 +110,7 @@ const Faculty = () => {
       try {
         await collegeAdminService.deleteUser(id);
         toast.success('Faculty member deleted');
-        fetchInitialData();
+        fetchFaculty();
       } catch (error) {
         toast.error('Delete failed');
       }
@@ -115,81 +138,187 @@ const Faculty = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Faculty Members</h1>
-          <p className="text-gray-600 mt-1">Manage instructors and department heads</p>
+      <div className="bg-gradient-to-r from-teal-600 to-emerald-700 rounded-2xl shadow-lg p-6 text-white text-white">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold font-display">Faculty Directory</h1>
+            <p className="mt-1 opacity-90">Manage academic staff, department heads, and their roles</p>
+          </div>
+          <Button
+            className="bg-white text-teal-700 hover:bg-teal-50 border-none shadow-md"
+            size="lg"
+            onClick={() => setShowModal(true)}
+          >
+            <FiPlus className="mr-2 w-5 h-5" />
+            Add Faculty
+          </Button>
         </div>
-        <Button onClick={() => setShowModal(true)}>
-          <FiPlus className="mr-2" />
-          Add Faculty
-        </Button>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
+      <div className="flex flex-col md:flex-row gap-4 mb-2">
         <div className="relative flex-1">
           <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Search by name or email..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+            placeholder="Search faculty by name, email or ID..."
+            className="w-full pl-10 pr-4 py-2 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
           />
+        </div>
+        <div className="flex gap-2">
+          <select
+            className="px-4 py-2 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white shadow-sm"
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+          >
+            {[12, 24, 48, 96].map(size => (
+              <option key={size} value={size}>{size} per page</option>
+            ))}
+          </select>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredFaculty.length > 0 ? (
-          filteredFaculty.map((member) => (
-            <Card key={member._id} className="hover:shadow-lg transition-shadow">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                    <span className="text-primary-700 font-bold">
-                      {member.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{member.name}</h3>
-                    <div className={`text-[10px] inline-block px-2 rounded-full font-bold uppercase ${member.role === 'depthead' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                      }`}>
-                      {member.role === 'depthead' ? 'Dept Head' : 'Faculty'}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex gap-1">
-                  <button onClick={() => handleEdit(member)} className="p-1 text-blue-600 hover:bg-blue-50 rounded">
-                    <FiEdit size={16} />
-                  </button>
-                  <button onClick={() => handleDelete(member._id)} className="p-1 text-red-600 hover:bg-red-50 rounded">
-                    <FiTrash2 size={16} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2 text-sm text-gray-600">
-                <div className="flex items-center text-xs truncate">
-                  <FiMail className="mr-2 text-gray-400 shrink-0" />
-                  {member.email}
-                </div>
-                {member.phone && (
-                  <div className="flex items-center">
-                    <FiPhone className="mr-2 text-gray-400" />
-                    {member.phone}
-                  </div>
-                )}
-                <div className="flex items-center">
-                  <FiTag className="mr-2 text-gray-400" />
-                  {member.departmentId?.name || 'Unassigned'}
-                </div>
-              </div>
-            </Card>
-          ))
-        ) : (
-          <div className="col-span-full py-12 text-center text-gray-500">
-            No faculty members found.
+        {loading && faculty.length === 0 ? (
+          <div className="py-20 flex justify-center">
+            <Loader />
           </div>
+        ) : (
+          <>
+            <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+              {faculty.length > 0 ? (
+                faculty.map((member) => (
+                  <Card key={member._id} className="hover:shadow-lg transition-all hover:-translate-y-1 duration-300 border-none shadow-sm group">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-teal-50 to-emerald-50 rounded-2xl flex items-center justify-center text-teal-700 font-bold border border-teal-100 group-hover:scale-110 transition-transform">
+                          {member.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-gray-900 leading-tight">{member.name}</h3>
+                          <div className={`text-[10px] inline-block px-2 py-0.5 rounded-full font-bold uppercase mt-1 tracking-wider ${member.role === 'depthead' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                            }`}>
+                            {member.role === 'depthead' ? 'Dept Head' : 'Faculty'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleEdit(member)}
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                          title="Edit Faculty"
+                        >
+                          <FiEdit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(member._id)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                          title="Delete Faculty"
+                        >
+                          <FiTrash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 space-y-3">
+                      <div className="flex items-center text-sm text-gray-600 bg-gray-50/50 p-2 rounded-xl border border-gray-100/50">
+                        <FiMail className="mr-3 text-emerald-500 shrink-0" size={14} />
+                        <span className="truncate" title={member.email}>{member.email}</span>
+                      </div>
+                      {member.phone && (
+                        <div className="flex items-center text-sm text-gray-600 bg-gray-50/50 p-2 rounded-xl border border-gray-100/50">
+                          <FiPhone className="mr-3 text-emerald-500 shrink-0" size={14} />
+                          {member.phone}
+                        </div>
+                      )}
+                      <div className="flex items-center text-sm text-gray-700 font-medium px-2">
+                        <FiBook className="mr-3 text-teal-500" size={14} />
+                        {member.departmentId?.name || 'Unassigned'}
+                      </div>
+                    </div>
+                  </Card>
+                ))
+              ) : (
+                <div className="col-span-full">
+                  <Card className="bg-white border-dashed border-2 border-gray-200 shadow-none">
+                    <div className="text-center py-20">
+                      <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
+                        <FiSearch className="text-gray-300 w-10 h-10" />
+                      </div>
+                      <p className="text-gray-500 font-medium text-lg">No faculty found matching your search</p>
+                      <p className="text-gray-400 text-sm mt-1">Try different keywords or filters</p>
+                      <Button
+                        variant="secondary"
+                        className="mt-6"
+                        onClick={() => {
+                          setSearchTerm('');
+                          setCurrentPage(1);
+                        }}
+                      >
+                        Clear Search
+                      </Button>
+                    </div>
+                  </Card>
+                </div>
+              )}
+            </div>
+
+            {totalFaculty > 0 && (
+              <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <div className="text-sm text-gray-600 font-medium">
+                  Showing <span className="text-gray-900 font-bold">{(currentPage - 1) * pageSize + 1}</span> to <span className="text-gray-900 font-bold">{Math.min(currentPage * pageSize, totalFaculty)}</span> of <span className="text-gray-900 font-bold">{totalFaculty}</span> faculty members
+                </div>
+
+                <div className="flex items-center space-x-1">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    Previous
+                  </button>
+
+                  <div className="flex gap-1">
+                    {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) pageNum = i + 1;
+                      else if (currentPage <= 3) pageNum = i + 1;
+                      else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                      else pageNum = currentPage - 2 + i;
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`w-10 h-10 text-sm font-bold rounded-lg transition-all ${currentPage === pageNum
+                            ? 'bg-emerald-600 text-white shadow-md'
+                            : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
+                            }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

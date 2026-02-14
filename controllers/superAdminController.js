@@ -382,12 +382,20 @@ exports.getAnalytics = async (req, res, next) => {
 // @access  Private/SuperAdmin
 exports.getAuditLogs = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, resource, action, userId } = req.query;
+    const { page = 1, limit = 20, resource, action, userId, search } = req.query;
 
     const query = {};
     if (resource) query.resource = resource;
     if (action) query.action = action;
     if (userId) query.userId = userId;
+
+    if (search) {
+      query.$or = [
+        { action: { $regex: search, $options: 'i' } },
+        { resource: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
 
     const logs = await AuditLog.find(query)
       .populate('userId', 'name email role')
@@ -964,8 +972,27 @@ exports.bulkUploadQuestions = async (req, res, next) => {
 // @access  Private/SuperAdmin
 exports.getQuestionSets = async (req, res, next) => {
   try {
-    const sets = await QuestionSet.find().sort({ name: 1 });
-    res.status(200).json({ success: true, data: sets });
+    const { page = 1, limit = 10, search } = req.query;
+
+    const query = {};
+    if (search) {
+      query.name = { $regex: search, $options: 'i' };
+    }
+
+    const sets = await QuestionSet.find(query)
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const count = await QuestionSet.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      count,
+      totalPages: Math.ceil(count / limit),
+      currentPage: page,
+      data: sets,
+    });
   } catch (error) {
     logger.error('Get question sets error:', error);
     next(error);
@@ -977,6 +1004,21 @@ exports.getQuestionSets = async (req, res, next) => {
 // @access  Private/SuperAdmin
 exports.createQuestionSet = async (req, res, next) => {
   try {
+    const { name } = req.body;
+
+    // Check for duplicate folder name
+    const existingSet = await QuestionSet.findOne({
+      name: { $regex: new RegExp(`^${name}$`, 'i') },
+      facultyId: req.user._id
+    });
+
+    if (existingSet) {
+      return res.status(400).json({
+        success: false,
+        message: `A folder named "${name}" already exists`
+      });
+    }
+
     const set = await QuestionSet.create({
       ...req.body,
       facultyId: req.user._id,
