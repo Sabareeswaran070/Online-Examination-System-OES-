@@ -33,6 +33,17 @@ const Students = () => {
 
   useEffect(() => {
     fetchDepartments();
+
+    // Add test functions to window for debugging
+    window.testEdit = () => {
+      console.log('Window test edit function called!');
+      alert('Test edit works!');
+    };
+    window.testDelete = () => {
+      console.log('Window test delete function called!');
+      alert('Test delete works!');
+    };
+    console.log('Test functions added to window object');
   }, []);
 
   useEffect(() => {
@@ -92,6 +103,10 @@ const Students = () => {
   };
 
   const handleEdit = (student) => {
+    console.log('=== EDIT BUTTON CLICKED ===');
+    console.log('Student:', student);
+    console.log('Student name:', student.name);
+    console.log('Student ID:', student._id);
     setEditingStudent(student);
     setFormData({
       name: student.name,
@@ -101,15 +116,18 @@ const Students = () => {
       departmentId: student.departmentId?._id || student.departmentId || '',
     });
     setShowModal(true);
+    console.log('Modal should now be visible');
   };
 
   const handleDelete = async (id) => {
+    console.log('Delete button clicked for student ID:', id);
     if (window.confirm('Delete this student?')) {
       try {
         await collegeAdminService.deleteUser(id);
         toast.success('Student deleted');
         fetchStudents();
       } catch (error) {
+        console.error('Delete error:', error);
         toast.error('Delete failed');
       }
     }
@@ -125,11 +143,6 @@ const Students = () => {
       departmentId: '',
     });
   };
-
-  const filteredStudents = students.filter(s =>
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   if (loading) return <Loader fullScreen />;
 
@@ -157,6 +170,21 @@ const Students = () => {
             </Button>
           </div>
         </div>
+      </div>
+
+      {/* TEST BUTTON - Remove after debugging */}
+      <div className="bg-yellow-100 border-2 border-yellow-500 p-4 rounded-lg">
+        <p className="text-sm font-bold mb-2">DEBUG TEST:</p>
+        <button
+          type="button"
+          onClick={() => {
+            console.log('TEST BUTTON CLICKED!');
+            alert('Test button works!');
+          }}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+        >
+          Click Me to Test Events
+        </button>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4">
@@ -196,7 +224,7 @@ const Students = () => {
           </div>
         ) : (
           <>
-            <div className={`overflow-x-auto ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+            <div className={`overflow-x-auto ${loading ? 'opacity-50' : ''}`}>
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50/50">
                   <tr>
@@ -234,21 +262,43 @@ const Students = () => {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <div className="flex justify-end gap-3">
+                            {/* React onClick version */}
                             <button
-                              onClick={() => handleEdit(student)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                              title="Edit Student"
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('=== EDIT CLICKED ===', student._id);
+                                handleEdit(student);
+                              }}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors cursor-pointer"
                             >
-                              <FiEdit size={16} />
+                              <FiEdit size={14} />
+                              <span>Edit</span>
                             </button>
                             <button
-                              onClick={() => handleDelete(student._id)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Delete Student"
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('=== DELETE CLICKED ===', student._id);
+                                handleDelete(student._id);
+                              }}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors cursor-pointer"
                             >
-                              <FiTrash2 size={16} />
+                              <FiTrash2 size={14} />
+                              <span>Delete</span>
+                            </button>
+
+                            {/* HTML onclick version for testing */}
+                            <button
+                              type="button"
+                              onClick={() => window.testEdit()}
+                              className="px-2 py-1 text-xs bg-green-500 text-white rounded"
+                            >
+                              Test
                             </button>
                           </div>
                         </td>

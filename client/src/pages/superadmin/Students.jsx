@@ -4,6 +4,9 @@ import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Table from '@/components/common/Table.jsx';
 import Loader from '@/components/common/Loader.jsx';
+import Modal from '@/components/common/Modal.jsx';
+import Input from '@/components/common/Input.jsx';
+import Select from '@/components/common/Select.jsx';
 import { superAdminService } from '@/services';
 import toast from 'react-hot-toast';
 
@@ -24,6 +27,16 @@ const Students = () => {
     const [limit, setLimit] = useState(10);
     const [totalPages, setTotalPages] = useState(1);
     const [totalUsers, setTotalUsers] = useState(0);
+
+    const [showModal, setShowModal] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        password: '',
+        status: 'active',
+    });
 
     useEffect(() => {
         fetchInitialData();
@@ -74,6 +87,52 @@ const Students = () => {
         }
     };
 
+    const handleEdit = (user) => {
+        console.log('Edit clicked for user:', user);
+        setEditingUser(user);
+        setFormData({
+            name: user.name,
+            email: user.email,
+            password: '',
+            status: user.status || 'active',
+        });
+        setShowModal(true);
+    };
+
+    const handleDelete = async (userId, userName) => {
+        console.log('Delete clicked for user:', userId);
+        if (!window.confirm(`Delete student "${userName}"?\n\nThis action cannot be undone.`)) return;
+        try {
+            await superAdminService.deleteUser(userId);
+            toast.success('Student deleted successfully');
+            fetchUsers();
+        } catch (error) {
+            console.error('Delete error:', error);
+            toast.error(error.response?.data?.message || 'Failed to delete student');
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSubmitting(true);
+        try {
+            const updateData = { ...formData };
+            if (!updateData.password) delete updateData.password;
+
+            await superAdminService.updateUser(editingUser._id, updateData);
+            toast.success('Student updated successfully');
+            setShowModal(false);
+            setEditingUser(null);
+            setFormData({ name: '', email: '', password: '', status: 'active' });
+            fetchUsers();
+        } catch (error) {
+            console.error('Update error:', error);
+            toast.error(error.response?.data?.message || 'Failed to update student');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     const columns = [
         {
             header: 'Name',
@@ -107,10 +166,18 @@ const Students = () => {
             header: 'Actions',
             render: (row) => (
                 <div className="flex space-x-2">
-                    <button className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors">
+                    <button
+                        onClick={() => handleEdit(row)}
+                        className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        title="Edit Student"
+                    >
                         <FiEdit size={16} />
                     </button>
-                    <button className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors">
+                    <button
+                        onClick={() => handleDelete(row._id, row.name)}
+                        className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                        title="Delete Student"
+                    >
                         <FiTrash2 size={16} />
                     </button>
                 </div>
@@ -194,6 +261,61 @@ const Students = () => {
                     </div>
                 </div>
             </Card>
+
+            {/* Edit Student Modal */}
+            <Modal
+                isOpen={showModal}
+                onClose={() => {
+                    setShowModal(false);
+                    setEditingUser(null);
+                    setFormData({ name: '', email: '', password: '', status: 'active' });
+                }}
+                title="Edit Student"
+            >
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <Input
+                        label="Name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        required
+                    />
+                    <Input
+                        label="Email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        required
+                    />
+                    <Input
+                        label="Password (leave blank to keep current)"
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        placeholder="Leave blank to keep current password"
+                    />
+                    <Select
+                        label="Status"
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                        options={[
+                            { value: 'active', label: 'Active' },
+                            { value: 'inactive', label: 'Inactive' },
+                        ]}
+                    />
+                    <div className="flex justify-end gap-3 mt-6">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => setShowModal(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={submitting}>
+                            {submitting ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 };
