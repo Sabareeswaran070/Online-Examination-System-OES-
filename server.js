@@ -45,6 +45,7 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:5173',
+  'https://online-examination-system-oes-phi.vercel.app',
   process.env.CORS_ORIGIN
 ].filter(Boolean);
 
@@ -53,18 +54,24 @@ app.use(
     origin: function (origin, callback) {
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) === -1 && process.env.CORS_ORIGIN !== '*') {
-        const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-        return callback(new Error(msg), false);
+      // Allow all origins if CORS_ORIGIN is set to '*'
+      if (process.env.CORS_ORIGIN === '*') return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        return callback(null, true);
       }
-      return callback(null, true);
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   })
 );
 
-// Security middleware
-app.use(helmet());
+// Security middleware - configure helmet to not interfere with CORS
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 
 // Compression middleware
 app.use(compression());
