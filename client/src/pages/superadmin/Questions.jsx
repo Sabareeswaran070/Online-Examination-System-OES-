@@ -10,6 +10,7 @@ import Textarea from '@/components/common/Textarea.jsx';
 import Loader from '@/components/common/Loader.jsx';
 import Badge from '@/components/common/Badge.jsx';
 import CodingQuestionModal from '@/components/superadmin/CodingQuestionModal.jsx';
+import AIGenerateModal from '@/components/superadmin/AIGenerateModal.jsx';
 import { superAdminService } from '@/services';
 import toast from 'react-hot-toast';
 
@@ -22,6 +23,7 @@ const AdminQuestions = () => {
     const [showFolderModal, setShowFolderModal] = useState(false);
     const [showCodingModal, setShowCodingModal] = useState(false);
     const [showCodingFormModal, setShowCodingFormModal] = useState(false);
+    const [showAIGenerateModal, setShowAIGenerateModal] = useState(false);
     const [editingQuestion, setEditingQuestion] = useState(null);
     const [codingPreviewTab, setCodingPreviewTab] = useState('problem');
     const [submitting, setSubmitting] = useState(false);
@@ -544,6 +546,42 @@ const AdminQuestions = () => {
         }
     };
 
+    // Handle AI-generated question: populate form and open coding modal
+    const handleAIGenerated = (aiQuestion) => {
+        resetForm();
+        setFormData(prev => ({
+            ...prev,
+            questionText: aiQuestion.questionText || '',
+            type: 'Coding',
+            difficulty: aiQuestion.difficulty || 'medium',
+            marks: aiQuestion.marks || 10,
+            negativeMarks: aiQuestion.negativeMarks || 0,
+            explanation: aiQuestion.explanation || '',
+            programmingLanguage: aiQuestion.programmingLanguage || 'javascript',
+            codeSnippet: aiQuestion.codeSnippet || aiQuestion.starterCode || '',
+            starterCode: aiQuestion.starterCode || '',
+            inputFormat: aiQuestion.inputFormat || '',
+            outputFormat: aiQuestion.outputFormat || '',
+            constraints: aiQuestion.constraints || '',
+            sampleInput: aiQuestion.sampleInput || '',
+            sampleOutput: aiQuestion.sampleOutput || '',
+            timeLimit: aiQuestion.timeLimit || 1000,
+            memoryLimit: aiQuestion.memoryLimit || 256,
+            visibleTestCases: aiQuestion.visibleTestCases?.length
+                ? aiQuestion.visibleTestCases
+                : [{ input: '', expectedOutput: '', explanation: '' }],
+            hiddenTestCases: aiQuestion.hiddenTestCases?.length
+                ? aiQuestion.hiddenTestCases
+                : [{ input: '', expectedOutput: '' }],
+            testCases: aiQuestion.testCases?.length
+                ? aiQuestion.testCases
+                : [{ input: '', expectedOutput: '' }],
+        }));
+        setEditingQuestion(null);
+        setShowAIGenerateModal(false);
+        setShowCodingFormModal(true);
+    };
+
     const handleDelete = async (id) => {
         const question = questions.find(q => q._id === id);
         if (!question) return;
@@ -792,6 +830,15 @@ const AdminQuestions = () => {
                     >
                         <FiCode className="mr-2" /> Coding Q
                     </Button>
+                    <button
+                        onClick={() => setShowAIGenerateModal(true)}
+                        className="flex-1 sm:flex-none flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-white bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-md shadow-violet-200 hover:shadow-lg transition-all duration-200 hover:scale-105 text-sm"
+                    >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                        </svg>
+                        AI Generate
+                    </button>
                     <Button onClick={() => { resetForm(); setShowModal(true); }} className="flex-1 sm:flex-none shadow-lg shadow-primary-100">
                         <FiPlus className="mr-2" /> Add Question
                     </Button>
@@ -1541,6 +1588,13 @@ const AdminQuestions = () => {
                 submitting={submitting}
                 subjects={subjects}
                 questionSets={questionSets}
+            />
+
+            {/* AI Question Generation Modal */}
+            <AIGenerateModal
+                isOpen={showAIGenerateModal}
+                onClose={() => setShowAIGenerateModal(false)}
+                onGenerated={handleAIGenerated}
             />
 
             {/* Special Coding Question Preview Modal */}

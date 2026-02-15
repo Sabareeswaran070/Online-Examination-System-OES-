@@ -31,6 +31,7 @@ const {
   createDepartmentForCollege,
   updateDepartmentForCollege,
   deleteDepartmentFromCollege,
+  generateAICodingQuestion,
 } = require('../controllers/superAdminController');
 const { protect } = require('../middleware/auth');
 const { authorize, auditLog } = require('../middleware/rbac');
@@ -136,6 +137,9 @@ router
   .route('/questions')
   .get(getQuestions)
   .post(createQuestionValidation, validate, auditLog('create', 'Question'), createQuestion);
+
+// AI Question Generation (must be before /questions/:id to avoid route conflict)
+router.post('/questions/generate-ai', auditLog('ai-generate', 'Question'), generateAICodingQuestion);
 
 router
   .route('/questions/:id')
