@@ -139,6 +139,10 @@ export const superAdminService = {
     });
     return response.data;
   },
+  generateAICodingQuestion: async (params) => {
+    const response = await api.post('/superadmin/questions/generate-ai', params);
+    return response.data;
+  },
   getQuestionSets: async (params) => {
     const response = await api.get('/superadmin/question-sets', { params });
     return response.data;
