@@ -72,6 +72,46 @@ const questionSchema = new mongoose.Schema(
         expectedOutput: String,
       },
     ],
+    // Enhanced Coding Question Fields
+    inputFormat: {
+      type: String,
+    },
+    outputFormat: {
+      type: String,
+    },
+    constraints: {
+      type: String,
+    },
+    visibleTestCases: [
+      {
+        input: String,
+        expectedOutput: String,
+        explanation: String,
+      },
+    ],
+    hiddenTestCases: [
+      {
+        input: String,
+        expectedOutput: String,
+      },
+    ],
+    timeLimit: {
+      type: Number, // in milliseconds
+      default: 1000,
+    },
+    memoryLimit: {
+      type: Number, // in MB
+      default: 256,
+    },
+    starterCode: {
+      type: String,
+    },
+    sampleInput: {
+      type: String,
+    },
+    sampleOutput: {
+      type: String,
+    },
     isActive: {
       type: Boolean,
       default: true,

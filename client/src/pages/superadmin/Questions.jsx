@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { FiPlus, FiEdit, FiTrash2, FiFilter, FiHelpCircle, FiSearch, FiCheck, FiX, FiCode, FiList, FiCheckCircle, FiFileText, FiFolder, FiChevronRight, FiGrid, FiArrowLeft, FiUpload, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiFilter, FiHelpCircle, FiSearch, FiCheck, FiX, FiCode, FiList, FiCheckCircle, FiFileText, FiFolder, FiChevronRight, FiGrid, FiArrowLeft, FiUpload, FiDownload, FiEye, FiEyeOff, FiClock, FiCpu, FiCopy, FiAlertTriangle } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Table from '@/components/common/Table.jsx';
@@ -9,6 +9,7 @@ import Select from '@/components/common/Select.jsx';
 import Textarea from '@/components/common/Textarea.jsx';
 import Loader from '@/components/common/Loader.jsx';
 import Badge from '@/components/common/Badge.jsx';
+import CodingQuestionModal from '@/components/superadmin/CodingQuestionModal.jsx';
 import { superAdminService } from '@/services';
 import toast from 'react-hot-toast';
 
@@ -20,7 +21,9 @@ const AdminQuestions = () => {
     const [showModal, setShowModal] = useState(false);
     const [showFolderModal, setShowFolderModal] = useState(false);
     const [showCodingModal, setShowCodingModal] = useState(false);
+    const [showCodingFormModal, setShowCodingFormModal] = useState(false);
     const [editingQuestion, setEditingQuestion] = useState(null);
+    const [codingPreviewTab, setCodingPreviewTab] = useState('problem');
     const [submitting, setSubmitting] = useState(false);
 
     // Folder View States
@@ -310,15 +313,35 @@ const AdminQuestions = () => {
             if (!formData.programmingLanguage) {
                 errors.programmingLanguage = 'Programming language is required';
             }
-            if (formData.testCases.length === 0) {
-                errors.testCases = 'At least one test case is required';
+            
+            // Validate visible test cases
+            if (formData.visibleTestCases.length === 0) {
+                errors.visibleTestCases = 'At least one visible test case is required';
             } else {
-                const invalidTestCases = formData.testCases.filter(
+                const invalidVisibleTestCases = formData.visibleTestCases.filter(
                     tc => !tc.input || !tc.expectedOutput
                 );
-                if (invalidTestCases.length > 0) {
-                    errors.testCases = 'All test cases must have input and expected output';
+                if (invalidVisibleTestCases.length > 0) {
+                    errors.visibleTestCases = 'All visible test cases must have input and expected output';
                 }
+            }
+
+            // Validate hidden test cases
+            if (formData.hiddenTestCases.length > 0) {
+                const invalidHiddenTestCases = formData.hiddenTestCases.filter(
+                    tc => !tc.input || !tc.expectedOutput
+                );
+                if (invalidHiddenTestCases.length > 0) {
+                    errors.hiddenTestCases = 'All hidden test cases must have input and expected output';
+                }
+            }
+
+            // Validate time and memory limits
+            if (formData.timeLimit && formData.timeLimit < 100) {
+                errors.timeLimit = 'Time limit should be at least 100ms';
+            }
+            if (formData.memoryLimit && formData.memoryLimit < 16) {
+                errors.memoryLimit = 'Memory limit should be at least 16MB';
             }
         }
 
@@ -395,6 +418,10 @@ const AdminQuestions = () => {
                 ];
             } else if (formData.type === 'Descriptive') {
                 payload.correctAnswer = formData.idealAnswer;
+            } else if (formData.type === 'Coding') {
+                // Ensure numeric values for coding questions
+                payload.timeLimit = Number(formData.timeLimit);
+                payload.memoryLimit = Number(formData.memoryLimit);
             }
 
             if (editingQuestion) {
@@ -440,9 +467,81 @@ const AdminQuestions = () => {
             programmingLanguage: q.programmingLanguage || 'javascript',
             codeSnippet: q.codeSnippet || '',
             testCases: q.testCases?.length ? q.testCases : [{ input: '', expectedOutput: '' }],
+            inputFormat: q.inputFormat || '',
+            outputFormat: q.outputFormat || '',
+            constraints: q.constraints || '',
+            visibleTestCases: q.visibleTestCases?.length ? q.visibleTestCases : [{ input: '', expectedOutput: '', explanation: '' }],
+            hiddenTestCases: q.hiddenTestCases?.length ? q.hiddenTestCases : [{ input: '', expectedOutput: '' }],
+            timeLimit: q.timeLimit || 1000,
+            memoryLimit: q.memoryLimit || 256,
+            starterCode: q.starterCode || '',
+            sampleInput: q.sampleInput || '',
+            sampleOutput: q.sampleOutput || '',
         };
         setFormData(data);
-        setShowModal(true);
+        // Open dedicated coding modal for coding questions
+        if (q.type === 'Coding') {
+            setShowCodingFormModal(true);
+        } else {
+            setShowModal(true);
+        }
+    };
+
+    // Open coding form for new question
+    const handleNewCodingQuestion = () => {
+        resetForm();
+        setFormData(prev => ({ ...prev, type: 'Coding' }));
+        setShowCodingFormModal(true);
+    };
+
+    // Handle coding form submission
+    const handleCodingSubmit = async (e) => {
+        e.preventDefault();
+        setSubmitting(true);
+        try {
+            // Only send coding-relevant fields (not MCQ options/correctAnswer etc.)
+            const payload = {
+                questionText: formData.questionText,
+                type: 'Coding',
+                difficulty: formData.difficulty,
+                marks: Number(formData.marks),
+                negativeMarks: Number(formData.negativeMarks),
+                explanation: formData.explanation,
+                programmingLanguage: formData.programmingLanguage,
+                codeSnippet: formData.codeSnippet,
+                starterCode: formData.starterCode,
+                inputFormat: formData.inputFormat,
+                outputFormat: formData.outputFormat,
+                constraints: formData.constraints,
+                sampleInput: formData.sampleInput,
+                sampleOutput: formData.sampleOutput,
+                timeLimit: Number(formData.timeLimit) || 1000,
+                memoryLimit: Number(formData.memoryLimit) || 256,
+                visibleTestCases: formData.visibleTestCases,
+                hiddenTestCases: formData.hiddenTestCases,
+                testCases: formData.testCases,
+            };
+
+            // Only include ObjectId fields if they have a real value
+            if (formData.subject) payload.subject = formData.subject;
+            if (formData.questionSet) payload.questionSet = formData.questionSet;
+
+            if (editingQuestion) {
+                await superAdminService.updateQuestion(editingQuestion._id, payload);
+                toast.success('Coding question updated successfully');
+            } else {
+                await superAdminService.createQuestion(payload);
+                toast.success('Coding question added to bank');
+            }
+            setShowCodingFormModal(false);
+            resetForm();
+            fetchQuestions();
+        } catch (error) {
+            console.error('Coding submit error:', error);
+            toast.error(error.response?.data?.message || 'Failed to save coding question');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const handleDelete = async (id) => {
@@ -466,7 +565,12 @@ const AdminQuestions = () => {
     // Preview question function
     const handlePreview = (question) => {
         setPreviewQuestion(question);
-        setShowPreview(true);
+        // Open special modal for coding questions
+        if (question.type === 'Coding') {
+            setShowCodingModal(true);
+        } else {
+            setShowPreview(true);
+        }
     };
 
     const handleBulkUpload = async (e) => {
@@ -569,6 +673,17 @@ const AdminQuestions = () => {
             programmingLanguage: 'javascript',
             codeSnippet: '',
             testCases: [{ input: '', expectedOutput: '' }],
+            // Enhanced coding fields
+            inputFormat: '',
+            outputFormat: '',
+            constraints: '',
+            visibleTestCases: [{ input: '', expectedOutput: '', explanation: '' }],
+            hiddenTestCases: [{ input: '', expectedOutput: '' }],
+            timeLimit: 1000,
+            memoryLimit: 256,
+            starterCode: '',
+            sampleInput: '',
+            sampleOutput: '',
         });
         setEditingQuestion(null);
         setFormErrors({});
@@ -669,6 +784,13 @@ const AdminQuestions = () => {
                     </Button>
                     <Button variant="secondary" onClick={() => setShowFolderModal(true)} className="flex-1 sm:flex-none hidden md:flex">
                         <FiPlus className="mr-2" /> New Folder
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        onClick={handleNewCodingQuestion}
+                        className="flex-1 sm:flex-none border-purple-200 hover:border-purple-500 text-purple-700"
+                    >
+                        <FiCode className="mr-2" /> Coding Q
                     </Button>
                     <Button onClick={() => { resetForm(); setShowModal(true); }} className="flex-1 sm:flex-none shadow-lg shadow-primary-100">
                         <FiPlus className="mr-2" /> Add Question
@@ -930,7 +1052,15 @@ const AdminQuestions = () => {
                             name="type"
                             value={formData.type}
                             onChange={(e) => {
-                                setFormData({ ...formData, type: e.target.value, correctAnswer: e.target.value === 'TrueFalse' ? 'true' : 0 });
+                                const newType = e.target.value;
+                                if (newType === 'Coding') {
+                                    // Switch to dedicated coding modal
+                                    setShowModal(false);
+                                    setFormData(prev => ({ ...prev, type: 'Coding' }));
+                                    setTimeout(() => setShowCodingFormModal(true), 150);
+                                } else {
+                                    setFormData({ ...formData, type: newType, correctAnswer: newType === 'TrueFalse' ? 'true' : 0 });
+                                }
                             }}
                             options={[
                                 { value: 'MCQ', label: 'MCQ' },
@@ -1065,8 +1195,9 @@ const AdminQuestions = () => {
                         )}
 
                         {formData.type === 'Coding' && (
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-5">
+                                {/* Language and Limits */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     <Select
                                         label="Language"
                                         name="programmingLanguage"
@@ -1077,41 +1208,176 @@ const AdminQuestions = () => {
                                             { value: 'python', label: 'Python' },
                                             { value: 'java', label: 'Java' },
                                             { value: 'cpp', label: 'C++' },
+                                            { value: 'c', label: 'C' },
                                         ]}
                                     />
+                                    <Input
+                                        label="Time Limit (ms)"
+                                        name="timeLimit"
+                                        type="number"
+                                        value={formData.timeLimit}
+                                        onChange={handleChange}
+                                        placeholder="1000"
+                                    />
+                                    <Input
+                                        label="Memory Limit (MB)"
+                                        name="memoryLimit"
+                                        type="number"
+                                        value={formData.memoryLimit}
+                                        onChange={handleChange}
+                                        placeholder="256"
+                                    />
                                 </div>
+
+                                {/* Input/Output Format */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <Textarea
+                                        label="Input Format"
+                                        name="inputFormat"
+                                        value={formData.inputFormat}
+                                        onChange={handleChange}
+                                        placeholder="Describe the input format..."
+                                        rows={3}
+                                    />
+                                    <Textarea
+                                        label="Output Format"
+                                        name="outputFormat"
+                                        value={formData.outputFormat}
+                                        onChange={handleChange}
+                                        placeholder="Describe the expected output format..."
+                                        rows={3}
+                                    />
+                                </div>
+
+                                {/* Constraints */}
                                 <Textarea
-                                    label="Starter Code / Template"
-                                    name="codeSnippet"
-                                    value={formData.codeSnippet}
+                                    label="Constraints"
+                                    name="constraints"
+                                    value={formData.constraints}
                                     onChange={handleChange}
-                                    placeholder="function solution() { ... }"
-                                    rows={4}
-                                    className="font-mono text-xs"
+                                    placeholder="e.g., 1 ≤ n ≤ 10^5, Time: O(n log n)"
+                                    rows={2}
                                 />
-                                <div className="space-y-3">
+
+                                {/* Starter Code */}
+                                <Textarea
+                                    label="Starter Code Template"
+                                    name="starterCode"
+                                    value={formData.starterCode}
+                                    onChange={handleChange}
+                                    placeholder="function solution(input) {\n    // Write your code here\n    return result;\n}"
+                                    rows={5}
+                                    className="font-mono text-sm"
+                                />
+
+                                {/* Sample Input/Output */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <Textarea
+                                        label="Sample Input"
+                                        name="sampleInput"
+                                        value={formData.sampleInput}
+                                        onChange={handleChange}
+                                        placeholder="Example input..."
+                                        rows={3}
+                                        className="font-mono text-sm"
+                                    />
+                                    <Textarea
+                                        label="Sample Output"
+                                        name="sampleOutput"
+                                        value={formData.sampleOutput}
+                                        onChange={handleChange}
+                                        placeholder="Expected output..."
+                                        rows={3}
+                                        className="font-mono text-sm"
+                                    />
+                                </div>
+
+                                {/* Visible Test Cases */}
+                                <div className="space-y-3 p-4 bg-green-50 rounded-lg border border-green-200">
                                     <div className="flex justify-between items-center">
-                                        <label className="text-sm font-bold text-gray-700">Test Cases</label>
-                                        <button type="button" onClick={addTestCase} className="text-xs text-primary-600 font-bold hover:underline">+ Add Case</button>
+                                        <label className="text-sm font-bold text-green-900 flex items-center gap-2">
+                                            <FiCheckCircle /> Visible Test Cases (Students can see)
+                                        </label>
+                                        <button 
+                                            type="button" 
+                                            onClick={addVisibleTestCase} 
+                                            className="text-xs text-green-700 font-bold hover:underline flex items-center gap-1"
+                                        >
+                                            <FiPlus /> Add Visible Test Case
+                                        </button>
                                     </div>
-                                    {formData.testCases.map((tc, idx) => (
-                                        <div key={idx} className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 bg-white rounded-xl border relative">
-                                            {formData.testCases.length > 1 && (
-                                                <button type="button" onClick={() => removeTestCase(idx)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 hover:opacity-100 transition-opacity">
-                                                    <FiX />
+                                    {formData.visibleTestCases.map((tc, idx) => (
+                                        <div key={idx} className="grid grid-cols-1 gap-2 p-3 bg-white rounded-xl border border-green-300 relative">
+                                            {formData.visibleTestCases.length > 1 && (
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => removeVisibleTestCase(idx)} 
+                                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors shadow-lg z-10"
+                                                    title="Remove test case"
+                                                >
+                                                    <FiX className="w-3 h-3" />
                                                 </button>
                                             )}
+                                            <div className="text-xs font-bold text-gray-600">Test Case {idx + 1}</div>
                                             <input
                                                 placeholder="Input"
-                                                className="px-2 py-1 text-xs border-b outline-none"
+                                                className="px-3 py-2 text-sm border rounded-lg outline-none focus:border-green-500 font-mono"
                                                 value={tc.input}
-                                                onChange={(e) => handleTestCaseChange(idx, 'input', e.target.value)}
+                                                onChange={(e) => handleVisibleTestCaseChange(idx, 'input', e.target.value)}
                                             />
                                             <input
                                                 placeholder="Expected Output"
-                                                className="px-2 py-1 text-xs border-b outline-none"
+                                                className="px-3 py-2 text-sm border rounded-lg outline-none focus:border-green-500 font-mono"
                                                 value={tc.expectedOutput}
-                                                onChange={(e) => handleTestCaseChange(idx, 'expectedOutput', e.target.value)}
+                                                onChange={(e) => handleVisibleTestCaseChange(idx, 'expectedOutput', e.target.value)}
+                                            />
+                                            <input
+                                                placeholder="Explanation (optional)"
+                                                className="px-3 py-2 text-sm border rounded-lg outline-none focus:border-green-500"
+                                                value={tc.explanation || ''}
+                                                onChange={(e) => handleVisibleTestCaseChange(idx, 'explanation', e.target.value)}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Hidden Test Cases */}
+                                <div className="space-y-3 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-sm font-bold text-purple-900 flex items-center gap-2">
+                                            <FiX /> Hidden Test Cases (For evaluation only)
+                                        </label>
+                                        <button 
+                                            type="button" 
+                                            onClick={addHiddenTestCase} 
+                                            className="text-xs text-purple-700 font-bold hover:underline flex items-center gap-1"
+                                        >
+                                            <FiPlus /> Add Hidden Test Case
+                                        </button>
+                                    </div>
+                                    {formData.hiddenTestCases.map((tc, idx) => (
+                                        <div key={idx} className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 bg-white rounded-xl border border-purple-300 relative">
+                                            {formData.hiddenTestCases.length > 1 && (
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => removeHiddenTestCase(idx)} 
+                                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors shadow-lg z-10"
+                                                    title="Remove test case"
+                                                >
+                                                    <FiX className="w-3 h-3" />
+                                                </button>
+                                            )}
+                                            <input
+                                                placeholder={`Hidden Input ${idx + 1}`}
+                                                className="px-3 py-2 text-sm border rounded-lg outline-none focus:border-purple-500 font-mono"
+                                                value={tc.input}
+                                                onChange={(e) => handleHiddenTestCaseChange(idx, 'input', e.target.value)}
+                                            />
+                                            <input
+                                                placeholder={`Hidden Output ${idx + 1}`}
+                                                className="px-3 py-2 text-sm border rounded-lg outline-none focus:border-purple-500 font-mono"
+                                                value={tc.expectedOutput}
+                                                onChange={(e) => handleHiddenTestCaseChange(idx, 'expectedOutput', e.target.value)}
                                             />
                                         </div>
                                     ))}
@@ -1260,6 +1526,389 @@ const AdminQuestions = () => {
                                 </div>
                             </div>
                         )}
+                    </div>
+                )}
+            </Modal>
+
+            {/* Coding Question Create/Edit Modal */}
+            <CodingQuestionModal
+                isOpen={showCodingFormModal}
+                onClose={() => { setShowCodingFormModal(false); resetForm(); }}
+                onSubmit={handleCodingSubmit}
+                formData={formData}
+                setFormData={setFormData}
+                editingQuestion={editingQuestion}
+                submitting={submitting}
+                subjects={subjects}
+                questionSets={questionSets}
+            />
+
+            {/* Special Coding Question Preview Modal */}
+            <Modal
+                isOpen={showCodingModal}
+                onClose={() => {
+                    setShowCodingModal(false);
+                    setPreviewQuestion(null);
+                    setCodingPreviewTab('problem');
+                }}
+                title=""
+                size="2xl"
+            >
+                {previewQuestion && (
+                    <div className="space-y-0 -mt-2">
+                        {/* Custom Header */}
+                        <div className="flex items-center justify-between pb-4 border-b">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-200">
+                                    <FiCode className="w-5 h-5 text-white" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-extrabold text-gray-900">Coding Question Preview</h2>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <Badge variant="info">
+                                            {previewQuestion.programmingLanguage?.toUpperCase() || 'CODE'}
+                                        </Badge>
+                                        {getDifficultyBadge(previewQuestion.difficulty)}
+                                        <Badge variant="secondary">
+                                            {previewQuestion.marks} {previewQuestion.marks === 1 ? 'Mark' : 'Marks'}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {previewQuestion.timeLimit && (
+                                    <span className="flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
+                                        <FiClock className="w-3.5 h-3.5" /> {previewQuestion.timeLimit}ms
+                                    </span>
+                                )}
+                                {previewQuestion.memoryLimit && (
+                                    <span className="flex items-center gap-1 text-xs font-medium text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200">
+                                        <FiCpu className="w-3.5 h-3.5" /> {previewQuestion.memoryLimit}MB
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Preview Tabs */}
+                        <div className="flex items-center gap-1 py-3 border-b overflow-x-auto">
+                            {[
+                                { id: 'problem', label: 'Problem', icon: FiFileText },
+                                { id: 'io', label: 'I/O & Constraints', icon: FiList },
+                                { id: 'testcases', label: 'Test Cases', icon: FiCheckCircle },
+                                { id: 'code', label: 'Code', icon: FiCode },
+                            ].map(tab => {
+                                const Icon = tab.icon;
+                                const isActive = codingPreviewTab === tab.id;
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        type="button"
+                                        onClick={() => setCodingPreviewTab(tab.id)}
+                                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+                                            isActive
+                                                ? 'bg-indigo-50 text-indigo-700 font-bold shadow-sm'
+                                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-600' : ''}`} />
+                                        {tab.label}
+                                        {tab.id === 'testcases' && (
+                                            <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold ${
+                                                isActive ? 'bg-indigo-200 text-indigo-800' : 'bg-gray-200 text-gray-600'
+                                            }`}>
+                                                {(previewQuestion.visibleTestCases?.length || 0) + (previewQuestion.hiddenTestCases?.length || 0)}
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Tab Content */}
+                        <div className="py-5 min-h-[300px]">
+                            {/* Problem Tab */}
+                            {codingPreviewTab === 'problem' && (
+                                <div className="space-y-4">
+                                    <div className="p-5 bg-gray-50 rounded-xl border">
+                                        <h3 className="text-lg font-bold text-gray-900 mb-3 leading-relaxed">
+                                            {previewQuestion.questionText}
+                                        </h3>
+                                    </div>
+                                    {previewQuestion.explanation && (
+                                        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                                            <h4 className="font-bold text-yellow-900 mb-2 flex items-center gap-2 text-sm">
+                                                <FiHelpCircle className="text-yellow-600" /> Explanation / Editorial
+                                            </h4>
+                                            <p className="text-gray-700 text-sm whitespace-pre-wrap">{previewQuestion.explanation}</p>
+                                        </div>
+                                    )}
+                                    <div className="text-sm text-gray-500">
+                                        <strong>Category:</strong> {previewQuestion.questionSet?.name || previewQuestion.subject?.name || 'Global Library'}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* I/O Tab */}
+                            {codingPreviewTab === 'io' && (
+                                <div className="space-y-5">
+                                    {previewQuestion.inputFormat && (
+                                        <div className="p-5 bg-blue-50/60 border border-blue-200 rounded-xl">
+                                            <h4 className="font-bold text-blue-900 mb-2 flex items-center gap-2 text-sm">
+                                                <FiArrowLeft className="rotate-180 text-blue-600" /> Input Format
+                                            </h4>
+                                            <p className="text-gray-700 text-sm whitespace-pre-wrap">{previewQuestion.inputFormat}</p>
+                                        </div>
+                                    )}
+                                    {previewQuestion.outputFormat && (
+                                        <div className="p-5 bg-emerald-50/60 border border-emerald-200 rounded-xl">
+                                            <h4 className="font-bold text-emerald-900 mb-2 flex items-center gap-2 text-sm">
+                                                <FiChevronRight className="text-emerald-600" /> Output Format
+                                            </h4>
+                                            <p className="text-gray-700 text-sm whitespace-pre-wrap">{previewQuestion.outputFormat}</p>
+                                        </div>
+                                    )}
+                                    {previewQuestion.constraints && (
+                                        <div className="p-5 bg-amber-50/60 border border-amber-200 rounded-xl">
+                                            <h4 className="font-bold text-amber-900 mb-2 flex items-center gap-2 text-sm">
+                                                <FiAlertTriangle className="text-amber-600" /> Constraints
+                                            </h4>
+                                            <p className="text-gray-700 text-sm whitespace-pre-wrap font-mono">{previewQuestion.constraints}</p>
+                                        </div>
+                                    )}
+                                    {(previewQuestion.sampleInput || previewQuestion.sampleOutput) && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {previewQuestion.sampleInput && (
+                                                <div>
+                                                    <h4 className="font-bold text-gray-700 mb-2 text-sm">Sample Input</h4>
+                                                    <pre className="p-4 bg-gray-100 rounded-xl border text-sm overflow-x-auto font-mono">
+                                                        {previewQuestion.sampleInput}
+                                                    </pre>
+                                                </div>
+                                            )}
+                                            {previewQuestion.sampleOutput && (
+                                                <div>
+                                                    <h4 className="font-bold text-gray-700 mb-2 text-sm">Sample Output</h4>
+                                                    <pre className="p-4 bg-gray-100 rounded-xl border text-sm overflow-x-auto font-mono">
+                                                        {previewQuestion.sampleOutput}
+                                                    </pre>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    {!previewQuestion.inputFormat && !previewQuestion.outputFormat && !previewQuestion.constraints && !previewQuestion.sampleInput && (
+                                        <div className="text-center py-12 text-gray-400">
+                                            <FiFileText className="mx-auto mb-3 w-10 h-10" />
+                                            <p className="font-medium">No I/O format information provided</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Test Cases Tab */}
+                            {codingPreviewTab === 'testcases' && (
+                                <div className="space-y-6">
+                                    {/* Stats */}
+                                    <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl border">
+                                        <div className="flex items-center gap-1.5">
+                                            <FiEye className="text-green-600 w-4 h-4" />
+                                            <span className="text-sm text-green-700 font-bold">{previewQuestion.visibleTestCases?.length || 0} visible</span>
+                                        </div>
+                                        <div className="h-4 w-px bg-gray-300" />
+                                        <div className="flex items-center gap-1.5">
+                                            <FiEyeOff className="text-purple-600 w-4 h-4" />
+                                            <span className="text-sm text-purple-700 font-bold">{previewQuestion.hiddenTestCases?.length || 0} hidden</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Visible */}
+                                    {previewQuestion.visibleTestCases?.length > 0 && (
+                                        <div className="rounded-xl border-2 border-green-200 overflow-hidden">
+                                            <div className="bg-green-50 px-5 py-3">
+                                                <h4 className="font-bold text-green-900 flex items-center gap-2 text-sm">
+                                                    <FiEye className="text-green-600" /> Visible Test Cases
+                                                    <span className="text-xs font-normal text-green-600">— students can see</span>
+                                                </h4>
+                                            </div>
+                                            <div className="p-4 space-y-3 bg-white">
+                                                {previewQuestion.visibleTestCases.map((tc, idx) => (
+                                                    <div key={idx} className="border border-green-200 rounded-lg p-4 bg-green-50/30">
+                                                        <span className="text-xs font-bold text-green-800 bg-green-100 px-2.5 py-1 rounded-full">
+                                                            Test #{idx + 1}
+                                                        </span>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 text-sm">
+                                                            <div>
+                                                                <span className="font-semibold text-gray-600 text-xs">INPUT</span>
+                                                                <pre className="mt-1 p-3 bg-white rounded-lg border text-xs font-mono overflow-x-auto">{tc.input}</pre>
+                                                            </div>
+                                                            <div>
+                                                                <span className="font-semibold text-gray-600 text-xs">EXPECTED OUTPUT</span>
+                                                                <pre className="mt-1 p-3 bg-white rounded-lg border text-xs font-mono overflow-x-auto">{tc.expectedOutput}</pre>
+                                                            </div>
+                                                        </div>
+                                                        {tc.explanation && (
+                                                            <div className="mt-3 pt-3 border-t border-green-200 text-sm text-gray-600">
+                                                                <span className="font-semibold text-xs text-gray-500">EXPLANATION:</span>
+                                                                <p className="mt-1">{tc.explanation}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Hidden */}
+                                    {previewQuestion.hiddenTestCases?.length > 0 && (
+                                        <div className="rounded-xl border-2 border-purple-200 overflow-hidden">
+                                            <div className="bg-purple-50 px-5 py-3">
+                                                <h4 className="font-bold text-purple-900 flex items-center gap-2 text-sm">
+                                                    <FiEyeOff className="text-purple-600" /> Hidden Test Cases
+                                                    <span className="text-xs font-normal text-purple-600">— for evaluation only</span>
+                                                </h4>
+                                            </div>
+                                            <div className="p-4 space-y-3 bg-white">
+                                                {previewQuestion.hiddenTestCases.map((tc, idx) => (
+                                                    <div key={idx} className="border border-purple-200 rounded-lg p-4 bg-purple-50/30">
+                                                        <span className="text-xs font-bold text-purple-800 bg-purple-100 px-2.5 py-1 rounded-full flex items-center gap-1.5 w-fit">
+                                                            <FiEyeOff className="w-3 h-3" /> Hidden #{idx + 1}
+                                                        </span>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 text-sm">
+                                                            <div>
+                                                                <span className="font-semibold text-gray-600 text-xs">INPUT</span>
+                                                                <pre className="mt-1 p-3 bg-white rounded-lg border text-xs font-mono overflow-x-auto">{tc.input}</pre>
+                                                            </div>
+                                                            <div>
+                                                                <span className="font-semibold text-gray-600 text-xs">EXPECTED OUTPUT</span>
+                                                                <pre className="mt-1 p-3 bg-white rounded-lg border text-xs font-mono overflow-x-auto">{tc.expectedOutput}</pre>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Legacy test cases fallback */}
+                                    {(!previewQuestion.visibleTestCases?.length && !previewQuestion.hiddenTestCases?.length && previewQuestion.testCases?.length > 0) && (
+                                        <div className="rounded-xl border-2 border-gray-200 overflow-hidden">
+                                            <div className="bg-gray-50 px-5 py-3">
+                                                <h4 className="font-bold text-gray-900 text-sm">Test Cases (Legacy)</h4>
+                                            </div>
+                                            <div className="p-4 space-y-3 bg-white">
+                                                {previewQuestion.testCases.map((tc, idx) => (
+                                                    <div key={idx} className="border rounded-lg p-4 bg-gray-50/30">
+                                                        <div className="grid grid-cols-2 gap-3 text-sm">
+                                                            <div>
+                                                                <span className="font-semibold text-gray-600 text-xs">INPUT</span>
+                                                                <pre className="mt-1 p-3 bg-white rounded-lg border text-xs font-mono">{tc.input}</pre>
+                                                            </div>
+                                                            <div>
+                                                                <span className="font-semibold text-gray-600 text-xs">OUTPUT</span>
+                                                                <pre className="mt-1 p-3 bg-white rounded-lg border text-xs font-mono">{tc.expectedOutput}</pre>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {!previewQuestion.visibleTestCases?.length && !previewQuestion.hiddenTestCases?.length && !previewQuestion.testCases?.length && (
+                                        <div className="text-center py-12 text-gray-400">
+                                            <FiCheckCircle className="mx-auto mb-3 w-10 h-10" />
+                                            <p className="font-medium">No test cases defined</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Code Tab */}
+                            {codingPreviewTab === 'code' && (
+                                <div className="space-y-5">
+                                    {previewQuestion.starterCode && (
+                                        <div>
+                                            <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2 text-sm">
+                                                <FiCode className="text-indigo-500" /> Starter Code Template
+                                            </h4>
+                                            <div className="rounded-xl overflow-hidden border border-gray-300 shadow-sm">
+                                                <div className="bg-gray-800 px-4 py-2 flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex gap-1.5">
+                                                            <div className="w-3 h-3 rounded-full bg-red-400"></div>
+                                                            <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                                                            <div className="w-3 h-3 rounded-full bg-green-400"></div>
+                                                        </div>
+                                                        <span className="text-xs text-gray-400 ml-2 font-mono">
+                                                            {previewQuestion.programmingLanguage || 'code'}
+                                                        </span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(previewQuestion.starterCode);
+                                                            toast.success('Code copied!');
+                                                        }}
+                                                        className="text-gray-400 hover:text-white transition-colors p-1"
+                                                        title="Copy code"
+                                                    >
+                                                        <FiCopy className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                                <pre className="p-4 bg-gray-900 text-green-300 overflow-x-auto text-sm font-mono">
+                                                    <code>{previewQuestion.starterCode}</code>
+                                                </pre>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {previewQuestion.codeSnippet && (
+                                        <div>
+                                            <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2 text-sm">
+                                                <FiCode className="text-gray-500" /> Code Snippet / Boilerplate
+                                            </h4>
+                                            <pre className="p-4 bg-gray-900 text-gray-100 rounded-xl overflow-x-auto text-sm font-mono border-l-4 border-purple-500">
+                                                <code>{previewQuestion.codeSnippet}</code>
+                                            </pre>
+                                        </div>
+                                    )}
+                                    {!previewQuestion.starterCode && !previewQuestion.codeSnippet && (
+                                        <div className="text-center py-12 text-gray-400">
+                                            <FiCode className="mx-auto mb-3 w-10 h-10" />
+                                            <p className="font-medium">No code template provided</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-between pt-4 border-t">
+                            <div className="text-sm text-gray-500">
+                                {previewQuestion.questionSet?.name || previewQuestion.subject?.name || 'Global Library'}
+                            </div>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => {
+                                        setShowCodingModal(false);
+                                        setPreviewQuestion(null);
+                                        setCodingPreviewTab('problem');
+                                        handleEdit(previewQuestion);
+                                    }}
+                                >
+                                    <FiEdit className="mr-2" /> Edit
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => {
+                                        setShowCodingModal(false);
+                                        setPreviewQuestion(null);
+                                        setCodingPreviewTab('problem');
+                                    }}
+                                >
+                                    Close
+                                </Button>
+                            </div>
+                        </div>
                     </div>
                 )}
             </Modal>
