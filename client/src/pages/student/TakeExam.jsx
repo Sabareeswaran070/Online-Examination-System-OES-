@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { FiCode, FiPlay, FiClock, FiCpu, FiChevronDown, FiChevronUp, FiEye, FiFileText } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Loader from '@/components/common/Loader.jsx';
@@ -20,6 +21,16 @@ const TakeExam = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [selectedLanguages, setSelectedLanguages] = useState({});  // { questionId: 'python' }
+  const [showProblemDetails, setShowProblemDetails] = useState({}); // { questionId: true/false }
+
+  const CODING_LANGUAGES = [
+    { value: 'javascript', label: 'JavaScript', icon: '🟨' },
+    { value: 'python', label: 'Python', icon: '🐍' },
+    { value: 'java', label: 'Java', icon: '☕' },
+    { value: 'cpp', label: 'C++', icon: '⚡' },
+    { value: 'c', label: 'C', icon: '🔧' },
+  ];
 
   useEffect(() => {
     startExam();
@@ -98,6 +109,7 @@ const TakeExam = () => {
         selectedAnswer: question.type === QUESTION_TYPES.MCQ || question.type === QUESTION_TYPES.TRUE_FALSE ? answer : undefined,
         textAnswer: question.type === QUESTION_TYPES.DESCRIPTIVE ? answer : undefined,
         codeAnswer: question.type === QUESTION_TYPES.CODING ? answer : undefined,
+        selectedLanguage: question.type === QUESTION_TYPES.CODING ? (selectedLanguages[question._id] || question.programmingLanguage || 'javascript') : undefined,
       });
     } catch (error) {
       console.error('Auto-save failed:', error);
@@ -136,6 +148,7 @@ const TakeExam = () => {
           selectedAnswer: question.type === QUESTION_TYPES.MCQ || question.type === QUESTION_TYPES.TRUE_FALSE ? answer : undefined,
           textAnswer: question.type === QUESTION_TYPES.DESCRIPTIVE ? answer : undefined,
           codeAnswer: question.type === QUESTION_TYPES.CODING ? answer : undefined,
+          selectedLanguage: question.type === QUESTION_TYPES.CODING ? (selectedLanguages[question._id] || question.programmingLanguage || 'javascript') : undefined,
         };
       });
 
@@ -301,16 +314,192 @@ const TakeExam = () => {
                   )}
 
                   {question.type === QUESTION_TYPES.CODING && (
-                    <div>
-                      <textarea
-                        value={answers[question._id] || ''}
-                        onChange={(e) => handleAnswerChange(question._id, e.target.value)}
-                        className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
-                        rows={12}
-                        placeholder="Write your code here..."
-                      />
-                      {question.testCases && (
-                        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="space-y-4">
+                      {/* Language Selector */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          <FiCode className="inline mr-1.5 text-violet-500" />
+                          Choose Programming Language
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {CODING_LANGUAGES.map((lang) => (
+                            <button
+                              key={lang.value}
+                              type="button"
+                              onClick={() => setSelectedLanguages(prev => ({ ...prev, [question._id]: lang.value }))}
+                              className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+                                (selectedLanguages[question._id] || question.programmingLanguage || 'javascript') === lang.value
+                                  ? 'bg-violet-100 text-violet-700 border-violet-400 shadow-sm'
+                                  : 'bg-white text-gray-600 border-gray-200 hover:border-violet-200 hover:bg-violet-50'
+                              }`}
+                            >
+                              <span>{lang.icon}</span>
+                              <span>{lang.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Problem Details Toggle */}
+                      {(question.inputFormat || question.outputFormat || question.constraints || question.visibleTestCases?.length > 0) && (
+                        <div className="border-2 border-blue-100 rounded-xl overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setShowProblemDetails(prev => ({ ...prev, [question._id]: !prev[question._id] }))}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-blue-50 hover:bg-blue-100 transition-colors"
+                          >
+                            <span className="flex items-center gap-2 text-sm font-semibold text-blue-700">
+                              <FiFileText className="w-4 h-4" />
+                              Problem Details & Test Cases
+                            </span>
+                            {showProblemDetails[question._id] ? (
+                              <FiChevronUp className="w-4 h-4 text-blue-500" />
+                            ) : (
+                              <FiChevronDown className="w-4 h-4 text-blue-500" />
+                            )}
+                          </button>
+                          {showProblemDetails[question._id] && (
+                            <div className="p-4 space-y-4 bg-white">
+                              {/* I/O Format */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {question.inputFormat && (
+                                  <div className="bg-gray-50 rounded-lg p-3">
+                                    <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Input Format</h5>
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{question.inputFormat}</p>
+                                  </div>
+                                )}
+                                {question.outputFormat && (
+                                  <div className="bg-gray-50 rounded-lg p-3">
+                                    <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Output Format</h5>
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{question.outputFormat}</p>
+                                  </div>
+                                )}
+                              </div>
+                              {question.constraints && (
+                                <div className="bg-amber-50 rounded-lg p-3 border border-amber-100">
+                                  <h5 className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">Constraints</h5>
+                                  <p className="text-sm text-gray-700 font-mono whitespace-pre-wrap">{question.constraints}</p>
+                                </div>
+                              )}
+
+                              {/* Visible Test Cases */}
+                              {question.visibleTestCases?.length > 0 && (
+                                <div>
+                                  <h5 className="text-xs font-bold text-green-600 uppercase tracking-wider mb-2">
+                                    <FiEye className="inline mr-1" /> Sample Test Cases
+                                  </h5>
+                                  <div className="space-y-3">
+                                    {question.visibleTestCases.map((tc, idx) => (
+                                      <div key={idx} className="bg-green-50 rounded-lg p-3 border border-green-100">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded">
+                                            Case {idx + 1}
+                                          </span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                          <div>
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase">Input</span>
+                                            <pre className="text-xs bg-white p-2 rounded mt-1 text-gray-700 border overflow-x-auto">{tc.input}</pre>
+                                          </div>
+                                          <div>
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase">Expected Output</span>
+                                            <pre className="text-xs bg-white p-2 rounded mt-1 text-gray-700 border overflow-x-auto">{tc.expectedOutput}</pre>
+                                          </div>
+                                        </div>
+                                        {tc.explanation && (
+                                          <p className="text-xs text-gray-500 mt-2 italic bg-white rounded p-2">💡 {tc.explanation}</p>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Sample I/O fallback */}
+                              {(!question.visibleTestCases || question.visibleTestCases.length === 0) && (question.sampleInput || question.sampleOutput) && (
+                                <div className="grid grid-cols-2 gap-3">
+                                  {question.sampleInput && (
+                                    <div>
+                                      <span className="text-xs font-bold text-gray-500 uppercase">Sample Input</span>
+                                      <pre className="text-xs bg-gray-50 p-2 rounded mt-1 text-gray-700 border overflow-x-auto">{question.sampleInput}</pre>
+                                    </div>
+                                  )}
+                                  {question.sampleOutput && (
+                                    <div>
+                                      <span className="text-xs font-bold text-gray-500 uppercase">Sample Output</span>
+                                      <pre className="text-xs bg-gray-50 p-2 rounded mt-1 text-gray-700 border overflow-x-auto">{question.sampleOutput}</pre>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Time & Memory Limits */}
+                              {(question.timeLimit || question.memoryLimit) && (
+                                <div className="flex gap-4">
+                                  {question.timeLimit && (
+                                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                                      <FiClock className="w-3 h-3" /> Time: {question.timeLimit}ms
+                                    </span>
+                                  )}
+                                  {question.memoryLimit && (
+                                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                                      <FiCpu className="w-3 h-3" /> Memory: {question.memoryLimit}MB
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Code Editor */}
+                      <div className="rounded-xl overflow-hidden border-2 border-gray-700">
+                        <div className="bg-gray-800 px-4 py-2 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="flex gap-1.5">
+                              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                            </div>
+                            <span className="text-xs text-gray-400 ml-2 font-mono">
+                              solution.{(selectedLanguages[question._id] || question.programmingLanguage || 'js') === 'python' ? 'py'
+                                : (selectedLanguages[question._id] || question.programmingLanguage || 'js') === 'java' ? 'java'
+                                : (selectedLanguages[question._id] || question.programmingLanguage || 'js') === 'cpp' ? 'cpp'
+                                : (selectedLanguages[question._id] || question.programmingLanguage || 'js') === 'c' ? 'c'
+                                : 'js'}
+                            </span>
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {CODING_LANGUAGES.find(l => l.value === (selectedLanguages[question._id] || question.programmingLanguage || 'javascript'))?.icon}{' '}
+                            {CODING_LANGUAGES.find(l => l.value === (selectedLanguages[question._id] || question.programmingLanguage || 'javascript'))?.label}
+                          </span>
+                        </div>
+                        <textarea
+                          value={answers[question._id] || question.starterCode || ''}
+                          onChange={(e) => handleAnswerChange(question._id, e.target.value)}
+                          className="w-full px-4 py-3 bg-gray-900 text-green-400 font-mono text-sm focus:outline-none resize-none"
+                          rows={16}
+                          placeholder="Write your code here..."
+                          spellCheck={false}
+                          style={{ tabSize: 4 }}
+                          onKeyDown={(e) => {
+                            // Tab key support
+                            if (e.key === 'Tab') {
+                              e.preventDefault();
+                              const start = e.target.selectionStart;
+                              const end = e.target.selectionEnd;
+                              const val = e.target.value;
+                              handleAnswerChange(question._id, val.substring(0, start) + '    ' + val.substring(end));
+                              setTimeout(() => { e.target.selectionStart = e.target.selectionEnd = start + 4; }, 0);
+                            }
+                          }}
+                        />
+                      </div>
+
+                      {/* Old test cases fallback */}
+                      {question.testCases && !question.visibleTestCases?.length && typeof question.testCases === 'string' && (
+                        <div className="p-4 bg-gray-50 rounded-lg">
                           <p className="text-sm font-medium text-gray-700 mb-2">Test Cases:</p>
                           <pre className="text-xs text-gray-600 whitespace-pre-wrap">
                             {question.testCases}
