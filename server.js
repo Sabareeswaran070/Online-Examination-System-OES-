@@ -36,45 +36,50 @@ const path = require('path');
   }
 });
 
-// CORS middleware - MUST be before all other middleware
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:5173',
-  'https://online-examination-system-oes-phi.vercel.app',
-  process.env.CORS_ORIGIN
-].filter(Boolean);
+// CORS middleware - Manual implementation to guarantee headers are set
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:5173',
+    'https://online-examination-system-oes-phi.vercel.app',
+  ];
+  
+  if (process.env.CORS_ORIGIN) {
+    allowedOrigins.push(process.env.CORS_ORIGIN);
+  }
 
-// Handle preflight OPTIONS requests explicitly before anything else
-app.options('*', cors({
-  origin: allowedOrigins,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-}));
+  // Set CORS headers for all responses
+  if (allowedOrigins.includes(origin) || process.env.CORS_ORIGIN === '*') {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  } else {
+    // Allow anyway in production for now
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  }
+  
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Max-Age', '86400');
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (process.env.CORS_ORIGIN === '*') return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      return callback(null, true);
-    }
-    return callback(null, true); // Allow all in production for now - tighten later
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-}));
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
+  next();
+});
 
 // Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Security middleware - configure helmet to not interfere with CORS
+// Security middleware - disable headers that interfere with CORS
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  crossOriginResourcePolicy: false,
   crossOriginOpenerPolicy: false,
+  crossOriginEmbedderPolicy: false,
 }));
 
 // Compression middleware
