@@ -55,6 +55,11 @@ export const superAdminService = {
     return response.data;
   },
 
+  lookupPincode: async (pincode) => {
+    const response = await api.get(`/superadmin/pincode/${pincode}`);
+    return response.data;
+  },
+
   updateCollege: async (id, data) => {
     const response = await api.put(`/superadmin/colleges/${id}`, data);
     return response.data;

@@ -63,6 +63,7 @@ exports.createCollege = async (req, res, next) => {
       collegeData.address = {
         street: collegeData.addressLine || collegeData.address?.street || '',
         city: collegeData.city || collegeData.address?.city || '',
+        district: collegeData.district || collegeData.address?.district || '',
         state: collegeData.state || collegeData.address?.state || '',
         country: collegeData.country || collegeData.address?.country || 'India',
         zipCode: collegeData.zipCode || collegeData.address?.zipCode || '',
@@ -1236,6 +1237,70 @@ exports.deleteDepartmentFromCollege = async (req, res, next) => {
 // @desc    Generate a coding question using AI
 // @route   POST /api/superadmin/questions/generate-ai
 // @access  Private/SuperAdmin
+// @desc    Lookup pincode details (place, district, state, country)
+// @route   GET /api/superadmin/pincode/:pincode
+// @access  Private/SuperAdmin
+exports.lookupPincode = async (req, res, next) => {
+  try {
+    const { pincode } = req.params;
+
+    if (!pincode || !/^\d{6}$/.test(pincode)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid 6-digit pincode',
+      });
+    }
+
+    const https = require('https');
+
+    const data = await new Promise((resolve, reject) => {
+      https.get(`https://api.postalpincode.in/pincode/${pincode}`, (response) => {
+        let body = '';
+        response.on('data', (chunk) => (body += chunk));
+        response.on('end', () => {
+          try {
+            resolve(JSON.parse(body));
+          } catch (e) {
+            reject(new Error('Failed to parse pincode API response'));
+          }
+        });
+        response.on('error', reject);
+      }).on('error', reject);
+    });
+
+    if (!data || !data[0] || data[0].Status !== 'Success' || !data[0].PostOffice?.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'No details found for this pincode',
+      });
+    }
+
+    const postOffices = data[0].PostOffice;
+    const first = postOffices[0];
+
+    // Return all place names + the common district/state/country
+    const places = postOffices.map((po) => po.Name);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        pincode,
+        places,
+        city: first.Block !== 'NA' ? first.Block : first.District,
+        district: first.District,
+        state: first.State,
+        country: first.Country,
+      },
+    });
+  } catch (error) {
+    logger.error('Pincode lookup error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to lookup pincode. Please try again.',
+    });
+  }
+};
+
 exports.generateAICodingQuestion = async (req, res, next) => {
   try {
     const { topic, difficulty, language, visibleTestCaseCount, hiddenTestCaseCount, additionalInstructions } = req.body;

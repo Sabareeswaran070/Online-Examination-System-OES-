@@ -17,6 +17,7 @@ const collegeSchema = new mongoose.Schema(
     address: {
       street: String,
       city: { type: String, required: true },
+      district: String,
       state: { type: String, required: true },
       zipCode: String,
       country: { type: String, default: 'India' },

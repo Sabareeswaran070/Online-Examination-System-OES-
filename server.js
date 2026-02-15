@@ -22,9 +22,6 @@ const competitionRoutes = require('./routes/competitions');
 // Initialize express app
 const app = express();
 
-// Connect to database
-connectDB();
-
 // Create uploads and logs directories if they don't exist
 const fs = require('fs');
 const path = require('path');
@@ -163,37 +160,53 @@ const createSuperAdmin = async () => {
   }
 };
 
-const server = app.listen(PORT, () => {
-  logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-  console.log(`\n🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📚 API Documentation: http://localhost:${PORT}/api/docs`);
-  console.log(`💚 Health Check: http://localhost:${PORT}/health\n`);
+// Start server after DB connection is established
+const startServer = async () => {
+  await connectDB();
 
-  // Create super admin after server starts
-  createSuperAdmin();
-});
+  const server = app.listen(PORT, () => {
+    logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+    console.log(`\n🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📚 API Documentation: http://localhost:${PORT}/api/docs`);
+    console.log(`💚 Health Check: http://localhost:${PORT}/health\n`);
+  });
+
+  // Create super admin after DB is connected and server starts
+  await createSuperAdmin();
+
+  return server;
+};
+
+const serverPromise = startServer();
+let server;
+
+serverPromise.then(s => { server = s; });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err, promise) => {
   logger.error('Unhandled Rejection:', err);
-  // Close server & exit process
-  server.close(() => process.exit(1));
+  if (server) server.close(() => process.exit(1));
+  else process.exit(1);
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
   logger.error('Uncaught Exception:', err);
-  // Close server & exit process
-  server.close(() => process.exit(1));
+  if (server) server.close(() => process.exit(1));
+  else process.exit(1);
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('SIGTERM signal received: closing HTTP server');
-  server.close(() => {
-    logger.info('HTTP server closed');
+  if (server) {
+    server.close(() => {
+      logger.info('HTTP server closed');
+      process.exit(0);
+    });
+  } else {
     process.exit(0);
-  });
+  }
 });
 
 module.exports = app;

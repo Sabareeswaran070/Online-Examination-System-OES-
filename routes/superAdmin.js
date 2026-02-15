@@ -32,6 +32,7 @@ const {
   updateDepartmentForCollege,
   deleteDepartmentFromCollege,
   generateAICodingQuestion,
+  lookupPincode,
 } = require('../controllers/superAdminController');
 const { protect } = require('../middleware/auth');
 const { authorize, auditLog } = require('../middleware/rbac');
@@ -103,6 +104,9 @@ router.put(
 router.post('/colleges/:id/departments', auditLog('create-department', 'Department'), createDepartmentForCollege);
 router.put('/colleges/:id/departments/:deptId', auditLog('update-department', 'Department'), updateDepartmentForCollege);
 router.delete('/colleges/:id/departments/:deptId', auditLog('delete-department', 'Department'), deleteDepartmentFromCollege);
+
+// Pincode lookup
+router.get('/pincode/:pincode', lookupPincode);
 
 router.get('/analytics', getAnalytics);
 router.get('/audit-logs', getAuditLogs);
