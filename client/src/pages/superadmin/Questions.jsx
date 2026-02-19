@@ -61,14 +61,17 @@ const AdminQuestions = () => {
         starterCode: '',
         sampleInput: '',
         sampleOutput: '',
+        isGlobal: true,
     });
 
     const [filters, setFilters] = useState({
         type: '',
         difficulty: '',
-        subject: '',
         questionSet: '',
         search: '',
+        status: '',
+        isGlobal: '',
+        subject: '',
         page: 1,
         limit: 20
     });
@@ -315,7 +318,7 @@ const AdminQuestions = () => {
             if (!formData.programmingLanguage) {
                 errors.programmingLanguage = 'Programming language is required';
             }
-            
+
             // Validate visible test cases
             if (formData.visibleTestCases.length === 0) {
                 errors.visibleTestCases = 'At least one visible test case is required';
@@ -479,6 +482,7 @@ const AdminQuestions = () => {
             starterCode: q.starterCode || '',
             sampleInput: q.sampleInput || '',
             sampleOutput: q.sampleOutput || '',
+            isGlobal: q.isGlobal !== false,
         };
         setFormData(data);
         // Open dedicated coding modal for coding questions
@@ -522,6 +526,7 @@ const AdminQuestions = () => {
                 visibleTestCases: formData.visibleTestCases,
                 hiddenTestCases: formData.hiddenTestCases,
                 testCases: formData.testCases,
+                isGlobal: formData.isGlobal,
             };
 
             // Only include ObjectId fields if they have a real value
@@ -556,6 +561,9 @@ const AdminQuestions = () => {
             difficulty: aiQuestion.difficulty || 'medium',
             marks: aiQuestion.marks || 10,
             negativeMarks: aiQuestion.negativeMarks || 0,
+            options: aiQuestion.options?.length ? aiQuestion.options : ['', '', '', ''],
+            correctAnswer: aiQuestion.correctAnswer || 0,
+            isGlobal: aiQuestion.isGlobal !== false,
             explanation: aiQuestion.explanation || '',
             programmingLanguage: aiQuestion.programmingLanguage || 'javascript',
             codeSnippet: aiQuestion.codeSnippet || aiQuestion.starterCode || '',
@@ -597,6 +605,20 @@ const AdminQuestions = () => {
         } catch (error) {
             console.error('Delete error:', error);
             toast.error(`❌ ${error.response?.data?.message || 'Failed to delete question'}`);
+        }
+    };
+
+    const handleStatusUpdate = async (id, status) => {
+        try {
+            setLoading(true);
+            await superAdminService.updateQuestionStatus(id, status);
+            toast.success(`Question ${status} successfully`);
+            fetchQuestions();
+        } catch (error) {
+            console.error('Status update error:', error);
+            toast.error(error.response?.data?.message || 'Failed to update status');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -707,6 +729,7 @@ const AdminQuestions = () => {
             explanation: '',
             options: ['', '', '', ''],
             correctAnswer: 0,
+            isGlobal: true,
             idealAnswer: '',
             programmingLanguage: 'javascript',
             codeSnippet: '',
@@ -757,12 +780,49 @@ const AdminQuestions = () => {
             )
         },
         { header: 'Type', accessor: 'type' },
+        {
+            header: 'Visibility',
+            render: (row) => (
+                <Badge variant={row.isGlobal ? 'info' : 'secondary'}>
+                    {row.isGlobal ? 'GLOBAL' : 'LOCAL'}
+                </Badge>
+            )
+        },
         { header: 'Difficulty', render: (row) => getDifficultyBadge(row.difficulty) },
         { header: 'Marks', render: (row) => <span className="font-semibold">{row.marks}</span> },
+        {
+            header: 'Status',
+            render: (row) => (
+                <Badge variant={
+                    row.status === 'approved' ? 'success' :
+                        row.status === 'rejected' ? 'danger' : 'warning'
+                }>
+                    {row.status?.toUpperCase() || 'APPROVED'}
+                </Badge>
+            )
+        },
         {
             header: 'Actions',
             render: (row) => (
                 <div className="flex gap-2">
+                    {row.status === 'pending' && (
+                        <>
+                            <button
+                                onClick={() => handleStatusUpdate(row._id, 'approved')}
+                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                title="Approve Question"
+                            >
+                                <FiCheckCircle className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={() => handleStatusUpdate(row._id, 'rejected')}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Reject Question"
+                            >
+                                <FiX className="w-4 h-4" />
+                            </button>
+                        </>
+                    )}
                     <button
                         onClick={() => handlePreview(row)}
                         className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
@@ -968,6 +1028,27 @@ const AdminQuestions = () => {
                                     { value: 'Coding', label: 'Coding' },
                                     { value: 'Descriptive', label: 'Descriptive' },
                                     { value: 'TrueFalse', label: 'T/F' },
+                                ]}
+                                className="bg-white min-w-[120px]"
+                            />
+                            <Select
+                                value={filters.isGlobal}
+                                onChange={(e) => setFilters({ ...filters, isGlobal: e.target.value, page: 1 })}
+                                options={[
+                                    { value: '', label: 'Visibility' },
+                                    { value: 'true', label: 'Global' },
+                                    { value: 'false', label: 'Local' },
+                                ]}
+                                className="bg-white min-w-[120px]"
+                            />
+                            <Select
+                                value={filters.status}
+                                onChange={(e) => setFilters({ ...filters, status: e.target.value, page: 1 })}
+                                options={[
+                                    { value: '', label: 'All Status' },
+                                    { value: 'approved', label: 'Approved' },
+                                    { value: 'pending', label: 'Pending' },
+                                    { value: 'rejected', label: 'Rejected' },
                                 ]}
                                 className="bg-white min-w-[120px]"
                             />
@@ -1345,9 +1426,9 @@ const AdminQuestions = () => {
                                         <label className="text-sm font-bold text-green-900 flex items-center gap-2">
                                             <FiCheckCircle /> Visible Test Cases (Students can see)
                                         </label>
-                                        <button 
-                                            type="button" 
-                                            onClick={addVisibleTestCase} 
+                                        <button
+                                            type="button"
+                                            onClick={addVisibleTestCase}
                                             className="text-xs text-green-700 font-bold hover:underline flex items-center gap-1"
                                         >
                                             <FiPlus /> Add Visible Test Case
@@ -1356,9 +1437,9 @@ const AdminQuestions = () => {
                                     {formData.visibleTestCases.map((tc, idx) => (
                                         <div key={idx} className="grid grid-cols-1 gap-2 p-3 bg-white rounded-xl border border-green-300 relative">
                                             {formData.visibleTestCases.length > 1 && (
-                                                <button 
-                                                    type="button" 
-                                                    onClick={() => removeVisibleTestCase(idx)} 
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeVisibleTestCase(idx)}
                                                     className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors shadow-lg z-10"
                                                     title="Remove test case"
                                                 >
@@ -1394,9 +1475,9 @@ const AdminQuestions = () => {
                                         <label className="text-sm font-bold text-purple-900 flex items-center gap-2">
                                             <FiX /> Hidden Test Cases (For evaluation only)
                                         </label>
-                                        <button 
-                                            type="button" 
-                                            onClick={addHiddenTestCase} 
+                                        <button
+                                            type="button"
+                                            onClick={addHiddenTestCase}
                                             className="text-xs text-purple-700 font-bold hover:underline flex items-center gap-1"
                                         >
                                             <FiPlus /> Add Hidden Test Case
@@ -1405,9 +1486,9 @@ const AdminQuestions = () => {
                                     {formData.hiddenTestCases.map((tc, idx) => (
                                         <div key={idx} className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 bg-white rounded-xl border border-purple-300 relative">
                                             {formData.hiddenTestCases.length > 1 && (
-                                                <button 
-                                                    type="button" 
-                                                    onClick={() => removeHiddenTestCase(idx)} 
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeHiddenTestCase(idx)}
                                                     className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors shadow-lg z-10"
                                                     title="Remove test case"
                                                 >
@@ -1440,8 +1521,24 @@ const AdminQuestions = () => {
                         onChange={handleChange}
                         placeholder="Help students understand the answer after the exam..."
                         rows={2}
+                        required
                     />
 
+                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100/50">
+                        <label className="flex items-center gap-3 cursor-pointer group">
+                            <input
+                                type="checkbox"
+                                name="isGlobal"
+                                checked={formData.isGlobal}
+                                onChange={(e) => setFormData({ ...formData, isGlobal: e.target.checked })}
+                                className="w-5 h-5 text-primary-600 rounded border-gray-300 focus:ring-primary-500 transition-all"
+                            />
+                            <div>
+                                <span className="block text-sm font-bold text-blue-900 group-hover:text-blue-700">Make Global</span>
+                                <span className="block text-[11px] text-blue-700 opacity-80 mt-0.5">Global questions are visible to all colleges and can be used in global exams.</span>
+                            </div>
+                        </label>
+                    </div>
                     <div className="flex justify-end gap-3 pt-4 sticky bottom-0 bg-white pb-2">
                         <Button type="button" variant="secondary" onClick={() => { setShowModal(false); resetForm(); }}>Cancel</Button>
                         <Button type="submit" disabled={submitting}>
@@ -1658,18 +1755,16 @@ const AdminQuestions = () => {
                                         key={tab.id}
                                         type="button"
                                         onClick={() => setCodingPreviewTab(tab.id)}
-                                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                                            isActive
-                                                ? 'bg-indigo-50 text-indigo-700 font-bold shadow-sm'
-                                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                                        }`}
+                                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${isActive
+                                            ? 'bg-indigo-50 text-indigo-700 font-bold shadow-sm'
+                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                            }`}
                                     >
                                         <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-600' : ''}`} />
                                         {tab.label}
                                         {tab.id === 'testcases' && (
-                                            <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold ${
-                                                isActive ? 'bg-indigo-200 text-indigo-800' : 'bg-gray-200 text-gray-600'
-                                            }`}>
+                                            <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold ${isActive ? 'bg-indigo-200 text-indigo-800' : 'bg-gray-200 text-gray-600'
+                                                }`}>
                                                 {(previewQuestion.visibleTestCases?.length || 0) + (previewQuestion.hiddenTestCases?.length || 0)}
                                             </span>
                                         )}

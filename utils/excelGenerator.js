@@ -62,7 +62,7 @@ exports.generateExamResultsExcel = async (exam, results, outputPath) => {
       worksheet.addRow({
         rank: index + 1,
         name: result.studentId.name,
-        enrollment: result.studentId.enrollmentNumber || 'N/A',
+        enrollment: result.studentId.regNo || result.studentId.enrollmentNumber || 'N/A',
         email: result.studentId.email,
         score: result.score,
         totalMarks: exam.totalMarks,
@@ -130,6 +130,7 @@ exports.generateStudentUploadTemplate = async (outputPath) => {
       { header: 'Email *', key: 'email', width: 30 },
       { header: 'Password', key: 'password', width: 20 },
       { header: 'Department ID *', key: 'departmentId', width: 25 },
+      { header: 'Reg No', key: 'regNo', width: 20 },
       { header: 'Enrollment Number', key: 'enrollmentNumber', width: 20 },
       { header: 'Phone', key: 'phone', width: 15 },
       { header: 'Date of Birth (YYYY-MM-DD)', key: 'dateOfBirth', width: 25 },
@@ -150,6 +151,7 @@ exports.generateStudentUploadTemplate = async (outputPath) => {
       email: 'john.doe@example.com',
       password: 'Student@123',
       departmentId: '60d5ec49f1b2c72b8c8e4f1a',
+      regNo: 'REG2024001',
       enrollmentNumber: 'STU2024001',
       phone: '1234567890',
       dateOfBirth: '2000-01-15',
@@ -160,6 +162,7 @@ exports.generateStudentUploadTemplate = async (outputPath) => {
       email: 'jane.smith@example.com',
       password: 'Student@123',
       departmentId: '60d5ec49f1b2c72b8c8e4f1a',
+      regNo: 'REG2024002',
       enrollmentNumber: 'STU2024002',
       phone: '9876543210',
       dateOfBirth: '1999-05-20',
@@ -207,9 +210,9 @@ exports.generateStudentPerformanceReport = async (student, results, outputPath) 
     worksheet.getCell('A3').font = { bold: true };
     worksheet.getCell('B3').value = student.name;
 
-    worksheet.getCell('A4').value = 'Enrollment Number:';
+    worksheet.getCell('A4').value = 'Reg No:';
     worksheet.getCell('A4').font = { bold: true };
-    worksheet.getCell('B4').value = student.enrollmentNumber || 'N/A';
+    worksheet.getCell('B4').value = student.regNo || student.enrollmentNumber || 'N/A';
 
     worksheet.getCell('A5').value = 'Email:';
     worksheet.getCell('A5').font = { bold: true };

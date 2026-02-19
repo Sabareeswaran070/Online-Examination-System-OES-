@@ -75,14 +75,15 @@ const TakeExam = () => {
   const startExam = async () => {
     try {
       const response = await studentService.startExam(id);
-      setExam(response.data.exam);
-      setResult(response.data.result);
-      setTimeLeft(response.data.exam.duration * 60); // Convert to seconds
+      const { exam: examData, result: resultData, remainingTime } = response.data;
+      setExam(examData);
+      setResult(resultData);
+      setTimeLeft(remainingTime);
       
       // Initialize answers from saved state if any
-      if (response.data.result.answers) {
+      if (resultData.answers) {
         const savedAnswers = {};
-        response.data.result.answers.forEach(ans => {
+        resultData.answers.forEach(ans => {
           savedAnswers[ans.questionId] = ans.selectedAnswer || ans.textAnswer || ans.codeAnswer || '';
         });
         setAnswers(savedAnswers);
@@ -189,7 +190,7 @@ const TakeExam = () => {
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div>
             <h1 className="text-xl font-bold text-gray-900">{exam.title}</h1>
-            <p className="text-sm text-gray-500">{exam.subject?.subjectName}</p>
+            <p className="text-sm text-gray-500">{exam.subject?.name}</p>
           </div>
           <div className="flex items-center space-x-6">
             <div className="text-right">
@@ -271,12 +272,12 @@ const TakeExam = () => {
                           <input
                             type="radio"
                             name={`question-${question._id}`}
-                            value={option.optionText}
-                            checked={answers[question._id] === option.optionText}
+                            value={option.text}
+                            checked={answers[question._id] === option.text}
                             onChange={(e) => handleAnswerChange(question._id, e.target.value)}
                             className="mt-1 mr-3"
                           />
-                          <span className="text-gray-900">{option.optionText}</span>
+                          <span className="text-gray-900">{option.text}</span>
                         </label>
                       ))}
                     </div>

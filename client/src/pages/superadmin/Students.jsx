@@ -35,8 +35,12 @@ const Students = () => {
         name: '',
         email: '',
         password: '',
+        collegeId: '',
+        departmentId: '',
         status: 'active',
+        regNo: '',
     });
+    const [modalDepartments, setModalDepartments] = useState([]);
 
     useEffect(() => {
         fetchInitialData();
@@ -64,6 +68,13 @@ const Students = () => {
         setFilters({ ...filters, collegeId, departmentId: '' });
         const selectedCollege = colleges.find(c => c._id === collegeId);
         setDepartments(selectedCollege?.departments || []);
+    };
+
+    const handleModalCollegeChange = (e) => {
+        const collegeId = e.target.value;
+        setFormData({ ...formData, collegeId, departmentId: '' });
+        const selectedCollege = colleges.find(c => c._id === collegeId);
+        setModalDepartments(selectedCollege?.departments || []);
     };
 
     const fetchUsers = async () => {
@@ -95,7 +106,20 @@ const Students = () => {
             email: user.email,
             password: '',
             status: user.status || 'active',
+            regNo: user.regNo || '',
+            collegeId: user.collegeId?._id || user.collegeId || '',
+            departmentId: user.departmentId?._id || user.departmentId || '',
         });
+
+        // Load departments for the college
+        const collegeId = user.collegeId?._id || user.collegeId;
+        if (collegeId) {
+            const selectedCollege = colleges.find(c => c._id === collegeId);
+            setModalDepartments(selectedCollege?.departments || []);
+        } else {
+            setModalDepartments([]);
+        }
+
         setShowModal(true);
     };
 
@@ -118,12 +142,15 @@ const Students = () => {
         try {
             const updateData = { ...formData };
             if (!updateData.password) delete updateData.password;
+            if (!updateData.collegeId) delete updateData.collegeId;
+            if (!updateData.departmentId) delete updateData.departmentId;
 
             await superAdminService.updateUser(editingUser._id, updateData);
             toast.success('Student updated successfully');
             setShowModal(false);
             setEditingUser(null);
-            setFormData({ name: '', email: '', password: '', status: 'active' });
+            setFormData({ name: '', email: '', password: '', status: 'active', collegeId: '', departmentId: '', regNo: '' });
+            setModalDepartments([]);
             fetchUsers();
         } catch (error) {
             console.error('Update error:', error);
@@ -139,7 +166,7 @@ const Students = () => {
             render: (row) => (
                 <div>
                     <div className="font-medium text-gray-900">{row.name}</div>
-                    <div className="text-xs text-gray-500">{row.enrollmentNumber || 'No Enrollment'}</div>
+                    <div className="text-xs text-gray-500">{row.regNo || row.enrollmentNumber || 'No Reg No'}</div>
                 </div>
             )
         },
@@ -200,7 +227,7 @@ const Students = () => {
                         <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                         <input
                             type="text"
-                            placeholder="Search by name, email, or enrollment..."
+                            placeholder="Search by name, email, reg no or enrollment..."
                             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -268,7 +295,8 @@ const Students = () => {
                 onClose={() => {
                     setShowModal(false);
                     setEditingUser(null);
-                    setFormData({ name: '', email: '', password: '', status: 'active' });
+                    setFormData({ name: '', email: '', password: '', status: 'active', regNo: '', collegeId: '', departmentId: '' });
+                    setModalDepartments([]);
                 }}
                 title="Edit Student"
             >
@@ -286,6 +314,29 @@ const Students = () => {
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         required
                     />
+                    <Input
+                        label="Reg No (Registration Number)"
+                        value={formData.regNo}
+                        onChange={(e) => setFormData({ ...formData, regNo: e.target.value })}
+                        placeholder="REG2024001"
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                        <Select
+                            label="College"
+                            value={formData.collegeId}
+                            onChange={handleModalCollegeChange}
+                            options={colleges.map(c => ({ value: c._id, label: c.collegeName }))}
+                            required
+                        />
+                        <Select
+                            label="Department"
+                            value={formData.departmentId}
+                            onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
+                            options={modalDepartments.map(d => ({ value: d._id, label: d.name }))}
+                            disabled={!formData.collegeId}
+                            required
+                        />
+                    </div>
                     <Input
                         label="Password (leave blank to keep current)"
                         type="password"

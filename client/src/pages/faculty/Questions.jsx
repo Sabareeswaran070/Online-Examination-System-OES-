@@ -26,6 +26,7 @@ const Questions = () => {
     options: ['', '', '', ''],
     correctAnswer: 0,
     explanation: '',
+    isGlobal: false,
   });
   const [subjects, setSubjects] = useState([]);
   const [filters, setFilters] = useState({
@@ -99,6 +100,8 @@ const Questions = () => {
         marks: Number(formData.marks),
       };
 
+      if (!questionData.subject) delete questionData.subject;
+
       if (formData.type === 'MCQ') {
         questionData.correctAnswer = Number(formData.correctAnswer);
       }
@@ -129,6 +132,7 @@ const Questions = () => {
       options: question.options?.length ? question.options : ['', '', '', ''],
       correctAnswer: question.correctAnswer || 0,
       explanation: question.explanation || '',
+      isGlobal: question.isGlobal || false,
     });
     setShowModal(true);
   };
@@ -154,6 +158,7 @@ const Questions = () => {
       options: ['', '', '', ''],
       correctAnswer: 0,
       explanation: '',
+      isGlobal: false,
     });
     setEditingQuestion(null);
   };
@@ -192,6 +197,25 @@ const Questions = () => {
     {
       header: 'Marks',
       accessor: 'marks'
+    },
+    {
+      header: 'Visibility',
+      render: (row) => (
+        <Badge variant={row.isGlobal ? 'info' : 'secondary'}>
+          {row.isGlobal ? 'Global' : 'Local'}
+        </Badge>
+      )
+    },
+    {
+      header: 'Status',
+      render: (row) => (
+        <Badge variant={
+          row.status === 'approved' ? 'success' :
+            row.status === 'rejected' ? 'danger' : 'warning'
+        }>
+          {row.status?.toUpperCase() || 'APPROVED'}
+        </Badge>
+      )
     },
     {
       header: 'Actions',
@@ -496,6 +520,22 @@ const Questions = () => {
             onChange={handleChange}
             rows={2}
           />
+
+          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                name="isGlobal"
+                checked={formData.isGlobal}
+                onChange={(e) => setFormData({ ...formData, isGlobal: e.target.checked })}
+                className="w-5 h-5 text-primary-600 rounded border-gray-300 focus:ring-primary-500 transition-all"
+              />
+              <div>
+                <span className="block text-sm font-bold text-blue-900 group-hover:text-blue-700">Contribute to Global Pool</span>
+                <span className="block text-[11px] text-blue-700 opacity-80 mt-0.5">Global questions require Super Admin approval before they're visible to other colleges.</span>
+              </div>
+            </label>
+          </div>
 
           <div className="flex justify-end gap-3 pt-4">
             <Button

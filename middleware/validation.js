@@ -4,13 +4,23 @@ const { body, param, query, validationResult } = require('express-validator');
 exports.validate = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    console.log('Validation errors:', errors.array());
+    const errorDetails = errors.array().map((err) => ({
+      field: err.param,
+      message: err.msg,
+      value: err.value
+    }));
+
+    // Log to file for debugging
+    const logger = require('../config/logger');
+    logger.warn('Validation failed:', {
+      url: req.originalUrl,
+      method: req.method,
+      errors: errorDetails
+    });
+
     return res.status(400).json({
       success: false,
-      errors: errors.array().map((err) => ({
-        field: err.param,
-        message: err.msg,
-      })),
+      errors: errorDetails,
     });
   }
   next();
@@ -61,18 +71,34 @@ exports.createDepartmentValidation = [
 // Exam creation validation
 exports.createExamValidation = [
   body('title').trim().notEmpty().withMessage('Exam title is required'),
-  body('subject').optional().isMongoId().withMessage('Invalid subject ID'),
-  body('departmentId').optional().isMongoId().withMessage('Invalid department ID'),
+  body('subject')
+    .custom((value) => {
+      if (!value || value === '') return true;
+      const mongoose = require('mongoose');
+      if (!mongoose.Types.ObjectId.isValid(value)) {
+        throw new Error('Invalid subject ID');
+      }
+      return true;
+    }),
+  body('departmentId')
+    .custom((value) => {
+      if (!value || value === '') return true;
+      const mongoose = require('mongoose');
+      if (!mongoose.Types.ObjectId.isValid(value)) {
+        throw new Error('Invalid department ID');
+      }
+      return true;
+    }),
   body('startTime').isISO8601().withMessage('Valid start time is required'),
   body('endTime').isISO8601().withMessage('Valid end time is required'),
   body('duration')
     .isInt({ min: 1 })
     .withMessage('Duration must be a positive number'),
   body('totalMarks')
-    .isInt({ min: 1 })
+    .isFloat({ min: 1 })
     .withMessage('Total marks must be a positive number'),
   body('passingMarks')
-    .isInt({ min: 0 })
+    .isFloat({ min: 0 })
     .withMessage('Passing marks must be a non-negative number'),
 ];
 

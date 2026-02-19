@@ -32,7 +32,7 @@ exports.getDashboard = async (req, res, next) => {
     const recentColleges = await College.find()
       .sort({ createdAt: -1 })
       .limit(5)
-      .populate('adminId', 'name email');
+      .populate('adminIds', 'name email');
 
     res.status(200).json({
       success: true,
@@ -104,7 +104,7 @@ exports.getAllColleges = async (req, res, next) => {
     }
 
     const colleges = await College.find(query)
-      .populate('adminId', 'name email')
+      .populate('adminIds', 'name email')
       .populate('departments', 'name departmentCode')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
@@ -131,7 +131,7 @@ exports.getAllColleges = async (req, res, next) => {
 exports.getCollege = async (req, res, next) => {
   try {
     const college = await College.findById(req.params.id)
-      .populate('adminId', 'name email phone')
+      .populate('adminIds', 'name email phone')
       .populate('departments');
 
     if (!college) {
@@ -497,7 +497,7 @@ exports.bulkUploadUsers = async (req, res, next) => {
 
     for (const userData of users) {
       try {
-        const { name, email, role, collegeId, departmentId, password, phone, enrollmentNumber, employeeId } = userData;
+        const { name, email, role, collegeId, departmentId, password, phone, regNo, enrollmentNumber, employeeId } = userData;
 
         if (!name || !email || !role) {
           results.failed.push({
@@ -525,6 +525,7 @@ exports.bulkUploadUsers = async (req, res, next) => {
           departmentId: departmentId || null,
           password: password || defaultPassword,
           phone: phone || '',
+          regNo: regNo || '',
           enrollmentNumber: enrollmentNumber || '',
           employeeId: employeeId || '',
           status: 'active',
@@ -582,19 +583,51 @@ exports.assignCollegeAdmin = async (req, res, next) => {
       });
     }
 
-    const admin = await User.findById(adminId);
+
+    const admin = await User.findById(adminId).select('+password');
     if (!admin || admin.role !== 'admin') {
       return res.status(400).json({
         success: false,
         message: 'Invalid admin user',
       });
     }
+    // Ensure admin is active
+    if (admin.status !== 'active') {
+      admin.status = 'active';
+    }
+    // Ensure admin has a password
+    if (!admin.password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Admin user does not have a password set. Please set a password for this user before assignment.',
+      });
+    }
 
-    college.adminId = adminId;
+    // Check if admin is already assigned to this or another college
+    if (admin.collegeId) {
+      if (admin.collegeId.toString() === college._id.toString()) {
+        return res.status(400).json({
+          success: false,
+          message: 'This admin is already assigned to this college',
+        });
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'This person is already a college admin for another institution. A person can only be admin for one college.',
+        });
+      }
+    }
+
+    // Add admin to this college's adminIds array
+    if (!college.adminIds) college.adminIds = [];
+    college.adminIds.push(adminId);
     admin.collegeId = college._id;
 
     await college.save();
     await admin.save();
+
+    // Re-populate for response
+    await college.populate('adminIds', 'name email');
 
     logger.info(
       `Admin assigned to college ${college.collegeName}: ${admin.email}`
@@ -606,6 +639,44 @@ exports.assignCollegeAdmin = async (req, res, next) => {
     });
   } catch (error) {
     logger.error('Assign college admin error:', error);
+    next(error);
+  }
+};
+
+// @desc    Remove college admin
+// @route   PUT /api/superadmin/colleges/:id/remove-admin
+// @access  Private/SuperAdmin
+exports.removeCollegeAdmin = async (req, res, next) => {
+  try {
+    const { adminId } = req.body;
+
+    const college = await College.findById(req.params.id);
+    if (!college) {
+      return res.status(404).json({
+        success: false,
+        message: 'College not found',
+      });
+    }
+
+    // Remove admin from the array
+    college.adminIds = (college.adminIds || []).filter(
+      id => id.toString() !== adminId
+    );
+    await college.save();
+
+    // Clear the admin's collegeId
+    await User.findByIdAndUpdate(adminId, { $unset: { collegeId: 1 } });
+
+    await college.populate('adminIds', 'name email');
+
+    logger.info(`Admin removed from college ${college.collegeName} by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      data: college,
+    });
+  } catch (error) {
+    logger.error('Remove college admin error:', error);
     next(error);
   }
 };
@@ -627,6 +698,7 @@ exports.getAllUsers = async (req, res, next) => {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
+        { regNo: { $regex: search, $options: 'i' } },
         { enrollmentNumber: { $regex: search, $options: 'i' } },
         { employeeId: { $regex: search, $options: 'i' } },
       ];
@@ -769,9 +841,11 @@ exports.toggleUserStatus = async (req, res, next) => {
 // @access  Private/SuperAdmin
 exports.getQuestions = async (req, res, next) => {
   try {
-    const { type, subject, questionSet, difficulty, search, page = 1, limit = 20 } = req.query;
+    const { type, subject, questionSet, difficulty, search, page = 1, limit = 20, status, isGlobal } = req.query;
 
     const query = { isActive: true };
+    if (status) query.status = status;
+    if (isGlobal !== undefined) query.isGlobal = isGlobal === 'true';
     if (type) query.type = type;
     if (subject) query.subject = subject;
     if (questionSet) query.questionSet = questionSet;
@@ -811,6 +885,8 @@ exports.createQuestion = async (req, res, next) => {
     const questionData = {
       ...req.body,
       facultyId: req.user._id, // Created by Super Admin
+      status: 'approved',
+      isGlobal: req.body.isGlobal !== undefined ? (req.body.isGlobal === true || req.body.isGlobal === 'true') : true,
     };
 
     // Fix: Handle empty subject/questionSet string
@@ -834,6 +910,44 @@ exports.createQuestion = async (req, res, next) => {
       console.log('Mongoose Validation Error:', error.errors);
     }
     logger.error('Superadmin create question error:', error);
+    next(error);
+  }
+};
+
+// @desc    Update question status (Approve/Reject)
+// @route   PUT /api/superadmin/questions/:id/status
+// @access  Private/SuperAdmin
+exports.updateQuestionStatus = async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    if (!['approved', 'rejected', 'pending'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status',
+      });
+    }
+
+    const question = await Question.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true, runValidators: true }
+    );
+
+    if (!question) {
+      return res.status(404).json({
+        success: false,
+        message: 'Question not found',
+      });
+    }
+
+    logger.info(`Question ${req.params.id} status updated to ${status} by Super Admin`);
+
+    res.status(200).json({
+      success: true,
+      data: question,
+    });
+  } catch (error) {
+    logger.error('Update question status error:', error);
     next(error);
   }
 };

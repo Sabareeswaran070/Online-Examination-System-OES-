@@ -115,6 +115,12 @@ const examSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    contributingColleges: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'College',
+      },
+    ],
   },
   {
     timestamps: true,

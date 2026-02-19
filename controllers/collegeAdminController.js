@@ -3,6 +3,7 @@ const College = require('../models/College');
 const Department = require('../models/Department');
 const Exam = require('../models/Exam');
 const Result = require('../models/Result');
+const CompetitionCollege = require('../models/CompetitionCollege');
 const logger = require('../config/logger');
 const fs = require('fs');
 const csv = require('csv-parser');
@@ -38,6 +39,23 @@ exports.getDashboard = async (req, res, next) => {
     const totalExams = await Exam.countDocuments({
       collegeId: req.user.collegeId,
     });
+
+    // Competition stats for this college
+    const competitionStats = await CompetitionCollege.aggregate([
+      { $match: { collegeId: req.user.collegeId } },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          pending: { $sum: { $cond: [{ $eq: ['$collegeStatus', 'pending'] }, 1, 0] } },
+          accepted: { $sum: { $cond: [{ $eq: ['$collegeStatus', 'accepted'] }, 1, 0] } },
+          rejected: { $sum: { $cond: [{ $eq: ['$collegeStatus', 'rejected'] }, 1, 0] } },
+          approved: { $sum: { $cond: [{ $eq: ['$approvalStatus', 'approved'] }, 1, 0] } },
+        },
+      },
+    ]);
+
+    const compStats = competitionStats[0] || { total: 0, pending: 0, accepted: 0, rejected: 0, approved: 0 };
 
     const recentExams = await Exam.find({ collegeId: req.user.collegeId })
       .sort({ createdAt: -1 })
@@ -98,6 +116,10 @@ exports.getDashboard = async (req, res, next) => {
           totalStudents,
           totalFaculty,
           totalExams,
+          totalCompetitions: compStats.total,
+          pendingCompetitions: compStats.pending,
+          acceptedCompetitions: compStats.accepted,
+          approvedCompetitions: compStats.approved,
         },
         recentExams,
         departments,
@@ -353,6 +375,7 @@ exports.bulkUploadStudents = async (req, res, next) => {
           role: 'student',
           collegeId: req.user.collegeId,
           departmentId: row.departmentId,
+          regNo: row.regNo,
           enrollmentNumber: row.enrollmentNumber,
           phone: row.phone,
         });
@@ -529,6 +552,7 @@ exports.getLeaderboard = async (req, res, next) => {
       {
         $project: {
           studentName: '$student.name',
+          regNo: '$student.regNo',
           enrollmentNumber: '$student.enrollmentNumber',
           totalScore: 1,
           avgPercentage: 1,
@@ -568,6 +592,7 @@ exports.getStudents = async (req, res, next) => {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
+        { regNo: { $regex: search, $options: 'i' } },
         { enrollmentNumber: { $regex: search, $options: 'i' } }
       ];
     }

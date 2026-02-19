@@ -86,7 +86,7 @@ const StudentDashboard = () => {
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">{exam.title}</p>
-                      <p className="text-sm text-gray-500 mt-1">{exam.subject?.subjectName}</p>
+                      <p className="text-sm text-gray-500 mt-1">{exam.subject?.name}</p>
                       <p className="text-xs text-gray-400 mt-1">{formatDateTime(exam.startTime)}</p>
                     </div>
                     <Button
@@ -119,9 +119,9 @@ const StudentDashboard = () => {
                 <div key={result._id} className="p-3 bg-gray-50 rounded-lg">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="font-medium text-gray-900">{result.exam?.title}</p>
+                      <p className="font-medium text-gray-900">{result.examId?.title}</p>
                       <p className="text-sm text-gray-500 mt-1">
-                        Score: {result.score}/{result.exam?.totalMarks}
+                        Score: {result.score}/{result.examId?.totalMarks}
                       </p>
                     </div>
                     <div className="text-right">

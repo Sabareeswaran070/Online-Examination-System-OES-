@@ -80,6 +80,11 @@ export const superAdminService = {
     return response.data;
   },
 
+  removeCollegeAdmin: async (collegeId, adminId) => {
+    const response = await api.put(`/superadmin/colleges/${collegeId}/remove-admin`, { adminId });
+    return response.data;
+  },
+
   getAnalytics: async () => {
     const response = await api.get('/superadmin/analytics');
     return response.data;
@@ -132,6 +137,10 @@ export const superAdminService = {
   },
   deleteQuestion: async (id) => {
     const response = await api.delete(`/superadmin/questions/${id}`);
+    return response.data;
+  },
+  updateQuestionStatus: async (id, status) => {
+    const response = await api.put(`/superadmin/questions/${id}/status`, { status });
     return response.data;
   },
   getSubjects: async () => {
@@ -349,7 +358,7 @@ export const facultyService = {
   },
 
   publishExam: async (id) => {
-    const response = await api.patch(`/faculty/exams/${id}/publish`);
+    const response = await api.post(`/faculty/exams/${id}/publish`);
     return response.data;
   },
 
@@ -389,7 +398,8 @@ export const facultyService = {
   },
 
   generateRandomQuestions: async (data) => {
-    const response = await api.post('/faculty/questions/generate-random', data);
+    const { examId, ...params } = data;
+    const response = await api.post(`/faculty/exams/${examId}/generate-questions`, params);
     return response.data;
   },
 };
@@ -422,7 +432,7 @@ export const studentService = {
   },
 
   saveAnswer: async (id, data) => {
-    const response = await api.post(`/student/exams/${id}/save-answer`, data);
+    const response = await api.put(`/student/exams/${id}/save-answer`, data);
     return response.data;
   },
 

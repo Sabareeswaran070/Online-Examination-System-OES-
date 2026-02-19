@@ -69,7 +69,7 @@ const AvailableExams = () => {
                   </div>
 
                   <div className="space-y-2 text-sm text-gray-600">
-                    <p><strong>Subject:</strong> {exam.subject?.subjectName}</p>
+                    <p><strong>Subject:</strong> {exam.subject?.name}</p>
                     <p><strong>Duration:</strong> {formatDuration(exam.duration)}</p>
                     <p><strong>Total Marks:</strong> {exam.totalMarks}</p>
                     <p><strong>Passing Marks:</strong> {exam.passingMarks}</p>
@@ -81,12 +81,21 @@ const AvailableExams = () => {
                   </div>
 
                   <div className="flex space-x-2">
+                    {canStartExam(exam) && (
+                      <Button
+                        fullWidth
+                        variant="primary"
+                        onClick={() => navigate(`/student/exams/${exam._id}/take`)}
+                      >
+                        Start Exam
+                      </Button>
+                    )}
                     <Button
-                      fullWidth
-                      variant={canStartExam(exam) ? 'primary' : 'secondary'}
+                      fullWidth={!canStartExam(exam)}
+                      variant="secondary"
                       onClick={() => navigate(`/student/exams/${exam._id}`)}
                     >
-                      {canStartExam(exam) ? 'Start Exam' : 'View Details'}
+                      View Details
                     </Button>
                   </div>
                 </div>

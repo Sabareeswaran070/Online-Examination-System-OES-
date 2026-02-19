@@ -15,9 +15,11 @@ const Register = () => {
     password: '',
     confirmPassword: '',
     role: 'student',
+    regNo: '',
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -44,7 +46,7 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validate()) return;
 
     setLoading(true);
@@ -53,27 +55,7 @@ const Register = () => {
     setLoading(false);
 
     if (result.success) {
-      const role = result.user.role;
-      // Navigate based on role
-      switch (role) {
-        case USER_ROLES.SUPER_ADMIN:
-          navigate('/super-admin/dashboard');
-          break;
-        case USER_ROLES.ADMIN:
-          navigate('/admin/dashboard');
-          break;
-        case USER_ROLES.DEPT_HEAD:
-          navigate('/dept-head/dashboard');
-          break;
-        case USER_ROLES.FACULTY:
-          navigate('/faculty/dashboard');
-          break;
-        case USER_ROLES.STUDENT:
-          navigate('/student/dashboard');
-          break;
-        default:
-          navigate('/student/dashboard');
-      }
+      navigate('/login');
     }
   };
 
@@ -122,6 +104,17 @@ const Register = () => {
             options={roleOptions}
             required
           />
+
+          {formData.role === 'student' && (
+            <Input
+              label="Reg No (Registration Number)"
+              type="text"
+              name="regNo"
+              value={formData.regNo}
+              onChange={handleChange}
+              placeholder="Enter your registration number"
+            />
+          )}
 
           <Input
             label="Password"

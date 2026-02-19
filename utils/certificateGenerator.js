@@ -98,13 +98,13 @@ exports.generateCertificate = async (student, exam, result, outputPath) => {
           width: doc.page.width,
         });
 
-      // Enrollment number
-      if (student.enrollmentNumber) {
+      // Registration / Enrollment number
+      if (student.regNo || student.enrollmentNumber) {
         doc
           .fontSize(14)
           .fillColor('#6B7280')
           .font('Helvetica')
-          .text(`(${student.enrollmentNumber})`, 0, 315, {
+          .text(`(Reg No: ${student.regNo || student.enrollmentNumber})`, 0, 315, {
             align: 'center',
             width: doc.page.width,
           });

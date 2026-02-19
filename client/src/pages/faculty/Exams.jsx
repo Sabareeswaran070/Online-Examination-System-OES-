@@ -11,11 +11,14 @@ import Textarea from '@/components/common/Textarea.jsx';
 import Loader from '@/components/common/Loader.jsx';
 import Badge from '@/components/common/Badge.jsx';
 import { facultyService } from '@/services';
+import { useAuth } from '@/context/AuthContext';
 import { formatDateTime } from '@/utils/dateUtils';
 import toast from 'react-hot-toast';
 
 const Exams = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const basePath = user?.role === 'superadmin' ? '/super-admin' : '/faculty';
   const [loading, setLoading] = useState(true);
   const [exams, setExams] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -92,11 +95,24 @@ const Exams = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...formData,
+        duration: Number(formData.duration),
+        totalMarks: Number(formData.totalMarks),
+        passingMarks: Number(formData.passingMarks),
+        negativeMarks: Number(formData.negativeMarks || 0),
+      };
+
+      // Clean up optional ObjectId fields
+      if (!payload.subject) delete payload.subject;
+      if (!payload.description) delete payload.description;
+      if (!payload.instructions) delete payload.instructions;
+
       if (editingExam) {
-        await facultyService.updateExam(editingExam._id, formData);
+        await facultyService.updateExam(editingExam._id, payload);
         toast.success('Exam updated successfully');
       } else {
-        await facultyService.createExam(formData);
+        await facultyService.createExam(payload);
         toast.success('Exam created successfully');
       }
       setShowModal(false);
@@ -212,11 +228,11 @@ const Exams = () => {
           <Button
             size="sm"
             variant="secondary"
-            onClick={() => navigate(`/faculty/exams/${row._id}`)}
+            onClick={() => navigate(`${basePath}/exams/${row._id}`)}
           >
             <FiEye className="w-4 h-4" />
           </Button>
-          {row.status === 'draft' && (
+          {(row.status === 'draft' || row.status === 'scheduled') && (
             <>
               <Button
                 size="sm"

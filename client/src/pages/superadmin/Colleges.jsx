@@ -61,6 +61,16 @@ const Colleges = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // Sync selected college with updated list to reflect changes in modal
+  useEffect(() => {
+    if (selectedCollege) {
+      const updated = colleges.find(c => c._id === selectedCollege._id);
+      if (updated) {
+        setSelectedCollege(updated);
+      }
+    }
+  }, [colleges]);
+
   const fetchColleges = async () => {
     setLoading(true);
     try {
@@ -337,8 +347,8 @@ const Colleges = () => {
                   key={i + 1}
                   onClick={() => setCurrentPage(i + 1)}
                   className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${currentPage === i + 1
-                      ? 'bg-primary-600 text-white shadow-sm'
-                      : 'hover:bg-gray-100 text-gray-700'
+                    ? 'bg-primary-600 text-white shadow-sm'
+                    : 'hover:bg-gray-100 text-gray-700'
                     }`}
                 >
                   {i + 1}

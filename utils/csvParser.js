@@ -39,6 +39,7 @@ exports.parseStudentCSV = (filePath) => {
             email: row.email.trim().toLowerCase(),
             password: row.password || 'Student@123',
             departmentId: row.departmentId,
+            regNo: row.regNo,
             enrollmentNumber: row.enrollmentNumber,
             phone: row.phone,
             dateOfBirth: row.dateOfBirth ? new Date(row.dateOfBirth) : undefined,

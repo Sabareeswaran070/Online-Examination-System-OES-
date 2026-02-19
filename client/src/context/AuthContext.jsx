@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }) => {
       if (token && savedUser) {
         setUser(JSON.parse(savedUser));
         setIsAuthenticated(true);
-        
+
         // Verify token is still valid
         try {
           const response = await authService.getCurrentUser();
@@ -57,10 +57,10 @@ export const AuthProvider = ({ children }) => {
 
       localStorage.setItem(TOKEN_KEY, token);
       localStorage.setItem(USER_KEY, JSON.stringify(data));
-      
+
       setUser(data);
       setIsAuthenticated(true);
-      
+
       toast.success('Login successful!');
       return { success: true, user: data };
     } catch (error) {
@@ -72,18 +72,10 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const response = await authService.register(userData);
-      // response is already { success, token, data }
-      const { token, data } = response;
+      await authService.register(userData);
 
-      localStorage.setItem(TOKEN_KEY, token);
-      localStorage.setItem(USER_KEY, JSON.stringify(data));
-      
-      setUser(data);
-      setIsAuthenticated(true);
-      
-      toast.success('Registration successful!');
-      return { success: true, user: data };
+      toast.success('Registration successful! Please login.');
+      return { success: true };
     } catch (error) {
       const message = error.response?.data?.message || 'Registration failed';
       toast.error(message);

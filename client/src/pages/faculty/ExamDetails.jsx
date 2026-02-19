@@ -10,12 +10,15 @@ import Input from '@/components/common/Input.jsx';
 import Loader from '@/components/common/Loader.jsx';
 import Badge from '@/components/common/Badge.jsx';
 import { facultyService } from '@/services';
+import { useAuth } from '@/context/AuthContext';
 import { formatDateTime } from '@/utils/dateUtils';
 import toast from 'react-hot-toast';
 
 const ExamDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const basePath = user?.role === 'superadmin' ? '/super-admin' : '/faculty';
   const [loading, setLoading] = useState(true);
   const [exam, setExam] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -41,7 +44,7 @@ const ExamDetails = () => {
     } catch (error) {
       toast.error('Failed to load exam details');
       console.error(error);
-      navigate('/faculty/exams');
+      navigate(`${basePath}/exams`);
     } finally {
       setLoading(false);
     }
@@ -151,7 +154,7 @@ const ExamDetails = () => {
         <div className="flex items-center gap-4">
           <Button
             variant="secondary"
-            onClick={() => navigate('/faculty/exams')}
+            onClick={() => navigate(`${basePath}/exams`)}
             size="sm"
           >
             <FiArrowLeft className="w-5 h-5" />
@@ -170,7 +173,7 @@ const ExamDetails = () => {
               Publish Exam
             </Button>
           )}
-          <Button onClick={() => navigate(`/faculty/exams/${id}/results`)}>
+          <Button onClick={() => navigate(`${basePath}/exams/${id}/results`)}>
             <FiUsers className="w-5 h-5 mr-2" />
             View Results
           </Button>

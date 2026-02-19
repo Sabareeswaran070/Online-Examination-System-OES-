@@ -78,7 +78,7 @@ exports.generateExamReport = async (exam, results, outputPath) => {
         const rowData = [
           (index + 1).toString(),
           result.studentId.name,
-          result.studentId.enrollmentNumber || 'N/A',
+          result.studentId.regNo || result.studentId.enrollmentNumber || 'N/A',
           result.score.toString(),
           `${result.percentage.toFixed(2)}%`,
           result.isPassed ? 'Pass' : 'Fail',

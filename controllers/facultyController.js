@@ -4,43 +4,46 @@ const Result = require('../models/Result');
 const Subject = require('../models/Subject');
 const logger = require('../config/logger');
 
+// Helper: check if user is superadmin
+const isSuperAdmin = (user) => user.role === 'superadmin';
+
 // @desc    Get faculty dashboard
 // @route   GET /api/faculty/dashboard
 // @access  Private/Faculty
 exports.getDashboard = async (req, res, next) => {
   try {
-    const totalExams = await Exam.countDocuments({
-      facultyId: req.user._id,
-    });
+    const examQuery = isSuperAdmin(req.user) ? {} : { facultyId: req.user._id };
+    const questionQuery = isSuperAdmin(req.user) ? {} : { facultyId: req.user._id };
 
-    const totalQuestions = await Question.countDocuments({
-      facultyId: req.user._id,
-    });
+    const totalExams = await Exam.countDocuments(examQuery);
+
+    const totalQuestions = await Question.countDocuments(questionQuery);
 
     const completedExams = await Exam.countDocuments({
-      facultyId: req.user._id,
+      ...examQuery,
       status: 'completed',
     });
 
     const upcomingExams = await Exam.find({
-      facultyId: req.user._id,
+      ...examQuery,
       status: 'scheduled',
       startTime: { $gte: new Date() },
     })
       .populate('subject', 'name')
+      .populate('facultyId', 'name')
       .sort({ startTime: 1 })
       .limit(5);
 
-    const recentExams = await Exam.find({
-      facultyId: req.user._id,
-    })
+    const recentExams = await Exam.find(examQuery)
       .populate('subject', 'name')
+      .populate('facultyId', 'name')
       .sort({ createdAt: -1 })
       .limit(5);
 
-    const subjects = await Subject.find({
-      'assignedFaculty.facultyId': req.user._id,
-    });
+    const subjectQuery = isSuperAdmin(req.user)
+      ? {}
+      : { 'assignedFaculty.facultyId': req.user._id };
+    const subjects = await Subject.find(subjectQuery);
 
     console.log('Faculty Dashboard - Data fetched:', {
       totalExams,
@@ -78,10 +81,15 @@ exports.createExam = async (req, res, next) => {
   try {
     const examData = {
       ...req.body,
-      facultyId: req.user._id,
-      departmentId: req.user.departmentId,
-      collegeId: req.user.collegeId,
+      facultyId: req.body.facultyId || req.user._id,
+      departmentId: req.body.departmentId || req.user.departmentId || undefined,
+      collegeId: req.body.collegeId || req.user.collegeId || undefined,
     };
+
+    // Remove empty string IDs to prevent Mongoose CastError
+    if (examData.departmentId === '') delete examData.departmentId;
+    if (examData.collegeId === '') delete examData.collegeId;
+    if (examData.subject === '') delete examData.subject;
 
     const exam = await Exam.create(examData);
 
@@ -102,20 +110,43 @@ exports.createExam = async (req, res, next) => {
 // @access  Private/Faculty
 exports.getExams = async (req, res, next) => {
   try {
-    const { status, search, page = 1, limit = 10 } = req.query;
+    const { status, search, collegeId, departmentId, page = 1, limit = 10 } = req.query;
 
-    const query = { facultyId: req.user._id };
+    console.log('DEBUG: getExams called by:', {
+      user: req.user?.email,
+      role: req.user?.role,
+      isSuper: isSuperAdmin(req.user)
+    });
+
+    const query = isSuperAdmin(req.user)
+      ? {}
+      : {
+        $or: [
+          { facultyId: req.user._id },
+          { collegeId: req.user.collegeId },
+          { contributingColleges: req.user.collegeId },
+        ],
+      };
+
     if (status) query.status = status;
+    if (collegeId) query.collegeId = collegeId;
+    if (departmentId) query.departmentId = departmentId;
     if (search) {
       query.title = { $regex: search, $options: 'i' };
     }
 
+    console.log('DEBUG: getExams query:', JSON.stringify(query));
+
     const exams = await Exam.find(query)
       .populate('subject', 'name subjectCode')
       .populate('departmentId', 'name')
+      .populate('collegeId', 'collegeName')
+      .populate('facultyId', 'name email')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
+
+    console.log('DEBUG: getExams count:', exams.length);
 
     const count = await Exam.countDocuments(query);
 
@@ -137,12 +168,13 @@ exports.getExams = async (req, res, next) => {
 // @access  Private/Faculty
 exports.getExam = async (req, res, next) => {
   try {
-    const exam = await Exam.findOne({
-      _id: req.params.id,
-      facultyId: req.user._id,
-    })
+    const findQuery = isSuperAdmin(req.user)
+      ? { _id: req.params.id }
+      : { _id: req.params.id, facultyId: req.user._id };
+    const exam = await Exam.findOne(findQuery)
       .populate('subject', 'name subjectCode')
-      .populate('questions.questionId');
+      .populate('questions.questionId')
+      .populate('facultyId', 'name email');
 
     if (!exam) {
       return res.status(404).json({
@@ -166,10 +198,10 @@ exports.getExam = async (req, res, next) => {
 // @access  Private/Faculty
 exports.updateExam = async (req, res, next) => {
   try {
-    let exam = await Exam.findOne({
-      _id: req.params.id,
-      facultyId: req.user._id,
-    });
+    const findQuery = isSuperAdmin(req.user)
+      ? { _id: req.params.id }
+      : { _id: req.params.id, facultyId: req.user._id };
+    let exam = await Exam.findOne(findQuery);
 
     if (!exam) {
       return res.status(404).json({
@@ -207,10 +239,10 @@ exports.updateExam = async (req, res, next) => {
 // @access  Private/Faculty
 exports.deleteExam = async (req, res, next) => {
   try {
-    const exam = await Exam.findOne({
-      _id: req.params.id,
-      facultyId: req.user._id,
-    });
+    const findQuery = isSuperAdmin(req.user)
+      ? { _id: req.params.id }
+      : { _id: req.params.id, facultyId: req.user._id };
+    const exam = await Exam.findOne(findQuery);
 
     if (!exam) {
       return res.status(404).json({
@@ -247,10 +279,10 @@ exports.addQuestionToExam = async (req, res, next) => {
   try {
     const { questionId } = req.body;
 
-    const exam = await Exam.findOne({
-      _id: req.params.id,
-      facultyId: req.user._id,
-    });
+    const findQuery = isSuperAdmin(req.user)
+      ? { _id: req.params.id }
+      : { _id: req.params.id, facultyId: req.user._id };
+    const exam = await Exam.findOne(findQuery);
 
     if (!exam) {
       return res.status(404).json({
@@ -292,10 +324,10 @@ exports.addQuestionToExam = async (req, res, next) => {
 // @access  Private/Faculty
 exports.publishExam = async (req, res, next) => {
   try {
-    const exam = await Exam.findOne({
-      _id: req.params.id,
-      facultyId: req.user._id,
-    });
+    const findQuery = isSuperAdmin(req.user)
+      ? { _id: req.params.id }
+      : { _id: req.params.id, facultyId: req.user._id };
+    const exam = await Exam.findOne(findQuery);
 
     if (!exam) {
       return res.status(404).json({
@@ -335,15 +367,25 @@ exports.publishExam = async (req, res, next) => {
 // @access  Private/Faculty
 exports.createQuestion = async (req, res, next) => {
   try {
+    const isGlobal = req.body.isGlobal === true || req.body.isGlobal === 'true';
+
     const questionData = {
       ...req.body,
-      facultyId: req.user._id,
-      departmentId: req.user.departmentId,
+      facultyId: req.body.facultyId || req.user._id,
+      departmentId: req.body.departmentId || req.user.departmentId || undefined,
+      isGlobal,
+      // If it's a global question and user is NOT a superadmin, it needs approval (pending)
+      // Otherwise (local question or superadmin contribution), it's approved by default
+      status: (isGlobal && !isSuperAdmin(req.user)) ? 'pending' : 'approved',
     };
+
+    // Remove empty string IDs to prevent Mongoose CastError
+    if (questionData.departmentId === '') delete questionData.departmentId;
+    if (questionData.subject === '') delete questionData.subject;
 
     const question = await Question.create(questionData);
 
-    logger.info(`Question created by ${req.user.email}`);
+    logger.info(`Question created by ${req.user.email} (Global: ${isGlobal}, Status: ${questionData.status})`);
 
     res.status(201).json({
       success: true,
@@ -360,9 +402,28 @@ exports.createQuestion = async (req, res, next) => {
 // @access  Private/Faculty
 exports.getQuestions = async (req, res, next) => {
   try {
-    const { type, subject, difficulty, page = 1, limit = 20, search } = req.query;
+    const { type, subject, difficulty, page = 1, limit = 20, search, status, isGlobal } = req.query;
 
-    const query = { facultyId: req.user._id, isActive: true };
+    let query = { isActive: true };
+
+    if (isSuperAdmin(req.user)) {
+      // Super admin sees everything
+      if (status) query.status = status;
+      if (isGlobal !== undefined) query.isGlobal = isGlobal === 'true';
+    } else {
+      // Regular faculty case
+      // 1. Can ALWAYS see their own questions (regardless of status/global)
+      // OR 2. Can see any APPROVED question (global or local)
+      query.$or = [
+        { facultyId: req.user._id },
+        { status: 'approved' }
+      ];
+
+      // Additional filters apply to BOTH sides of the OR (except when specifically filtering by status)
+      if (status) query.status = status;
+      if (isGlobal !== undefined) query.isGlobal = isGlobal === 'true';
+    }
+
     if (type) query.type = type;
     if (subject) query.subject = subject;
     if (difficulty) query.difficulty = difficulty;
@@ -396,10 +457,10 @@ exports.getQuestions = async (req, res, next) => {
 // @access  Private/Faculty
 exports.updateQuestion = async (req, res, next) => {
   try {
-    let question = await Question.findOne({
-      _id: req.params.id,
-      facultyId: req.user._id,
-    });
+    const findQuery = isSuperAdmin(req.user)
+      ? { _id: req.params.id }
+      : { _id: req.params.id, facultyId: req.user._id };
+    let question = await Question.findOne(findQuery);
 
     if (!question) {
       return res.status(404).json({
@@ -425,15 +486,60 @@ exports.updateQuestion = async (req, res, next) => {
   }
 };
 
+// @desc    Approve/Reject question
+// @route   PUT /api/faculty/questions/:id/status
+// @access  Private/SuperAdmin
+exports.approveQuestion = async (req, res, next) => {
+  try {
+    if (!isSuperAdmin(req.user)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only Super Admins can approve questions',
+      });
+    }
+
+    const { status } = req.body;
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be approved or rejected.',
+      });
+    }
+
+    const question = await Question.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true, runValidators: true }
+    );
+
+    if (!question) {
+      return res.status(404).json({
+        success: false,
+        message: 'Question not found',
+      });
+    }
+
+    logger.info(`Question ${req.params.id} ${status} by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      data: question,
+    });
+  } catch (error) {
+    logger.error('Approve question error:', error);
+    next(error);
+  }
+};
+
 // @desc    Delete question
 // @route   DELETE /api/faculty/questions/:id
 // @access  Private/Faculty
 exports.deleteQuestion = async (req, res, next) => {
   try {
-    const question = await Question.findOne({
-      _id: req.params.id,
-      facultyId: req.user._id,
-    });
+    const findQuery = isSuperAdmin(req.user)
+      ? { _id: req.params.id }
+      : { _id: req.params.id, facultyId: req.user._id };
+    const question = await Question.findOne(findQuery);
 
     if (!question) {
       return res.status(404).json({
@@ -461,10 +567,10 @@ exports.deleteQuestion = async (req, res, next) => {
 // @access  Private/Faculty
 exports.getExamResults = async (req, res, next) => {
   try {
-    const exam = await Exam.findOne({
-      _id: req.params.id,
-      facultyId: req.user._id,
-    });
+    const findQuery = isSuperAdmin(req.user)
+      ? { _id: req.params.id }
+      : { _id: req.params.id, facultyId: req.user._id };
+    const exam = await Exam.findOne(findQuery);
 
     if (!exam) {
       return res.status(404).json({
@@ -474,7 +580,7 @@ exports.getExamResults = async (req, res, next) => {
     }
 
     const results = await Result.find({ examId: req.params.id })
-      .populate('studentId', 'name email enrollmentNumber')
+      .populate('studentId', 'name email regNo enrollmentNumber')
       .sort({ score: -1 });
 
     // Calculate ranks
@@ -513,8 +619,8 @@ exports.evaluateAnswer = async (req, res, next) => {
       });
     }
 
-    // Check if faculty owns this exam
-    if (result.examId.facultyId.toString() !== req.user._id.toString()) {
+    // Check if faculty owns this exam (superadmin can evaluate any)
+    if (!isSuperAdmin(req.user) && result.examId.facultyId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to evaluate this result',
@@ -572,10 +678,10 @@ exports.generateRandomQuestions = async (req, res, next) => {
   try {
     const { count, difficulty, type, subjectId } = req.body;
 
-    const exam = await Exam.findOne({
-      _id: req.params.id,
-      facultyId: req.user._id,
-    });
+    const findQuery = isSuperAdmin(req.user)
+      ? { _id: req.params.id }
+      : { _id: req.params.id, facultyId: req.user._id };
+    const exam = await Exam.findOne(findQuery);
 
     if (!exam) {
       return res.status(404).json({
@@ -585,10 +691,13 @@ exports.generateRandomQuestions = async (req, res, next) => {
     }
 
     const query = {
-      facultyId: req.user._id,
       isActive: true,
       subject: subjectId || exam.subject,
     };
+
+    if (!isSuperAdmin(req.user)) {
+      query.facultyId = req.user._id;
+    }
 
     if (difficulty) query.difficulty = difficulty;
     if (type) query.type = type;

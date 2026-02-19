@@ -4,6 +4,9 @@ import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Table from '@/components/common/Table.jsx';
 import Loader from '@/components/common/Loader.jsx';
+import Modal from '@/components/common/Modal.jsx';
+import Input from '@/components/common/Input.jsx';
+import Select from '@/components/common/Select.jsx';
 import { superAdminService } from '@/services';
 import toast from 'react-hot-toast';
 
@@ -24,6 +27,19 @@ const Faculty = () => {
     const [limit, setLimit] = useState(10);
     const [totalPages, setTotalPages] = useState(1);
     const [totalUsers, setTotalUsers] = useState(0);
+    const [showModal, setShowModal] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        password: '',
+        collegeId: '',
+        departmentId: '',
+        status: 'active',
+        employeeId: '',
+    });
+    const [modalDepartments, setModalDepartments] = useState([]);
 
     useEffect(() => {
         fetchInitialData();
@@ -53,6 +69,13 @@ const Faculty = () => {
         setDepartments(selectedCollege?.departments || []);
     };
 
+    const handleModalCollegeChange = (e) => {
+        const collegeId = e.target.value;
+        setFormData({ ...formData, collegeId, departmentId: '' });
+        const selectedCollege = colleges.find(c => c._id === collegeId);
+        setModalDepartments(selectedCollege?.departments || []);
+    };
+
     const fetchUsers = async () => {
         setLoading(true);
         try {
@@ -71,6 +94,66 @@ const Faculty = () => {
             toast.error('Failed to load faculty');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleEdit = (user) => {
+        setEditingUser(user);
+        setFormData({
+            name: user.name,
+            email: user.email,
+            password: '',
+            status: user.status || 'active',
+            employeeId: user.employeeId || '',
+            collegeId: user.collegeId?._id || user.collegeId || '',
+            departmentId: user.departmentId?._id || user.departmentId || '',
+        });
+
+        // Load departments for the college
+        const collegeId = user.collegeId?._id || user.collegeId;
+        if (collegeId) {
+            const selectedCollege = colleges.find(c => c._id === collegeId);
+            setModalDepartments(selectedCollege?.departments || []);
+        } else {
+            setModalDepartments([]);
+        }
+
+        setShowModal(true);
+    };
+
+    const handleDelete = async (userId, userName) => {
+        if (!window.confirm(`Delete faculty member "${userName}"?\n\nThis action cannot be undone.`)) return;
+        try {
+            await superAdminService.deleteUser(userId);
+            toast.success('Faculty member deleted successfully');
+            fetchUsers();
+        } catch (error) {
+            console.error('Delete error:', error);
+            toast.error(error.response?.data?.message || 'Failed to delete faculty');
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSubmitting(true);
+        try {
+            const updateData = { ...formData };
+            if (!updateData.password) delete updateData.password;
+            if (!updateData.collegeId) delete updateData.collegeId;
+            if (!updateData.departmentId) delete updateData.departmentId;
+
+            await superAdminService.updateUser(editingUser._id, updateData);
+            toast.success('Faculty member updated successfully');
+            setShowModal(false);
+            setEditingUser(null);
+            setFormData({ name: '', email: '', password: '', status: 'active', collegeId: '', departmentId: '', employeeId: '' });
+            setModalDepartments([]);
+            fetchUsers();
+        } catch (error) {
+            console.error('Update error:', error);
+            toast.error(error.response?.data?.message || 'Failed to update faculty');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -107,10 +190,18 @@ const Faculty = () => {
             header: 'Actions',
             render: (row) => (
                 <div className="flex space-x-2">
-                    <button className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors">
+                    <button
+                        onClick={() => handleEdit(row)}
+                        className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        title="Edit Faculty"
+                    >
                         <FiEdit size={16} />
                     </button>
-                    <button className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors">
+                    <button
+                        onClick={() => handleDelete(row._id, row.name)}
+                        className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                        title="Delete Faculty"
+                    >
                         <FiTrash2 size={16} />
                     </button>
                 </div>
@@ -194,6 +285,85 @@ const Faculty = () => {
                     </div>
                 </div>
             </Card>
+
+            {/* Edit Faculty Modal */}
+            <Modal
+                isOpen={showModal}
+                onClose={() => {
+                    setShowModal(false);
+                    setEditingUser(null);
+                    setFormData({ name: '', email: '', password: '', status: 'active', employeeId: '', collegeId: '', departmentId: '' });
+                    setModalDepartments([]);
+                }}
+                title="Edit Faculty"
+            >
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <Input
+                        label="Name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        required
+                    />
+                    <Input
+                        label="Email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        required
+                    />
+                    <Input
+                        label="Employee ID"
+                        value={formData.employeeId}
+                        onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                        placeholder="EMP001"
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                        <Select
+                            label="College"
+                            value={formData.collegeId}
+                            onChange={handleModalCollegeChange}
+                            options={colleges.map(c => ({ value: c._id, label: c.collegeName }))}
+                            required
+                        />
+                        <Select
+                            label="Department"
+                            value={formData.departmentId}
+                            onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
+                            options={modalDepartments.map(d => ({ value: d._id, label: d.name }))}
+                            disabled={!formData.collegeId}
+                            required
+                        />
+                    </div>
+                    <Input
+                        label="Password (leave blank to keep current)"
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        placeholder="Leave blank to keep current password"
+                    />
+                    <Select
+                        label="Status"
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                        options={[
+                            { value: 'active', label: 'Active' },
+                            { value: 'inactive', label: 'Inactive' },
+                        ]}
+                    />
+                    <div className="flex justify-end gap-3 mt-6">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => setShowModal(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={submitting}>
+                            {submitting ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 };

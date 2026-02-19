@@ -23,6 +23,7 @@ const Students = () => {
     password: '',
     role: 'student',
     departmentId: '',
+    regNo: '',
   });
 
   // Pagination & Search state
@@ -114,6 +115,7 @@ const Students = () => {
       password: '',
       role: 'student',
       departmentId: student.departmentId?._id || student.departmentId || '',
+      regNo: student.regNo || '',
     });
     setShowModal(true);
     console.log('Modal should now be visible');
@@ -141,6 +143,7 @@ const Students = () => {
       password: '',
       role: 'student',
       departmentId: '',
+      regNo: '',
     });
   };
 
@@ -192,7 +195,7 @@ const Students = () => {
           <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Search students by name, email or enrollment..."
+            placeholder="Search students by name, email, reg no or enrollment..."
             className="w-full pl-10 pr-4 py-2 border border-blue-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
             value={searchTerm}
             onChange={(e) => {
@@ -229,6 +232,7 @@ const Students = () => {
                 <thead className="bg-gray-50/50">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Student Details</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Reg No</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Department</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Contact Info</th>
                     <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
@@ -248,6 +252,9 @@ const Students = () => {
                               <div className="text-[10px] text-gray-400 font-mono mt-0.5">#{student._id.slice(-8).toUpperCase()}</div>
                             </div>
                           </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm font-medium text-gray-700">{student.regNo || '-'}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="px-3 py-1 text-xs font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-100 uppercase tracking-wider">
@@ -306,7 +313,7 @@ const Students = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="4" className="px-6 py-20 text-center">
+                      <td colSpan="5" className="px-6 py-20 text-center">
                         <div className="flex flex-col items-center">
                           <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
                             <FiSearch className="text-gray-300 w-8 h-8" />
@@ -395,6 +402,12 @@ const Students = () => {
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             required
             placeholder="john.doe@college.edu"
+          />
+          <Input
+            label="Reg No (Registration Number)"
+            value={formData.regNo}
+            onChange={(e) => setFormData({ ...formData, regNo: e.target.value })}
+            placeholder="REG2024001"
           />
           <Input
             label={editingStudent ? "Password (Leave blank to keep current)" : "Password"}

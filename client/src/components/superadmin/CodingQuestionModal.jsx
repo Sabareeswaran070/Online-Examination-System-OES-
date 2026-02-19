@@ -122,12 +122,12 @@ const CodingQuestionModal = ({
         if (formData.timeLimit && formData.timeLimit < 100) err.timeLimit = 'Min 100ms';
         if (formData.memoryLimit && formData.memoryLimit < 16) err.memoryLimit = 'Min 16MB';
         setErrors(err);
-        
+
         // Jump to first tab with error
         if (err.questionText || err.marks) setActiveTab('problem');
         else if (err.visibleTestCases || err.hiddenTestCases) setActiveTab('testcases');
         else if (err.programmingLanguage) setActiveTab('settings');
-        
+
         return Object.keys(err).length === 0;
     };
 
@@ -230,9 +230,23 @@ const CodingQuestionModal = ({
                     onChange={(e) => handleChange('subject', e.target.value)}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none max-w-xs"
                 >
-                    <option value="">None</option>
-                    {subjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
                 </select>
+            </div>
+
+            {/* Visibility Toggle */}
+            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100/50">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                        type="checkbox"
+                        checked={formData.isGlobal}
+                        onChange={(e) => handleChange('isGlobal', e.target.checked)}
+                        className="w-5 h-5 text-primary-600 rounded border-gray-300 focus:ring-primary-500 transition-all"
+                    />
+                    <div>
+                        <span className="block text-sm font-bold text-blue-900 group-hover:text-blue-700">Make Global</span>
+                        <span className="block text-[11px] text-blue-700 opacity-80 mt-0.5">Global questions are visible to all colleges and can be used in global exams.</span>
+                    </div>
+                </label>
             </div>
         </div>
     );
@@ -511,11 +525,10 @@ const CodingQuestionModal = ({
                             key={lang.value}
                             type="button"
                             onClick={() => handleChange('programmingLanguage', lang.value)}
-                            className={`px-4 py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
-                                formData.programmingLanguage === lang.value
+                            className={`px-4 py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${formData.programmingLanguage === lang.value
                                     ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm ring-2 ring-indigo-200'
                                     : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
-                            }`}
+                                }`}
                         >
                             {lang.label}
                         </button>
@@ -601,11 +614,10 @@ const CodingQuestionModal = ({
                                     key={t}
                                     type="button"
                                     onClick={() => handleChange('timeLimit', t)}
-                                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                                        Number(formData.timeLimit) === t
+                                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${Number(formData.timeLimit) === t
                                             ? 'bg-indigo-100 text-indigo-700 border border-indigo-300'
                                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
-                                    }`}
+                                        }`}
                                 >
                                     {t >= 1000 ? `${t / 1000}s` : `${t}ms`}
                                 </button>
@@ -634,11 +646,10 @@ const CodingQuestionModal = ({
                                     key={m}
                                     type="button"
                                     onClick={() => handleChange('memoryLimit', m)}
-                                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                                        Number(formData.memoryLimit) === m
+                                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${Number(formData.memoryLimit) === m
                                             ? 'bg-indigo-100 text-indigo-700 border border-indigo-300'
                                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
-                                    }`}
+                                        }`}
                                 >
                                     {m}MB
                                 </button>
@@ -727,11 +738,10 @@ const CodingQuestionModal = ({
                                 key={tab.id}
                                 type="button"
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all relative ${
-                                    isActive
+                                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all relative ${isActive
                                         ? 'bg-indigo-50 text-indigo-700 font-bold shadow-sm'
                                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                                }`}
+                                    }`}
                             >
                                 <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-600' : ''}`} />
                                 {tab.label}
@@ -739,9 +749,8 @@ const CodingQuestionModal = ({
                                     <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
                                 )}
                                 {tab.id === 'testcases' && totalTestCases > 0 && (
-                                    <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold ${
-                                        isActive ? 'bg-indigo-200 text-indigo-800' : 'bg-gray-200 text-gray-600'
-                                    }`}>
+                                    <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold ${isActive ? 'bg-indigo-200 text-indigo-800' : 'bg-gray-200 text-gray-600'
+                                        }`}>
                                         {totalTestCases}
                                     </span>
                                 )}
@@ -763,9 +772,8 @@ const CodingQuestionModal = ({
                             {TABS.map((tab) => (
                                 <div
                                     key={tab.id}
-                                    className={`h-1.5 w-8 rounded-full transition-colors ${
-                                        activeTab === tab.id ? 'bg-indigo-500' : 'bg-gray-200'
-                                    }`}
+                                    className={`h-1.5 w-8 rounded-full transition-colors ${activeTab === tab.id ? 'bg-indigo-500' : 'bg-gray-200'
+                                        }`}
                                 />
                             ))}
                         </div>

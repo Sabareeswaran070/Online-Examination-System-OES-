@@ -7,7 +7,7 @@ const { sendTokenResponse } = require('../middleware/auth');
 // @access  Public
 exports.register = async (req, res, next) => {
   try {
-    const { name, email, password, role, collegeId, departmentId } = req.body;
+    const { name, email, password, role, collegeId, departmentId, regNo } = req.body;
 
     // Check if user exists
     const existingUser = await User.findOne({ email });
@@ -26,6 +26,7 @@ exports.register = async (req, res, next) => {
       role: role || 'student',
       collegeId,
       departmentId,
+      regNo,
     });
 
     logger.info(`New user registered: ${user.email} with role ${user.role}`);

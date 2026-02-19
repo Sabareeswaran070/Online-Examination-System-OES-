@@ -1,6 +1,6 @@
-name,email,password,departmentId,enrollmentNumber,phone,dateOfBirth
-John Doe,john.doe@example.com,Student@123,60d5ec49f1b2c72b8c8e4f1a,STU2024001,1234567890,2000-01-15
-Jane Smith,jane.smith@example.com,Student@123,60d5ec49f1b2c72b8c8e4f1a,STU2024002,9876543210,1999-05-20
-Michael Johnson,michael.j@example.com,Student@123,60d5ec49f1b2c72b8c8e4f1a,STU2024003,5551234567,2001-03-10
-Emily Davis,emily.davis@example.com,Student@123,60d5ec49f1b2c72b8c8e4f1a,STU2024004,5559876543,2000-07-25
-Robert Wilson,robert.w@example.com,Student@123,60d5ec49f1b2c72b8c8e4f1a,STU2024005,5551112222,1999-11-30
+name,email,password,departmentId,regNo,enrollmentNumber,phone,dateOfBirth
+John Doe,john.doe@example.com,Student@123,60d5ec49f1b2c72b8c8e4f1a,REG2024001,STU2024001,1234567890,2000-01-15
+Jane Smith,jane.smith@example.com,Student@123,60d5ec49f1b2c72b8c8e4f1a,REG2024002,STU2024002,9876543210,1999-05-20
+Michael Johnson,michael.j@example.com,Student@123,60d5ec49f1b2c72b8c8e4f1a,REG2024003,STU2024003,5551234567,2001-03-10
+Emily Davis,emily.davis@example.com,Student@123,60d5ec49f1b2c72b8c8e4f1a,REG2024004,STU2024004,5559876543,2000-07-25
+Robert Wilson,robert.w@example.com,Student@123,60d5ec49f1b2c72b8c8e4f1a,REG2024005,STU2024005,5551112222,1999-11-30

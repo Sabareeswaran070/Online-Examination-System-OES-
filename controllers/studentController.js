@@ -1,8 +1,42 @@
+const mongoose = require('mongoose');
 const Exam = require('../models/Exam');
 const Result = require('../models/Result');
 const Question = require('../models/Question');
 const logger = require('../config/logger');
 const evaluationService = require('../services/evaluationService');
+
+// Helper: sanitize question for student (strip correct answers)
+const sanitizeQuestion = (q) => {
+  const question = typeof q.questionId.toObject === 'function' ? q.questionId.toObject() : q.questionId;
+  // Strip isCorrect from options
+  if (question.options && question.options.length > 0) {
+    question.options = question.options.map(opt => ({ text: opt.text }));
+  }
+  delete question.correctAnswer;
+  delete question.hiddenTestCases;
+
+  return {
+    _id: question._id,
+    questionText: question.questionText,
+    type: question.type,
+    options: question.options,
+    marks: question.marks,
+    order: q.order,
+    imageUrl: question.imageUrl,
+    codeSnippet: question.codeSnippet,
+    programmingLanguage: question.programmingLanguage,
+    inputFormat: question.inputFormat,
+    outputFormat: question.outputFormat,
+    constraints: question.constraints,
+    visibleTestCases: question.visibleTestCases,
+    testCases: question.testCases,
+    timeLimit: question.timeLimit,
+    memoryLimit: question.memoryLimit,
+    starterCode: question.starterCode,
+    sampleInput: question.sampleInput,
+    sampleOutput: question.sampleOutput,
+  };
+};
 
 // @desc    Get student dashboard
 // @route   GET /api/student/dashboard
@@ -246,20 +280,27 @@ exports.startExam = async (req, res, next) => {
         });
       }
 
+      // Calculate remaining time
+      const elapsedSeconds = Math.floor((Date.now() - existingResult.startedAt) / 1000);
+      const totalSeconds = exam.duration * 60;
+      const remainingTime = Math.max(0, totalSeconds - elapsedSeconds);
+
       // Return ongoing exam
       return res.status(200).json({
         success: true,
         message: 'Exam already in progress',
         data: {
+          exam: {
+            _id: exam._id,
+            title: exam.title,
+            subject: exam.subject,
+            duration: exam.duration,
+            totalMarks: exam.totalMarks,
+            passingMarks: exam.passingMarks,
+            questions: exam.questions.map((q) => sanitizeQuestion(q)),
+          },
           result: existingResult,
-          questions: exam.questions.map((q) => ({
-            _id: q.questionId._id,
-            questionText: q.questionId.questionText,
-            type: q.questionId.type,
-            options: q.questionId.options,
-            marks: q.questionId.marks,
-            order: q.order,
-          })),
+          remainingTime,
         },
       });
     }
@@ -277,26 +318,7 @@ exports.startExam = async (req, res, next) => {
     });
 
     // Prepare questions (hide correct answers)
-    const questions = exam.questions.map((q) => {
-      const question = q.questionId.toObject();
-      if (question.type === 'MCQ' || question.type === 'TrueFalse') {
-        // Remove isCorrect flag from options
-        question.options = question.options.map((opt) => ({
-          text: opt.text,
-        }));
-      }
-      delete question.correctAnswer;
-      return {
-        _id: question._id,
-        questionText: question.questionText,
-        type: question.type,
-        options: question.options,
-        marks: question.marks,
-        order: q.order,
-        imageUrl: question.imageUrl,
-        codeSnippet: question.codeSnippet,
-      };
-    });
+    const questions = exam.questions.map((q) => sanitizeQuestion(q));
 
     logger.info(
       `Exam started: ${exam.title} by student ${req.user.email}`
@@ -305,10 +327,17 @@ exports.startExam = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: {
+        exam: {
+          _id: exam._id,
+          title: exam.title,
+          subject: exam.subject,
+          duration: exam.duration,
+          totalMarks: exam.totalMarks,
+          passingMarks: exam.passingMarks,
+          questions,
+        },
         result,
-        questions,
-        examDuration: exam.duration,
-        startedAt: result.startedAt,
+        remainingTime: exam.duration * 60,
       },
     });
   } catch (error) {
@@ -368,16 +397,16 @@ exports.submitExam = async (req, res, next) => {
     await exam.save();
 
     logger.info(
-      `Exam submitted: ${exam.title} by student ${req.user.email}, Score: ${totalScore}`
+      `Exam submitted: ${exam.title} by student ${req.user.email}, Score: ${evaluationResult.score}`
     );
 
     res.status(200).json({
       success: true,
-      message: hasDescriptive
+      message: evaluationResult.hasDescriptive
         ? 'Exam submitted. Awaiting evaluation for descriptive answers.'
         : 'Exam submitted successfully',
       data: {
-        score: totalScore,
+        score: evaluationResult.score,
         percentage: result.percentage,
         isPassed: result.isPassed,
         status: result.status,
@@ -560,6 +589,7 @@ exports.getLeaderboard = async (req, res, next) => {
       {
         $project: {
           studentName: '$student.name',
+          regNo: '$student.regNo',
           enrollmentNumber: '$student.enrollmentNumber',
           totalScore: 1,
           avgPercentage: 1,

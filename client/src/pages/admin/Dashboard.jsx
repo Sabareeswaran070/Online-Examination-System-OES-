@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { FiUsers, FiBookOpen, FiFileText, FiHome } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
+import { FiUsers, FiBookOpen, FiFileText, FiHome, FiAward, FiInbox, FiCheckCircle, FiShield } from 'react-icons/fi';
 import StatCard from '@/components/dashboard/StatCard.jsx';
 import Card from '@/components/common/Card.jsx';
 import Loader from '@/components/common/Loader.jsx';
@@ -9,6 +10,7 @@ import toast from 'react-hot-toast';
 const CollegeAdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchDashboard();
@@ -64,6 +66,49 @@ const CollegeAdminDashboard = () => {
           color="warning"
         />
       </div>
+
+      {/* Competition Stats Row */}
+      {(stats?.statistics?.totalCompetitions > 0 || stats?.statistics?.pendingCompetitions > 0) && (
+        <div>
+          <h2 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <FiAward className="w-5 h-5 text-indigo-500" /> Competition Overview
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div
+              onClick={() => navigate('/admin/competitions')}
+              className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-center cursor-pointer hover:shadow-md transition-shadow"
+            >
+              <FiAward className="w-6 h-6 text-indigo-500 mx-auto mb-1" />
+              <p className="text-2xl font-bold text-indigo-700">{stats?.statistics?.totalCompetitions || 0}</p>
+              <p className="text-xs text-gray-500 mt-0.5 font-medium">Total Competitions</p>
+            </div>
+            <div
+              onClick={() => navigate('/admin/competitions')}
+              className="bg-yellow-50 border border-yellow-100 rounded-xl p-4 text-center cursor-pointer hover:shadow-md transition-shadow"
+            >
+              <FiInbox className="w-6 h-6 text-yellow-500 mx-auto mb-1" />
+              <p className="text-2xl font-bold text-yellow-700">{stats?.statistics?.pendingCompetitions || 0}</p>
+              <p className="text-xs text-gray-500 mt-0.5 font-medium">Pending Response</p>
+            </div>
+            <div
+              onClick={() => navigate('/admin/competitions')}
+              className="bg-green-50 border border-green-100 rounded-xl p-4 text-center cursor-pointer hover:shadow-md transition-shadow"
+            >
+              <FiCheckCircle className="w-6 h-6 text-green-500 mx-auto mb-1" />
+              <p className="text-2xl font-bold text-green-700">{stats?.statistics?.acceptedCompetitions || 0}</p>
+              <p className="text-xs text-gray-500 mt-0.5 font-medium">Accepted</p>
+            </div>
+            <div
+              onClick={() => navigate('/admin/competitions')}
+              className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center cursor-pointer hover:shadow-md transition-shadow"
+            >
+              <FiShield className="w-6 h-6 text-blue-500 mx-auto mb-1" />
+              <p className="text-2xl font-bold text-blue-700">{stats?.statistics?.approvedCompetitions || 0}</p>
+              <p className="text-xs text-gray-500 mt-0.5 font-medium">SA Approved</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card title="Departments Overview">

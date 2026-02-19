@@ -53,8 +53,8 @@ const Leaderboard = () => {
                     #{index + 1}
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">{student.name || student.studentId?.name}</p>
-                    <p className="text-sm text-gray-600">{student.email || student.studentId?.email}</p>
+                    <p className="font-semibold text-gray-900">{student.studentName || student.name || student.studentId?.name}</p>
+                    <p className="text-sm text-gray-500">{student.regNo || student.enrollmentNumber || ''}</p>
                   </div>
                 </div>
                 <div className="text-right">

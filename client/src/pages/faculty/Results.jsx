@@ -16,6 +16,8 @@ import toast from 'react-hot-toast';
 const Results = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const basePath = user?.role === 'superadmin' ? '/super-admin' : '/faculty';
   const [loading, setLoading] = useState(true);
   const [exam, setExam] = useState(null);
   const [results, setResults] = useState([]);
@@ -93,7 +95,7 @@ const Results = () => {
       accessor: (row) => (
         <div>
           <p className="font-medium">{row.studentId?.name}</p>
-          <p className="text-sm text-gray-500">{row.studentId?.enrollmentNumber}</p>
+          <p className="text-sm text-gray-500">{row.studentId?.regNo || row.studentId?.enrollmentNumber}</p>
         </div>
       )
     },
@@ -140,7 +142,7 @@ const Results = () => {
         <div className="flex items-center gap-4">
           <Button
             variant="secondary"
-            onClick={() => navigate('/faculty/exams')}
+            onClick={() => navigate(`${basePath}/exams`)}
             size="sm"
           >
             <FiArrowLeft className="w-5 h-5" />

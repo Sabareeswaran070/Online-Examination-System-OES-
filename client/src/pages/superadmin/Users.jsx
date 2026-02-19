@@ -34,7 +34,9 @@ const Users = () => {
     password: '',
     role: 'student',
     collegeId: '',
+    regNo: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     fetchInitialData();
@@ -85,11 +87,17 @@ const Users = () => {
         // For updates, we often don't want to send the password unless it's being changed
         const updateData = { ...formData };
         if (!updateData.password) delete updateData.password;
+        if (!updateData.collegeId) delete updateData.collegeId;
+        if (!updateData.regNo) delete updateData.regNo;
 
         await superAdminService.updateUser(selectedUser._id, updateData);
         toast.success('User updated successfully');
       } else {
-        await superAdminService.createUser(formData);
+        const createData = { ...formData };
+        if (!createData.collegeId) delete createData.collegeId;
+        if (!createData.regNo) delete createData.regNo;
+
+        await superAdminService.createUser(createData);
         toast.success('User created successfully');
       }
       setShowModal(false);
@@ -103,6 +111,22 @@ const Users = () => {
     }
   };
 
+  // Reset password for user (admin)
+  const handleResetPassword = async () => {
+    if (!selectedUser) return;
+    const newPassword = window.prompt('Enter new password for this user:');
+    if (!newPassword || newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    try {
+      await superAdminService.updateUser(selectedUser._id, { password: newPassword });
+      toast.success('Password reset successfully');
+    } catch (error) {
+      toast.error('Failed to reset password');
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -110,83 +134,10 @@ const Users = () => {
       password: '',
       role: 'student',
       collegeId: '',
+      regNo: '',
     });
     setIsEditing(false);
     setSelectedUser(null);
-  };
-
-  const handleEdit = (user) => {
-    setSelectedUser(user);
-    setFormData({
-      name: user.name,
-      email: user.email,
-      password: '', // Leave blank for edit
-      role: user.role,
-      collegeId: user.collegeId?._id || user.collegeId || '',
-    });
-    setIsEditing(true);
-    setShowModal(true);
-  };
-
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      try {
-        await superAdminService.deleteUser(id);
-        toast.success('User deleted successfully');
-        fetchUsers();
-      } catch (error) {
-        console.error('Delete user error:', error);
-        toast.error('Failed to delete user');
-      }
-    }
-  };
-
-  const handleToggleStatus = async (user) => {
-    const nextStatus = user.status === 'active' ? 'inactive' : 'active';
-    try {
-      await superAdminService.updateUserStatus(user._id, nextStatus);
-      toast.success(`User status updated to ${nextStatus}`);
-      fetchUsers();
-    } catch (error) {
-      console.error('Toggle status error:', error);
-      toast.error('Failed to update status');
-    }
-  };
-
-  const handleBulkUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const loadingToast = toast.loading('Uploading users...');
-    try {
-      const response = await superAdminService.bulkUploadUsers(file);
-      setBulkResults(response);
-      setShowResultsModal(true);
-      toast.success(response.message, { id: loadingToast, duration: 5000 });
-      fetchUsers();
-    } catch (error) {
-      console.error('Bulk upload error:', error);
-      toast.error(error.response?.data?.message || 'Bulk upload failed', { id: loadingToast });
-    }
-    // Reset input
-    e.target.value = '';
-  };
-
-  const downloadTemplate = () => {
-    const headers = ['name', 'email', 'role', 'collegeId', 'departmentId', 'password', 'phone', 'enrollmentNumber', 'employeeId'];
-    const sampleData = [
-      'John Doe,john@example.com,student,COLLEGE_ID,DEPT_ID,Welcome@123,9876543210,ENR001,',
-      'Jane Smith,jane@example.com,faculty,COLLEGE_ID,DEPT_ID,Welcome@123,9876543211,,EMP001'
-    ];
-    const csvContent = [headers.join(','), ...sampleData].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'user_import_template.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
   };
 
   const getRoleBadgeColor = (role) => {
@@ -465,6 +416,16 @@ const Users = () => {
               </select>
             </div>
           </div>
+
+          {formData.role === 'student' && (
+            <Input
+              label="Reg No (Registration Number)"
+              name="regNo"
+              value={formData.regNo}
+              onChange={(e) => setFormData({ ...formData, regNo: e.target.value })}
+              placeholder="REG2024001"
+            />
+          )}
 
           <div className="flex justify-end space-x-3 mt-6">
             <Button

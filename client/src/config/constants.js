@@ -21,7 +21,7 @@ export const EXAM_STATUS = {
 export const QUESTION_TYPES = {
   MCQ: 'MCQ',
   DESCRIPTIVE: 'Descriptive',
-  TRUE_FALSE: 'True/False',
+  TRUE_FALSE: 'TrueFalse',
   CODING: 'Coding',
 };
 

@@ -116,6 +116,15 @@ const questionSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    isGlobal: {
+      type: Boolean,
+      default: false,
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'approved',
+    },
   },
   {
     timestamps: true,

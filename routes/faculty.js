@@ -27,9 +27,9 @@ const {
 
 const router = express.Router();
 
-// Protect all routes and authorize only faculty
+// Protect all routes and authorize faculty and superadmin
 router.use(protect);
-router.use(authorize('faculty'));
+router.use(authorize('faculty', 'superadmin'));
 
 router.get('/dashboard', getDashboard);
 

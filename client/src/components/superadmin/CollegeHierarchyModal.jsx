@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiUser, FiHome, FiCheck, FiPlus, FiEdit, FiTrash2, FiX } from 'react-icons/fi';
+import { FiUser, FiHome, FiCheck, FiPlus, FiEdit, FiTrash2, FiX, FiUserMinus } from 'react-icons/fi';
 import Modal from '@/components/common/Modal.jsx';
 import Button from '@/components/common/Button.jsx';
 import Select from '@/components/common/Select.jsx';
@@ -11,6 +11,7 @@ const CollegeHierarchyModal = ({ isOpen, onClose, college, onUpdate }) => {
     const [admins, setAdmins] = useState([]);
     const [selectedAdminId, setSelectedAdminId] = useState('');
     const [loading, setLoading] = useState(false);
+    const [removingId, setRemovingId] = useState(null);
     const [initialLoading, setInitialLoading] = useState(true);
 
     // Department States
@@ -19,16 +20,19 @@ const CollegeHierarchyModal = ({ isOpen, onClose, college, onUpdate }) => {
     const [deptForm, setDeptForm] = useState({ name: '', departmentCode: '' });
     const [deptLoading, setDeptLoading] = useState(false);
 
+    // Get assigned admin IDs for this college
+    const assignedAdminIds = (college?.adminIds || []).map(a => (a?._id || a)?.toString());
+
     useEffect(() => {
         if (isOpen) {
             fetchInitialData();
-            setSelectedAdminId(college?.adminId?._id || college?.adminId || '');
+            setSelectedAdminId('');
         }
     }, [isOpen, college]);
 
     const fetchInitialData = async () => {
         try {
-            const response = await superAdminService.getUsers({ role: 'admin' });
+            const response = await superAdminService.getUsers({ role: 'admin', limit: 100 });
             setAdmins(response.data || []);
         } catch (error) {
             toast.error('Failed to load initial data');
@@ -36,6 +40,10 @@ const CollegeHierarchyModal = ({ isOpen, onClose, college, onUpdate }) => {
             setInitialLoading(false);
         }
     };
+
+    // Filter out already-assigned admins from the dropdown
+    // Only show admins who are not assigned to ANY college
+    const availableAdmins = admins.filter(a => !a.collegeId);
 
     const handleAssignAdmin = async () => {
         if (!selectedAdminId) {
@@ -47,11 +55,26 @@ const CollegeHierarchyModal = ({ isOpen, onClose, college, onUpdate }) => {
         try {
             await superAdminService.assignCollegeAdmin(college._id, selectedAdminId);
             toast.success('College Admin assigned successfully');
+            setSelectedAdminId('');
             onUpdate();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Assignment failed');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleRemoveAdmin = async (adminId) => {
+        if (!window.confirm('Remove this admin from the college?')) return;
+        setRemovingId(adminId);
+        try {
+            await superAdminService.removeCollegeAdmin(college._id, adminId);
+            toast.success('Admin removed');
+            onUpdate();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to remove admin');
+        } finally {
+            setRemovingId(null);
         }
     };
 
@@ -108,17 +131,56 @@ const CollegeHierarchyModal = ({ isOpen, onClose, college, onUpdate }) => {
                         <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center text-primary-600">
                             <FiUser size={18} />
                         </div>
-                        <h3 className="font-bold text-gray-900">Institution Administrator</h3>
+                        <h3 className="font-bold text-gray-900">
+                            Institution Administrators
+                            {assignedAdminIds.length > 0 && (
+                                <span className="ml-2 px-2 py-0.5 bg-primary-100 text-primary-700 text-xs font-bold rounded-full">
+                                    {assignedAdminIds.length}
+                                </span>
+                            )}
+                        </h3>
                     </div>
 
+                    {/* Current Admins List */}
+                    {assignedAdminIds.length > 0 && (
+                        <div className="space-y-2 mb-4">
+                            {(college?.adminIds || []).map((admin) => {
+                                const adminObj = typeof admin === 'object' ? admin : admins.find(a => a._id === admin);
+                                const id = admin?._id || admin;
+                                return (
+                                    <div key={id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-200 shadow-sm group">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-indigo-500 flex items-center justify-center text-white text-xs font-bold">
+                                                {(adminObj?.name || '?')[0].toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold text-gray-900">{adminObj?.name || 'Admin'}</p>
+                                                <p className="text-xs text-gray-500">{adminObj?.email || ''}</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => handleRemoveAdmin(id)}
+                                            disabled={removingId === id}
+                                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
+                                            title="Remove admin"
+                                        >
+                                            <FiUserMinus size={16} />
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* Add New Admin */}
                     <div className="flex gap-3">
                         <div className="flex-1">
                             <Select
                                 value={selectedAdminId}
                                 onChange={(e) => setSelectedAdminId(e.target.value)}
                                 options={[
-                                    { label: 'Select Admin...', value: '' },
-                                    ...admins.map(admin => ({
+                                    { label: 'Select Admin to Add...', value: '' },
+                                    ...availableAdmins.map(admin => ({
                                         label: `${admin.name} (${admin.email})`,
                                         value: admin._id
                                     }))
@@ -129,9 +191,9 @@ const CollegeHierarchyModal = ({ isOpen, onClose, college, onUpdate }) => {
                         <Button
                             onClick={handleAssignAdmin}
                             loading={loading}
-                            disabled={loading || selectedAdminId === (college?.adminId?._id || college?.adminId)}
+                            disabled={loading || !selectedAdminId}
                         >
-                            Assign
+                            <FiPlus className="mr-1" /> Add
                         </Button>
                     </div>
                 </div>

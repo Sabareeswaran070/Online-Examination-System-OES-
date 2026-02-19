@@ -20,6 +20,7 @@ import AdminCompetitions from './pages/superadmin/Competitions';
 import AdminQuestions from './pages/superadmin/Questions';
 import SuperAdminStudents from './pages/superadmin/Students';
 import SuperAdminFaculty from './pages/superadmin/Faculty';
+import SuperAdminExams from './pages/superadmin/Exams';
 
 // College Admin Pages
 import CollegeAdminDashboard from './pages/admin/Dashboard';
@@ -28,6 +29,7 @@ import Students from './pages/admin/Students';
 import Faculty from './pages/admin/Faculty';
 import AdminAnalytics from './pages/admin/Analytics';
 import Leaderboard from './pages/admin/Leaderboard';
+import CollegeCompetitions from './pages/admin/Competitions';
 
 // Dept Head Pages
 import DeptHeadDashboard from './pages/depthead/Dashboard';
@@ -42,8 +44,12 @@ import FacultyResults from './pages/faculty/Results';
 // Student Pages
 import StudentDashboard from './pages/student/Dashboard';
 import AvailableExams from './pages/student/AvailableExams';
+import ExamPreview from './pages/student/ExamPreview';
 import TakeExam from './pages/student/TakeExam';
 import Results from './pages/student/Results';
+import ResultDetails from './pages/student/ResultDetails';
+import StudentAnalytics from './pages/student/Analytics';
+import StudentLeaderboard from './pages/student/Leaderboard';
 import Competitions from './pages/student/Competitions';
 import GlobalLeaderboard from './pages/Leaderboard';
 
@@ -60,6 +66,7 @@ const navigationConfig = {
     { path: '/super-admin/students', label: 'Students', icon: FiUsers },
     { path: '/super-admin/faculty', label: 'Faculty', icon: FiUsers },
     { path: '/super-admin/users', label: 'Users', icon: FiUsers },
+    { path: '/super-admin/exams', label: 'Exams', icon: FiFileText },
     { path: '/super-admin/analytics', label: 'Analytics', icon: FiBarChart },
     { path: '/super-admin/competitions', label: 'Competitions', icon: FiAward },
     { path: '/super-admin/questions', label: 'Question Bank', icon: FiBook },
@@ -70,6 +77,7 @@ const navigationConfig = {
     { path: '/admin/departments', label: 'Departments', icon: FiBook },
     { path: '/admin/students', label: 'Students', icon: FiUsers },
     { path: '/admin/faculty', label: 'Faculty', icon: FiUsers },
+    { path: '/admin/competitions', label: 'Competitions', icon: FiAward },
     { path: '/admin/analytics', label: 'Analytics', icon: FiBarChart },
     { path: '/admin/leaderboard', label: 'Leaderboard', icon: FiAward },
   ],
@@ -135,6 +143,9 @@ const SuperAdminRoutes = () => {
         <Route path="students" element={<SuperAdminStudents />} />
         <Route path="faculty" element={<SuperAdminFaculty />} />
         <Route path="users" element={<Users />} />
+        <Route path="exams" element={<SuperAdminExams />} />
+        <Route path="exams/:id" element={<FacultyExamDetails />} />
+        <Route path="exams/:id/results" element={<FacultyResults />} />
         <Route path="analytics" element={<SuperAdminAnalytics />} />
         <Route path="competitions" element={<AdminCompetitions />} />
         <Route path="questions" element={<AdminQuestions />} />
@@ -152,6 +163,7 @@ const AdminRoutes = () => {
         <Route path="departments" element={<Departments />} />
         <Route path="students" element={<Students />} />
         <Route path="faculty" element={<Faculty />} />
+        <Route path="competitions" element={<CollegeCompetitions />} />
         <Route path="analytics" element={<AdminAnalytics />} />
         <Route path="leaderboard" element={<Leaderboard />} />
       </Routes>
@@ -196,16 +208,17 @@ const StudentRoutes = () => {
         <Route path="/" element={<DashboardLayout navigation={navigationConfig[USER_ROLES.STUDENT]} />}>
           <Route path="dashboard" element={<StudentDashboard />} />
           <Route path="exams" element={<AvailableExams />} />
+          <Route path="exams/:id" element={<ExamPreview />} />
           <Route path="results" element={<Results />} />
+          <Route path="results/:id" element={<ResultDetails />} />
           <Route path="competitions" element={<Competitions />} />
+          <Route path="leaderboard" element={<StudentLeaderboard />} />
           <Route path="global-leaderboard" element={<GlobalLeaderboard />} />
-          <Route path="results/:id" element={<div>Result Details (Coming Soon)</div>} />
-          <Route path="leaderboard" element={<GlobalLeaderboard />} />
-          <Route path="analytics" element={<div>Analytics (Coming Soon)</div>} />
+          <Route path="analytics" element={<StudentAnalytics />} />
         </Route>
 
         {/* Exam taking route - no layout (full screen) */}
-        <Route path="exams/:id" element={<TakeExam />} />
+        <Route path="exams/:id/take" element={<TakeExam />} />
       </Routes>
     </>
   );

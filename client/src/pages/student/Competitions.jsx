@@ -6,7 +6,7 @@ import Loader from '@/components/common/Loader';
 import Badge from '@/components/common/Badge';
 import { competitionService } from '@/services/competitionService';
 import { formatDateTime } from '@/utils/dateUtils';
-import { FiAward, FiCalendar, FiClock } from 'react-icons/fi';
+import { FiAward, FiCalendar, FiClock, FiTarget, FiCode } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 const Competitions = () => {
@@ -20,8 +20,8 @@ const Competitions = () => {
 
     const fetchCompetitions = async () => {
         try {
-            const response = await competitionService.getActiveCompetitions();
-            setCompetitions(response.data);
+            const response = await competitionService.getStudentCompetitions();
+            setCompetitions(response.data || []);
         } catch (error) {
             console.error('Error fetching competitions:', error);
             toast.error('Failed to load competitions');

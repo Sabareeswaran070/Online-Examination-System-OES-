@@ -22,10 +22,10 @@ const collegeSchema = new mongoose.Schema(
       zipCode: String,
       country: { type: String, default: 'India' },
     },
-    adminId: {
+    adminIds: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-    },
+    }],
     departments: [
       {
         type: mongoose.Schema.Types.ObjectId,

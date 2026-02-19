@@ -49,6 +49,10 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
     },
+    regNo: {
+      type: String,
+      sparse: true, // Registration Number for students
+    },
     enrollmentNumber: {
       type: String,
       sparse: true, // Only for students

@@ -133,7 +133,7 @@ exports.checkCollegeOwnership = async (req, res, next) => {
     // College admin must own the college
     if (
       req.user.role === 'admin' &&
-      college.adminId.toString() !== req.user._id.toString()
+      !(college.adminIds || []).some(id => id.toString() === req.user._id.toString())
     ) {
       return res.status(403).json({
         success: false,

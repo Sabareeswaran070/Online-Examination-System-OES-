@@ -34,8 +34,8 @@ const Results = () => {
       header: 'Exam Title',
       render: (row) => (
         <div>
-          <p className="font-medium text-gray-900">{row.exam?.title}</p>
-          <p className="text-sm text-gray-500">{row.exam?.subject?.subjectName}</p>
+          <p className="font-medium text-gray-900">{row.examId?.title}</p>
+          <p className="text-sm text-gray-500">{row.examId?.subject?.name}</p>
         </div>
       ),
     },
@@ -43,7 +43,7 @@ const Results = () => {
       header: 'Score',
       render: (row) => (
         <span className="font-medium">
-          {row.score} / {row.exam?.totalMarks}
+          {row.score} / {row.examId?.totalMarks}
         </span>
       ),
     },
@@ -62,8 +62,8 @@ const Results = () => {
     {
       header: 'Status',
       render: (row) => (
-        <Badge variant={row.percentage >= row.exam?.passingMarks ? 'success' : 'danger'}>
-          {row.percentage >= (row.exam?.passingMarks / row.exam?.totalMarks * 100) ? 'Passed' : 'Failed'}
+        <Badge variant={row.isPassed ? 'success' : 'danger'}>
+          {row.isPassed ? 'Passed' : 'Failed'}
         </Badge>
       ),
     },
@@ -73,7 +73,7 @@ const Results = () => {
     },
     {
       header: 'Date',
-      render: (row) => <span className="text-sm text-gray-600">{formatDateTime(row.createdAt)}</span>,
+      render: (row) => <span className="text-sm text-gray-600">{formatDateTime(row.submittedAt)}</span>,
     },
   ];
 

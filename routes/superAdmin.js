@@ -13,6 +13,7 @@ const {
   getAuditLogs,
   createUser,
   assignCollegeAdmin,
+  removeCollegeAdmin,
   getAllUsers,
   updateUser,
   deleteUser,
@@ -21,6 +22,7 @@ const {
   createQuestion,
   updateQuestion,
   deleteQuestion,
+  updateQuestionStatus,
   getAllSubjects,
   bulkUploadQuestions,
   getQuestionSets,
@@ -101,6 +103,14 @@ router.put(
   assignCollegeAdmin
 );
 
+router.put(
+  '/colleges/:id/remove-admin',
+  validateObjectId('id'),
+  validate,
+  auditLog('remove-admin', 'College'),
+  removeCollegeAdmin
+);
+
 router.post('/colleges/:id/departments', auditLog('create-department', 'Department'), createDepartmentForCollege);
 router.put('/colleges/:id/departments/:deptId', auditLog('update-department', 'Department'), updateDepartmentForCollege);
 router.delete('/colleges/:id/departments/:deptId', auditLog('delete-department', 'Department'), deleteDepartmentFromCollege);
@@ -144,6 +154,8 @@ router
 
 // AI Question Generation (must be before /questions/:id to avoid route conflict)
 router.post('/questions/generate-ai', auditLog('ai-generate', 'Question'), generateAICodingQuestion);
+
+router.put('/questions/:id/status', auditLog('approve', 'Question'), updateQuestionStatus);
 
 router
   .route('/questions/:id')
