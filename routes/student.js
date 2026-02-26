@@ -10,6 +10,7 @@ const {
   getResultDetails,
   getLeaderboard,
   getAnalytics,
+  runCode,
 } = require('../controllers/studentController');
 const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/rbac');
@@ -65,5 +66,8 @@ router.get(
 // Performance routes
 router.get('/leaderboard', getLeaderboard);
 router.get('/analytics', getAnalytics);
+
+// Code execution
+router.post('/run-code', runCode);
 
 module.exports = router;

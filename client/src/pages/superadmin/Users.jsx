@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FiPlus, FiEdit, FiTrash2, FiSearch, FiUpload, FiDownload, FiLock } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiSearch, FiUpload, FiDownload, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Table from '@/components/common/Table.jsx';
@@ -24,6 +24,7 @@ const Users = () => {
   const [totalUsers, setTotalUsers] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [showResultsModal, setShowResultsModal] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
   const [bulkResults, setBulkResults] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -37,6 +38,13 @@ const Users = () => {
     regNo: '',
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [resetPasswordData, setResetPasswordData] = useState({
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [resetSubmitting, setResetSubmitting] = useState(false);
 
   useEffect(() => {
     fetchInitialData();
@@ -111,19 +119,49 @@ const Users = () => {
     }
   };
 
+  // Open reset password modal
+  const openResetPasswordModal = (user) => {
+    setSelectedUser(user);
+    setResetPasswordData({ newPassword: '', confirmPassword: '' });
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+    setShowResetPasswordModal(true);
+  };
+
   // Reset password for user (admin)
-  const handleResetPassword = async () => {
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
     if (!selectedUser) return;
-    const newPassword = window.prompt('Enter new password for this user:');
-    if (!newPassword || newPassword.length < 6) {
+
+    const { newPassword, confirmPassword } = resetPasswordData;
+
+    if (!newPassword || !confirmPassword) {
+      toast.error('Please fill in both password fields');
+      return;
+    }
+    if (newPassword.length < 6) {
       toast.error('Password must be at least 6 characters');
       return;
     }
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    setResetSubmitting(true);
     try {
-      await superAdminService.updateUser(selectedUser._id, { password: newPassword });
+      await superAdminService.resetUserPassword(selectedUser._id, {
+        newPassword,
+        confirmPassword,
+      });
       toast.success('Password reset successfully');
+      setShowResetPasswordModal(false);
+      setResetPasswordData({ newPassword: '', confirmPassword: '' });
+      setSelectedUser(null);
     } catch (error) {
-      toast.error('Failed to reset password');
+      toast.error(error.response?.data?.message || 'Failed to reset password');
+    } finally {
+      setResetSubmitting(false);
     }
   };
 
@@ -290,10 +328,7 @@ const Users = () => {
             <FiTrash2 size={16} />
           </button>
           <button
-            onClick={() => {
-              setSelectedUser(row);
-              handleResetPassword();
-            }}
+            onClick={() => openResetPasswordModal(row)}
             className="p-1 text-yellow-600 hover:bg-yellow-50 rounded transition-colors"
             title="Reset Password"
           >
@@ -302,7 +337,7 @@ const Users = () => {
         </div>
       ),
     },
-  ], [users, handleToggleStatus, handleEdit, handleDelete, handleResetPassword]);
+  ], [users, handleToggleStatus, handleEdit, handleDelete, openResetPasswordModal]);
 
   if (loading) return <Loader fullScreen />;
 
@@ -585,6 +620,90 @@ const Users = () => {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Reset Password Modal */}
+      <Modal
+        isOpen={showResetPasswordModal}
+        onClose={() => setShowResetPasswordModal(false)}
+        title={`Reset Password — ${selectedUser?.name || ''}`}
+        size="sm"
+      >
+        <form onSubmit={handleResetPassword} className="space-y-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-2">
+            <p className="text-sm text-amber-800">
+              <strong>Note:</strong> You are resetting the password for <span className="font-semibold">{selectedUser?.email}</span>. The user will need to use the new password to log in.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              New Password <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type={showNewPassword ? 'text' : 'password'}
+                value={resetPasswordData.newPassword}
+                onChange={(e) => setResetPasswordData({ ...resetPasswordData, newPassword: e.target.value })}
+                className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                placeholder="Enter new password"
+                minLength={6}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showNewPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Confirm Password <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={resetPasswordData.confirmPassword}
+                onChange={(e) => setResetPasswordData({ ...resetPasswordData, confirmPassword: e.target.value })}
+                className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                placeholder="Confirm new password"
+                minLength={6}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showConfirmPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+              </button>
+            </div>
+            {resetPasswordData.confirmPassword && resetPasswordData.newPassword !== resetPasswordData.confirmPassword && (
+              <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+            )}
+          </div>
+
+          <div className="flex justify-end space-x-3 mt-6">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowResetPasswordModal(false)}
+              disabled={resetSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={resetSubmitting || !resetPasswordData.newPassword || !resetPasswordData.confirmPassword || resetPasswordData.newPassword !== resetPasswordData.confirmPassword}
+            >
+              {resetSubmitting ? 'Resetting...' : 'Reset Password'}
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

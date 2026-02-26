@@ -16,6 +16,7 @@ const {
   removeCollegeAdmin,
   getAllUsers,
   updateUser,
+  resetUserPassword,
   deleteUser,
   toggleUserStatus,
   getQuestions,
@@ -145,6 +146,14 @@ router
     auditLog('delete', 'User'),
     deleteUser
   );
+
+router.put(
+  '/users/:id/reset-password',
+  validateObjectId('id'),
+  validate,
+  auditLog('reset-password', 'User'),
+  resetUserPassword
+);
 
 router.put(
   '/users/:id/status',

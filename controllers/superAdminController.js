@@ -773,6 +773,58 @@ exports.updateUser = async (req, res, next) => {
   }
 };
 
+// @desc    Reset user password (Super Admin)
+// @route   PUT /api/superadmin/users/:id/reset-password
+// @access  Private/SuperAdmin
+exports.resetUserPassword = async (req, res, next) => {
+  try {
+    const { newPassword, confirmPassword } = req.body;
+
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide both new password and confirm password',
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Passwords do not match',
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters',
+      });
+    }
+
+    const user = await User.findById(req.params.id).select('+password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    logger.info(`Password reset for user ${user.email} by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully',
+    });
+  } catch (error) {
+    logger.error('Reset user password error:', error);
+    next(error);
+  }
+};
+
 // @desc    Delete user
 // @route   DELETE /api/superadmin/users/:id
 // @access  Private/SuperAdmin
@@ -809,6 +861,29 @@ exports.deleteUser = async (req, res, next) => {
   }
 };
 
+// Helper: Reconcile stale exam statuses based on current time
+const syncExamStatus = (exam) => {
+  if (exam.status === 'draft' || exam.status === 'cancelled') return false;
+  const now = new Date();
+  const startTime = new Date(exam.startTime);
+  const endTime = new Date(exam.endTime);
+
+  let correctStatus;
+  if (now < startTime) {
+    correctStatus = 'scheduled';
+  } else if (now >= startTime && now <= endTime) {
+    correctStatus = 'ongoing';
+  } else {
+    correctStatus = 'completed';
+  }
+
+  if (exam.status !== correctStatus) {
+    exam.status = correctStatus;
+    return true;
+  }
+  return false;
+};
+
 // @desc    Get all exams globally
 // @route   GET /api/superadmin/exams
 // @access  Private/SuperAdmin
@@ -832,6 +907,15 @@ exports.getAllExams = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
+
+    // Sync stale statuses
+    const updates = [];
+    for (const exam of exams) {
+      if (syncExamStatus(exam)) {
+        updates.push(Exam.updateOne({ _id: exam._id }, { status: exam.status }));
+      }
+    }
+    if (updates.length > 0) await Promise.all(updates);
 
     const count = await Exam.countDocuments(query);
 

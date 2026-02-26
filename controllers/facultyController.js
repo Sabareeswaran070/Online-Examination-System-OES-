@@ -105,18 +105,35 @@ exports.createExam = async (req, res, next) => {
   }
 };
 
+// Helper: Reconcile stale exam statuses based on current time
+const syncExamStatus = (exam) => {
+  if (exam.status === 'draft' || exam.status === 'cancelled') return false;
+  const now = new Date();
+  const startTime = new Date(exam.startTime);
+  const endTime = new Date(exam.endTime);
+
+  let correctStatus;
+  if (now < startTime) {
+    correctStatus = 'scheduled';
+  } else if (now >= startTime && now <= endTime) {
+    correctStatus = 'ongoing';
+  } else {
+    correctStatus = 'completed';
+  }
+
+  if (exam.status !== correctStatus) {
+    exam.status = correctStatus;
+    return true; // changed
+  }
+  return false;
+};
+
 // @desc    Get all exams created by faculty
 // @route   GET /api/faculty/exams
 // @access  Private/Faculty
 exports.getExams = async (req, res, next) => {
   try {
     const { status, search, collegeId, departmentId, page = 1, limit = 10 } = req.query;
-
-    console.log('DEBUG: getExams called by:', {
-      user: req.user?.email,
-      role: req.user?.role,
-      isSuper: isSuperAdmin(req.user)
-    });
 
     const query = isSuperAdmin(req.user)
       ? {}
@@ -135,8 +152,6 @@ exports.getExams = async (req, res, next) => {
       query.title = { $regex: search, $options: 'i' };
     }
 
-    console.log('DEBUG: getExams query:', JSON.stringify(query));
-
     const exams = await Exam.find(query)
       .populate('subject', 'name subjectCode')
       .populate('departmentId', 'name')
@@ -146,7 +161,14 @@ exports.getExams = async (req, res, next) => {
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
-    console.log('DEBUG: getExams count:', exams.length);
+    // Sync stale statuses
+    const updates = [];
+    for (const exam of exams) {
+      if (syncExamStatus(exam)) {
+        updates.push(Exam.updateOne({ _id: exam._id }, { status: exam.status }));
+      }
+    }
+    if (updates.length > 0) await Promise.all(updates);
 
     const count = await Exam.countDocuments(query);
 
@@ -181,6 +203,11 @@ exports.getExam = async (req, res, next) => {
         success: false,
         message: 'Exam not found',
       });
+    }
+
+    // Sync stale status
+    if (syncExamStatus(exam)) {
+      await Exam.updateOne({ _id: exam._id }, { status: exam.status });
     }
 
     res.status(200).json({
@@ -251,7 +278,8 @@ exports.deleteExam = async (req, res, next) => {
       });
     }
 
-    if (exam.status === 'ongoing' || exam.status === 'completed') {
+    // Only restrict deletion for non-superadmin users
+    if (!isSuperAdmin(req.user) && (exam.status === 'ongoing' || exam.status === 'completed')) {
       return res.status(400).json({
         success: false,
         message: 'Cannot delete ongoing or completed exam',
@@ -423,6 +451,48 @@ exports.removeQuestionFromExam = async (req, res, next) => {
   }
 };
 
+// @desc    Remove all questions from exam
+// @route   DELETE /api/faculty/exams/:id/questions
+// @access  Private/Faculty
+exports.removeAllQuestionsFromExam = async (req, res, next) => {
+  try {
+    const findQuery = isSuperAdmin(req.user)
+      ? { _id: req.params.id }
+      : { _id: req.params.id, facultyId: req.user._id };
+    const exam = await Exam.findOne(findQuery);
+
+    if (!exam) {
+      return res.status(404).json({
+        success: false,
+        message: 'Exam not found',
+      });
+    }
+
+    // Only superadmin can remove questions from non-draft exams
+    if (!isSuperAdmin(req.user) && exam.status !== 'draft') {
+      return res.status(400).json({
+        success: false,
+        message: 'Can only remove questions from draft exams',
+      });
+    }
+
+    const removedCount = exam.questions.length;
+    exam.questions = [];
+    await exam.save();
+
+    logger.info(`All ${removedCount} questions removed from exam ${exam.title} by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: `${removedCount} questions removed from exam`,
+      data: exam,
+    });
+  } catch (error) {
+    logger.error('Remove all questions from exam error:', error);
+    next(error);
+  }
+};
+
 // @desc    Publish exam
 // @route   POST /api/faculty/exams/:id/publish
 // @access  Private/Faculty
@@ -447,13 +517,27 @@ exports.publishExam = async (req, res, next) => {
       });
     }
 
+    // Determine correct status based on current time
+    const now = new Date();
+    const startTime = new Date(exam.startTime);
+    const endTime = new Date(exam.endTime);
+
+    let computedStatus;
+    if (now < startTime) {
+      computedStatus = 'scheduled';
+    } else if (now >= startTime && now <= endTime) {
+      computedStatus = 'ongoing';
+    } else {
+      computedStatus = 'completed';
+    }
+
     exam.isPublished = true;
     exam.publishedAt = Date.now();
-    exam.status = 'scheduled';
+    exam.status = computedStatus;
 
     await exam.save();
 
-    logger.info(`Exam published: ${exam.title} by ${req.user.email}`);
+    logger.info(`Exam published: ${exam.title} by ${req.user.email} (status: ${computedStatus})`);
 
     res.status(200).json({
       success: true,

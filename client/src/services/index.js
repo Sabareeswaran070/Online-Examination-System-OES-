@@ -121,6 +121,10 @@ export const superAdminService = {
     const response = await api.put(`/superadmin/users/${id}/status`, { status });
     return response.data;
   },
+  resetUserPassword: async (id, data) => {
+    const response = await api.put(`/superadmin/users/${id}/reset-password`, data);
+    return response.data;
+  },
 
   // Question Management
   getQuestions: async (params) => {
@@ -414,6 +418,10 @@ export const facultyService = {
     const response = await api.delete(`/faculty/exams/${examId}/questions/${questionId}`);
     return response.data;
   },
+  removeAllQuestionsFromExam: async (examId) => {
+    const response = await api.delete(`/faculty/exams/${examId}/questions`);
+    return response.data;
+  },
 
   getQuestions: async (params) => {
     const response = await api.get('/faculty/questions', { params });
@@ -501,6 +509,11 @@ export const studentService = {
 
   getAnalytics: async () => {
     const response = await api.get('/student/analytics');
+    return response.data;
+  },
+
+  runCode: async (data) => {
+    const response = await api.post('/student/run-code', data);
     return response.data;
   },
 };

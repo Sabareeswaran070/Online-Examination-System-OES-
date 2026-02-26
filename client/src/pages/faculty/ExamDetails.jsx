@@ -12,7 +12,7 @@ import Badge from '@/components/common/Badge.jsx';
 import AIGenerateModal from '@/components/superadmin/AIGenerateModal.jsx';
 import { facultyService, superAdminService } from '@/services';
 import { useAuth } from '@/context/AuthContext';
-import { formatDateTime } from '@/utils/dateUtils';
+import { formatDateTime, getExamLiveStatus, getTimeRemainingText } from '@/utils/dateUtils';
 import toast from 'react-hot-toast';
 
 const ExamDetails = () => {
@@ -228,6 +228,22 @@ const ExamDetails = () => {
     }
   };
 
+  const handleRemoveAllQuestions = async () => {
+    const count = exam?.questions?.length || 0;
+    if (count === 0) {
+      toast.error('No questions to remove');
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to remove all ${count} questions from this exam? This action cannot be undone.`)) return;
+    try {
+      await facultyService.removeAllQuestionsFromExam(id);
+      toast.success(`All ${count} questions removed from exam`);
+      fetchExamDetails();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to remove questions');
+    }
+  };
+
   const handleMarksChange = async (questionId, newMarks) => {
     try {
       await facultyService.updateExamQuestionMarks(id, questionId, Number(newMarks));
@@ -329,7 +345,7 @@ const ExamDetails = () => {
           size="sm"
           variant="danger"
           onClick={() => handleRemoveQuestion(row.questionId?._id)}
-          disabled={exam?.status !== 'draft'}
+          disabled={!isSuperAdmin && exam?.status !== 'draft'}
         >
           <FiTrash2 className="w-4 h-4" />
         </Button>
@@ -401,11 +417,14 @@ const ExamDetails = () => {
             <p className="text-sm text-yellow-700 font-medium">Status</p>
             <div className="mt-2">
               <Badge
-                variant={exam.status === 'draft' ? 'secondary' : exam.status === 'scheduled' ? 'info' : 'success'}
+                variant={getExamLiveStatus(exam).variant}
               >
-                {exam.status}
+                {getExamLiveStatus(exam).label}
               </Badge>
             </div>
+            <p className="text-xs text-yellow-700 mt-2 font-medium">
+              {getTimeRemainingText(exam)}
+            </p>
           </div>
         </Card>
       </div>
@@ -505,24 +524,34 @@ const ExamDetails = () => {
       <Card
         title={`Questions (${exam.questions?.length || 0})`}
         action={
-          exam.status === 'draft' && (
+          (exam.status === 'draft' || isSuperAdmin) && (
             <div className="flex gap-2">
-              {isSuperAdmin && (
-                <button
-                  onClick={() => setShowAIGenerateModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-white bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-sm hover:shadow-md transition-all text-sm"
-                >
-                  <FiZap className="w-4 h-4" />
-                  AI Generate
-                </button>
+              {(exam.questions?.length || 0) > 0 && (isSuperAdmin || exam.status === 'draft') && (
+                <Button size="sm" variant="danger" onClick={handleRemoveAllQuestions}>
+                  <FiTrash2 className="w-4 h-4 mr-1" />
+                  Remove All
+                </Button>
               )}
-              <Button size="sm" onClick={() => setShowGenerateModal(true)}>
-                Generate Random
-              </Button>
-              <Button size="sm" onClick={() => setShowAddModal(true)}>
-                <FiPlus className="w-4 h-4 mr-1" />
-                Add Question
-              </Button>
+              {exam.status === 'draft' && (
+                <>
+                  {isSuperAdmin && (
+                    <button
+                      onClick={() => setShowAIGenerateModal(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-white bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-sm hover:shadow-md transition-all text-sm"
+                    >
+                      <FiZap className="w-4 h-4" />
+                      AI Generate
+                    </button>
+                  )}
+                  <Button size="sm" onClick={() => setShowGenerateModal(true)}>
+                    Generate Random
+                  </Button>
+                  <Button size="sm" onClick={() => setShowAddModal(true)}>
+                    <FiPlus className="w-4 h-4 mr-1" />
+                    Add Question
+                  </Button>
+                </>
+              )}
             </div>
           )
         }

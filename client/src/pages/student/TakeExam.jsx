@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiCode, FiPlay, FiClock, FiCpu, FiChevronDown, FiChevronUp, FiEye, FiFileText } from 'react-icons/fi';
+import { FiCode, FiPlay, FiClock, FiCpu, FiChevronDown, FiChevronUp, FiEye, FiFileText, FiTerminal, FiCheckCircle, FiXCircle, FiLoader } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Loader from '@/components/common/Loader.jsx';
@@ -23,6 +23,10 @@ const TakeExam = () => {
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
   const [selectedLanguages, setSelectedLanguages] = useState({});  // { questionId: 'python' }
   const [showProblemDetails, setShowProblemDetails] = useState({}); // { questionId: true/false }
+  const [runningCode, setRunningCode] = useState(false);
+  const [codeOutput, setCodeOutput] = useState(null);  // single run output
+  const [testResults, setTestResults] = useState(null); // test case results
+  const [customInput, setCustomInput] = useState('');
 
   const CODING_LANGUAGES = [
     { value: 'javascript', label: 'JavaScript', icon: '🟨' },
@@ -79,7 +83,7 @@ const TakeExam = () => {
       setExam(examData);
       setResult(resultData);
       setTimeLeft(remainingTime);
-      
+
       // Initialize answers from saved state if any
       if (resultData.answers) {
         const savedAnswers = {};
@@ -178,6 +182,78 @@ const TakeExam = () => {
     return 'bg-gray-200 text-gray-600';
   };
 
+  // ——— Code execution handlers ———
+  const getCurrentLanguage = (question) => {
+    return selectedLanguages[question._id] || question.programmingLanguage || 'javascript';
+  };
+
+  const handleRunCode = async () => {
+    const q = exam.questions[currentQuestion];
+    const code = answers[q._id] || q.starterCode || '';
+    const lang = getCurrentLanguage(q);
+
+    if (!code.trim()) {
+      toast.error('Please write some code first');
+      return;
+    }
+
+    setRunningCode(true);
+    setCodeOutput(null);
+    setTestResults(null);
+
+    try {
+      const response = await studentService.runCode({
+        code,
+        language: lang,
+        input: customInput,
+      });
+      setCodeOutput(response.data);
+    } catch (error) {
+      setCodeOutput({
+        stderr: error.response?.data?.message || 'Code execution failed. Please try again.',
+        status: { description: 'Error' },
+      });
+    } finally {
+      setRunningCode(false);
+    }
+  };
+
+  const handleRunTestCases = async () => {
+    const q = exam.questions[currentQuestion];
+    const code = answers[q._id] || q.starterCode || '';
+    const lang = getCurrentLanguage(q);
+    const visibleTests = q.visibleTestCases || [];
+
+    if (!code.trim()) {
+      toast.error('Please write some code first');
+      return;
+    }
+    if (visibleTests.length === 0) {
+      toast.error('No test cases available for this question');
+      return;
+    }
+
+    setRunningCode(true);
+    setCodeOutput(null);
+    setTestResults(null);
+
+    try {
+      const response = await studentService.runCode({
+        code,
+        language: lang,
+        testCases: visibleTests.map(tc => ({
+          input: tc.input || '',
+          expectedOutput: tc.expectedOutput || '',
+        })),
+      });
+      setTestResults(response.data);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to run test cases');
+    } finally {
+      setRunningCode(false);
+    }
+  };
+
   if (loading) return <Loader fullScreen />;
   if (!exam || !result) return <div>Exam not found</div>;
 
@@ -218,11 +294,10 @@ const TakeExam = () => {
                   <button
                     key={q._id}
                     onClick={() => setCurrentQuestion(index)}
-                    className={`h-10 w-10 rounded-lg font-medium transition-colors ${
-                      currentQuestion === index
+                    className={`h-10 w-10 rounded-lg font-medium transition-colors ${currentQuestion === index
                         ? 'bg-primary-600 text-white ring-2 ring-primary-300'
                         : getQuestionColor(q._id)
-                    }`}
+                      }`}
                   >
                     {index + 1}
                   </button>
@@ -328,11 +403,10 @@ const TakeExam = () => {
                               key={lang.value}
                               type="button"
                               onClick={() => setSelectedLanguages(prev => ({ ...prev, [question._id]: lang.value }))}
-                              className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
-                                (selectedLanguages[question._id] || question.programmingLanguage || 'javascript') === lang.value
+                              className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all duration-200 flex items-center gap-2 ${(selectedLanguages[question._id] || question.programmingLanguage || 'javascript') === lang.value
                                   ? 'bg-violet-100 text-violet-700 border-violet-400 shadow-sm'
                                   : 'bg-white text-gray-600 border-gray-200 hover:border-violet-200 hover:bg-violet-50'
-                              }`}
+                                }`}
                             >
                               <span>{lang.icon}</span>
                               <span>{lang.label}</span>
@@ -466,9 +540,9 @@ const TakeExam = () => {
                             <span className="text-xs text-gray-400 ml-2 font-mono">
                               solution.{(selectedLanguages[question._id] || question.programmingLanguage || 'js') === 'python' ? 'py'
                                 : (selectedLanguages[question._id] || question.programmingLanguage || 'js') === 'java' ? 'java'
-                                : (selectedLanguages[question._id] || question.programmingLanguage || 'js') === 'cpp' ? 'cpp'
-                                : (selectedLanguages[question._id] || question.programmingLanguage || 'js') === 'c' ? 'c'
-                                : 'js'}
+                                  : (selectedLanguages[question._id] || question.programmingLanguage || 'js') === 'cpp' ? 'cpp'
+                                    : (selectedLanguages[question._id] || question.programmingLanguage || 'js') === 'c' ? 'c'
+                                      : 'js'}
                             </span>
                           </div>
                           <span className="text-xs text-gray-500">
@@ -507,6 +581,162 @@ const TakeExam = () => {
                           </pre>
                         </div>
                       )}
+
+                      {/* ===== Run Code Controls & Output ===== */}
+                      <div className="space-y-3">
+                        {/* Custom Input */}
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">
+                            <FiTerminal className="inline mr-1" />
+                            Custom Input (stdin)
+                          </label>
+                          <textarea
+                            value={customInput}
+                            onChange={(e) => setCustomInput(e.target.value)}
+                            className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 bg-gray-50"
+                            rows={2}
+                            placeholder="Enter input for your program..."
+                          />
+                        </div>
+
+                        {/* Run Buttons */}
+                        <div className="flex gap-3">
+                          <button
+                            onClick={handleRunCode}
+                            disabled={runningCode}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-semibold text-sm hover:from-green-600 hover:to-emerald-700 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {runningCode ? (
+                              <><FiLoader className="w-4 h-4 animate-spin" /> Running...</>
+                            ) : (
+                              <><FiPlay className="w-4 h-4" /> Run Code</>
+                            )}
+                          </button>
+                          {question.visibleTestCases?.length > 0 && (
+                            <button
+                              onClick={handleRunTestCases}
+                              disabled={runningCode}
+                              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-semibold text-sm hover:from-blue-600 hover:to-indigo-700 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {runningCode ? (
+                                <><FiLoader className="w-4 h-4 animate-spin" /> Running...</>
+                              ) : (
+                                <><FiCheckCircle className="w-4 h-4" /> Run Test Cases ({question.visibleTestCases.length})</>
+                              )}
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Single Run Output */}
+                        {codeOutput && (
+                          <div className="rounded-xl border-2 border-gray-200 overflow-hidden">
+                            <div className="bg-gray-800 px-4 py-2 flex items-center justify-between">
+                              <span className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
+                                <FiTerminal className="w-3.5 h-3.5" /> Output
+                              </span>
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded ${codeOutput.status?.id === 3 ? 'bg-green-900 text-green-300' :
+                                  codeOutput.status?.id === 6 ? 'bg-red-900 text-red-300' :
+                                    'bg-yellow-900 text-yellow-300'
+                                }`}>
+                                {codeOutput.status?.description || 'Error'}
+                              </span>
+                            </div>
+                            <div className="bg-gray-900 p-4 space-y-2">
+                              {codeOutput.compile_output && (
+                                <div>
+                                  <span className="text-[10px] font-bold text-red-400 uppercase">Compile Error</span>
+                                  <pre className="text-xs text-red-400 font-mono whitespace-pre-wrap mt-1">{codeOutput.compile_output}</pre>
+                                </div>
+                              )}
+                              {codeOutput.stderr && (
+                                <div>
+                                  <span className="text-[10px] font-bold text-red-400 uppercase">Error</span>
+                                  <pre className="text-xs text-red-400 font-mono whitespace-pre-wrap mt-1">{codeOutput.stderr}</pre>
+                                </div>
+                              )}
+                              {codeOutput.stdout !== undefined && (
+                                <div>
+                                  <span className="text-[10px] font-bold text-green-400 uppercase">Output</span>
+                                  <pre className="text-xs text-green-300 font-mono whitespace-pre-wrap mt-1">{codeOutput.stdout || '(no output)'}</pre>
+                                </div>
+                              )}
+                              {(codeOutput.time || codeOutput.memory) && (
+                                <div className="flex gap-4 pt-2 border-t border-gray-700">
+                                  {codeOutput.time && (
+                                    <span className="text-xs text-gray-400 flex items-center gap-1">
+                                      <FiClock className="w-3 h-3" /> {codeOutput.time}s
+                                    </span>
+                                  )}
+                                  {codeOutput.memory && (
+                                    <span className="text-xs text-gray-400 flex items-center gap-1">
+                                      <FiCpu className="w-3 h-3" /> {(codeOutput.memory / 1024).toFixed(1)} MB
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Test Case Results */}
+                        {testResults && (
+                          <div className="rounded-xl border-2 border-gray-200 overflow-hidden">
+                            <div className="bg-gray-800 px-4 py-2.5 flex items-center justify-between">
+                              <span className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
+                                <FiCheckCircle className="w-3.5 h-3.5" /> Test Results
+                              </span>
+                              <span className={`text-sm font-bold ${testResults.summary.failed === 0 ? 'text-green-400' : 'text-red-400'
+                                }`}>
+                                {testResults.summary.passed}/{testResults.summary.total} Passed
+                              </span>
+                            </div>
+                            <div className="divide-y divide-gray-700">
+                              {testResults.results.map((tr, idx) => (
+                                <div key={idx} className={`p-4 ${tr.passed ? 'bg-green-950/30' : 'bg-red-950/30'
+                                  }`}>
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs font-bold text-gray-300">
+                                      Test Case {idx + 1}
+                                    </span>
+                                    {tr.passed ? (
+                                      <span className="flex items-center gap-1 text-xs font-bold text-green-400">
+                                        <FiCheckCircle className="w-3.5 h-3.5" /> Passed
+                                      </span>
+                                    ) : (
+                                      <span className="flex items-center gap-1 text-xs font-bold text-red-400">
+                                        <FiXCircle className="w-3.5 h-3.5" /> Failed
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-3 text-xs font-mono">
+                                    <div>
+                                      <span className="text-[10px] font-bold text-gray-500 uppercase">Input</span>
+                                      <pre className="text-gray-300 mt-1 whitespace-pre-wrap bg-black/30 p-2 rounded">{tr.input || '(none)'}</pre>
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] font-bold text-gray-500 uppercase">Expected</span>
+                                      <pre className="text-gray-300 mt-1 whitespace-pre-wrap bg-black/30 p-2 rounded">{tr.expectedOutput}</pre>
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] font-bold text-gray-500 uppercase">Actual</span>
+                                      <pre className={`mt-1 whitespace-pre-wrap bg-black/30 p-2 rounded ${tr.passed ? 'text-green-300' : 'text-red-300'
+                                        }`}>{tr.actualOutput || tr.error || '(no output)'}</pre>
+                                    </div>
+                                  </div>
+                                  {(tr.compile_output || tr.stderr) && (
+                                    <pre className="text-xs text-red-400 font-mono mt-2 whitespace-pre-wrap">{tr.compile_output || tr.stderr}</pre>
+                                  )}
+                                  {tr.time && (
+                                    <span className="text-[10px] text-gray-500 mt-1 inline-block">
+                                      ⏱ {tr.time}s | 💾 {tr.memory ? (tr.memory / 1024).toFixed(1) + ' MB' : 'N/A'}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

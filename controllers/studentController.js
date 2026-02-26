@@ -4,6 +4,7 @@ const Result = require('../models/Result');
 const Question = require('../models/Question');
 const logger = require('../config/logger');
 const evaluationService = require('../services/evaluationService');
+const compilerService = require('../services/compilerService');
 
 // Helper: sanitize question for student (strip correct answers)
 const sanitizeQuestion = (q) => {
@@ -38,6 +39,29 @@ const sanitizeQuestion = (q) => {
   };
 };
 
+// Helper: Reconcile stale exam statuses based on current time
+const syncExamStatus = (exam) => {
+  if (exam.status === 'draft' || exam.status === 'cancelled') return false;
+  const now = new Date();
+  const startTime = new Date(exam.startTime);
+  const endTime = new Date(exam.endTime);
+
+  let correctStatus;
+  if (now < startTime) {
+    correctStatus = 'scheduled';
+  } else if (now >= startTime && now <= endTime) {
+    correctStatus = 'ongoing';
+  } else {
+    correctStatus = 'completed';
+  }
+
+  if (exam.status !== correctStatus) {
+    exam.status = correctStatus;
+    return true;
+  }
+  return false;
+};
+
 // @desc    Get student dashboard
 // @route   GET /api/student/dashboard
 // @access  Private/Student
@@ -66,8 +90,9 @@ exports.getDashboard = async (req, res, next) => {
 
     const upcomingExams = await Exam.find({
       departmentId: req.user.departmentId,
-      status: 'scheduled',
-      startTime: { $gte: new Date() },
+      status: { $in: ['scheduled', 'ongoing'] },
+      endTime: { $gte: new Date() },
+      isPublished: true,
       $or: [
         { allowedStudents: req.user._id },
         { allowedStudents: { $size: 0 } },
@@ -77,6 +102,13 @@ exports.getDashboard = async (req, res, next) => {
       .populate('facultyId', 'name')
       .sort({ startTime: 1 })
       .limit(5);
+
+    // Sync stale statuses
+    for (const exam of upcomingExams) {
+      if (syncExamStatus(exam)) {
+        await Exam.updateOne({ _id: exam._id }, { status: exam.status });
+      }
+    }
 
     const recentResults = await Result.find({
       studentId: req.user._id,
@@ -146,6 +178,15 @@ exports.getAvailableExams = async (req, res, next) => {
       .populate('subject', 'name subjectCode')
       .populate('facultyId', 'name')
       .sort({ startTime: 1 });
+
+    // Sync stale statuses
+    const updates = [];
+    for (const exam of exams) {
+      if (syncExamStatus(exam)) {
+        updates.push(Exam.updateOne({ _id: exam._id }, { status: exam.status }));
+      }
+    }
+    if (updates.length > 0) await Promise.all(updates);
 
     // Check if student has already attempted
     const examsWithStatus = await Promise.all(
@@ -255,14 +296,14 @@ exports.startExam = async (req, res, next) => {
     if (now < exam.startTime) {
       return res.status(400).json({
         success: false,
-        message: 'Exam has not started yet',
+        message: `Exam has not started yet. It starts at ${new Date(exam.startTime).toLocaleString()}.`,
       });
     }
 
     if (now > exam.endTime) {
       return res.status(400).json({
         success: false,
-        message: 'Exam has ended',
+        message: `Exam has already ended at ${new Date(exam.endTime).toLocaleString()}.`,
       });
     }
 
@@ -306,16 +347,58 @@ exports.startExam = async (req, res, next) => {
     }
 
     // Create new result
-    const result = await Result.create({
-      studentId: req.user._id,
-      examId: req.params.id,
-      status: 'in-progress',
-      startedAt: Date.now(),
-      answers: exam.questions.map((q) => ({
-        questionId: q.questionId._id,
-        isEvaluated: false,
-      })),
-    });
+    let result;
+    try {
+      result = await Result.create({
+        studentId: req.user._id,
+        examId: req.params.id,
+        status: 'in-progress',
+        startedAt: Date.now(),
+        answers: exam.questions.map((q) => ({
+          questionId: q.questionId._id,
+          isEvaluated: false,
+        })),
+      });
+    } catch (createError) {
+      // Handle duplicate key error (race condition / double request)
+      if (createError.code === 11000) {
+        const existingResult = await Result.findOne({
+          studentId: req.user._id,
+          examId: req.params.id,
+        });
+
+        if (existingResult && existingResult.status === 'in-progress') {
+          // Return existing in-progress exam
+          const elapsedSeconds = Math.floor((Date.now() - existingResult.startedAt) / 1000);
+          const totalSeconds = exam.duration * 60;
+          const remainingTime = Math.max(0, totalSeconds - elapsedSeconds);
+
+          return res.status(200).json({
+            success: true,
+            message: 'Exam already in progress',
+            data: {
+              exam: {
+                _id: exam._id,
+                title: exam.title,
+                subject: exam.subject,
+                duration: exam.duration,
+                totalMarks: exam.totalMarks,
+                passingMarks: exam.passingMarks,
+                questions: exam.questions.map((q) => sanitizeQuestion(q)),
+              },
+              result: existingResult,
+              remainingTime,
+            },
+          });
+        } else if (existingResult) {
+          return res.status(400).json({
+            success: false,
+            message: 'You have already submitted this exam',
+          });
+        }
+      }
+      throw createError;
+    }
 
     // Prepare questions (hide correct answers)
     const questions = exam.questions.map((q) => sanitizeQuestion(q));
@@ -525,6 +608,14 @@ exports.getResultDetails = async (req, res, next) => {
       });
     }
 
+    // Check if exam still exists (may have been deleted)
+    if (!result.examId) {
+      return res.status(404).json({
+        success: false,
+        message: 'The exam associated with this result has been deleted',
+      });
+    }
+
     // Check if exam allows review
     if (!result.examId.allowReview && result.status === 'in-progress') {
       return res.status(403).json({
@@ -698,5 +789,49 @@ exports.getAnalytics = async (req, res, next) => {
   } catch (error) {
     logger.error('Get analytics error:', error);
     next(error);
+  }
+};
+
+// @desc    Run code (compile & execute)
+// @route   POST /api/student/run-code
+// @access  Private/Student
+exports.runCode = async (req, res, next) => {
+  try {
+    const { code, language, input, testCases } = req.body;
+
+    if (!code || !language) {
+      return res.status(400).json({
+        success: false,
+        message: 'Code and language are required',
+      });
+    }
+
+    // If testCases provided, run against all test cases
+    if (testCases && testCases.length > 0) {
+      const result = await compilerService.runAgainstTestCases(
+        code,
+        language,
+        testCases
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: result,
+      });
+    }
+
+    // Single execution with custom input
+    const result = await compilerService.executeCode(code, language, input || '');
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    logger.error('Run code error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Code execution failed',
+    });
   }
 };

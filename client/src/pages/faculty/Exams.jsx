@@ -12,7 +12,7 @@ import Loader from '@/components/common/Loader.jsx';
 import Badge from '@/components/common/Badge.jsx';
 import { facultyService } from '@/services';
 import { useAuth } from '@/context/AuthContext';
-import { formatDateTime } from '@/utils/dateUtils';
+import { formatDateTime, getExamLiveStatus, getTimeRemainingText } from '@/utils/dateUtils';
 import toast from 'react-hot-toast';
 
 const Exams = () => {
@@ -202,7 +202,12 @@ const Exams = () => {
     },
     {
       header: 'Start Time',
-      accessor: (row) => formatDateTime(row.startTime)
+      render: (row) => (
+        <div>
+          <div className="text-sm">{formatDateTime(row.startTime)}</div>
+          <div className="text-xs text-gray-500 mt-0.5">{getTimeRemainingText(row)}</div>
+        </div>
+      )
     },
     {
       header: 'Duration',
@@ -218,7 +223,10 @@ const Exams = () => {
     },
     {
       header: 'Status',
-      accessor: (row) => getStatusBadge(row.status)
+      render: (row) => {
+        const { label, variant } = getExamLiveStatus(row);
+        return <Badge variant={variant}>{label}</Badge>;
+      }
     },
     {
       header: 'Actions',

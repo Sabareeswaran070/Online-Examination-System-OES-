@@ -9,6 +9,7 @@ const {
   addQuestionToExam,
   updateExamQuestionMarks,
   removeQuestionFromExam,
+  removeAllQuestionsFromExam,
   publishExam,
   createQuestion,
   getQuestions,
@@ -81,6 +82,14 @@ router.delete(
   validateObjectId('id'),
   validate,
   removeQuestionFromExam
+);
+
+router.delete(
+  '/exams/:id/questions',
+  validateObjectId('id'),
+  validate,
+  auditLog('removeAll', 'Exam'),
+  removeAllQuestionsFromExam
 );
 
 router.post(
