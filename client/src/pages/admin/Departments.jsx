@@ -54,10 +54,9 @@ const Departments = () => {
         limit: pageSize,
         search: searchTerm
       });
-      const data = deptsRes.data || deptsRes;
-      setDepartments(data.data || []);
-      setTotalPages(data.totalPages || 1);
-      setTotalDepartments(data.count || 0);
+      setDepartments(deptsRes.data || []);
+      setTotalPages(deptsRes.totalPages || 1);
+      setTotalDepartments(deptsRes.count || 0);
     } catch (error) {
       console.error('Fetch departments error:', error);
       toast.error('Failed to load departments');

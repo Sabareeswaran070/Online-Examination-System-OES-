@@ -34,17 +34,6 @@ const Students = () => {
 
   useEffect(() => {
     fetchDepartments();
-
-    // Add test functions to window for debugging
-    window.testEdit = () => {
-      console.log('Window test edit function called!');
-      alert('Test edit works!');
-    };
-    window.testDelete = () => {
-      console.log('Window test delete function called!');
-      alert('Test delete works!');
-    };
-    console.log('Test functions added to window object');
   }, []);
 
   useEffect(() => {
@@ -68,10 +57,9 @@ const Students = () => {
         limit: pageSize,
         search: searchTerm
       });
-      const data = studentsRes.data || studentsRes;
-      setStudents(data.data || []);
-      setTotalPages(data.totalPages || 1);
-      setTotalStudents(data.count || 0);
+      setStudents(studentsRes.data || []);
+      setTotalPages(studentsRes.totalPages || 1);
+      setTotalStudents(studentsRes.count || 0);
     } catch (error) {
       console.error('Fetch students error:', error);
       toast.error('Failed to load student data');
@@ -104,10 +92,6 @@ const Students = () => {
   };
 
   const handleEdit = (student) => {
-    console.log('=== EDIT BUTTON CLICKED ===');
-    console.log('Student:', student);
-    console.log('Student name:', student.name);
-    console.log('Student ID:', student._id);
     setEditingStudent(student);
     setFormData({
       name: student.name,
@@ -118,11 +102,9 @@ const Students = () => {
       regNo: student.regNo || '',
     });
     setShowModal(true);
-    console.log('Modal should now be visible');
   };
 
   const handleDelete = async (id) => {
-    console.log('Delete button clicked for student ID:', id);
     if (window.confirm('Delete this student?')) {
       try {
         await collegeAdminService.deleteUser(id);
@@ -173,21 +155,6 @@ const Students = () => {
             </Button>
           </div>
         </div>
-      </div>
-
-      {/* TEST BUTTON - Remove after debugging */}
-      <div className="bg-yellow-100 border-2 border-yellow-500 p-4 rounded-lg">
-        <p className="text-sm font-bold mb-2">DEBUG TEST:</p>
-        <button
-          type="button"
-          onClick={() => {
-            console.log('TEST BUTTON CLICKED!');
-            alert('Test button works!');
-          }}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-        >
-          Click Me to Test Events
-        </button>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4">
@@ -271,13 +238,11 @@ const Students = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
                           <div className="flex justify-end gap-3">
-                            {/* React onClick version */}
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                console.log('=== EDIT CLICKED ===', student._id);
                                 handleEdit(student);
                               }}
                               className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors cursor-pointer"
@@ -290,22 +255,12 @@ const Students = () => {
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                console.log('=== DELETE CLICKED ===', student._id);
                                 handleDelete(student._id);
                               }}
                               className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors cursor-pointer"
                             >
                               <FiTrash2 size={14} />
                               <span>Delete</span>
-                            </button>
-
-                            {/* HTML onclick version for testing */}
-                            <button
-                              type="button"
-                              onClick={() => window.testEdit()}
-                              className="px-2 py-1 text-xs bg-green-500 text-white rounded"
-                            >
-                              Test
                             </button>
                           </div>
                         </td>

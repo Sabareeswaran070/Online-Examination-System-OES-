@@ -88,10 +88,9 @@ const SuperAdminExams = () => {
                 search: searchTerm || undefined
             };
             const response = await facultyService.getExams(params);
-            const data = response.data || response;
-            setExams(data.data || []);
-            setTotalPages(data.totalPages || 1);
-            setTotalExams(data.count || 0);
+            setExams(response.data || []);
+            setTotalPages(response.totalPages || 1);
+            setTotalExams(response.count || 0);
         } catch (error) {
             toast.error('Failed to load exams');
         } finally {

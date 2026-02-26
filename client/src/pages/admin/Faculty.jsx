@@ -57,10 +57,9 @@ const Faculty = () => {
         limit: pageSize,
         search: searchTerm
       });
-      const data = facultyRes.data || facultyRes;
-      setFaculty(data.data || []);
-      setTotalPages(data.totalPages || 1);
-      setTotalFaculty(data.count || 0);
+      setFaculty(facultyRes.data || []);
+      setTotalPages(facultyRes.totalPages || 1);
+      setTotalFaculty(facultyRes.count || 0);
     } catch (error) {
       console.error('Fetch faculty error:', error);
       toast.error('Failed to load faculty data');

@@ -60,10 +60,9 @@ const Questions = () => {
         search: searchTerm || undefined
       };
       const response = await facultyService.getQuestions(params);
-      const data = response.data || response;
-      setQuestions(data.data || []);
-      setTotalPages(data.totalPages || 1);
-      setTotalQuestions(data.count || 0);
+      setQuestions(response.data || []);
+      setTotalPages(response.totalPages || 1);
+      setTotalQuestions(response.count || 0);
     } catch (error) {
       toast.error('Failed to load questions');
       console.error(error);

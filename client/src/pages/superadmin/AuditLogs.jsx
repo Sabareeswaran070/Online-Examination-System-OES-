@@ -31,10 +31,9 @@ const AuditLogs = () => {
         resource: resourceFilter,
         action: actionFilter
       });
-      const data = response.data || response;
-      setLogs(data.data || []);
-      setTotalPages(data.totalPages || 1);
-      setTotalLogs(data.count || 0);
+      setLogs(response.data || []);
+      setTotalPages(response.totalPages || 1);
+      setTotalLogs(response.count || 0);
     } catch (error) {
       console.error('Audit logs error:', error);
       toast.error('Failed to load audit logs');
