@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { FiPlus, FiEdit, FiTrash2, FiFilter, FiHelpCircle, FiSearch, FiCheck, FiX, FiCode, FiList, FiCheckCircle, FiFileText, FiFolder, FiChevronRight, FiGrid, FiArrowLeft, FiUpload, FiDownload, FiEye, FiEyeOff, FiClock, FiCpu, FiCopy, FiAlertTriangle } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
@@ -15,6 +16,7 @@ import { superAdminService } from '@/services';
 import toast from 'react-hot-toast';
 
 const AdminQuestions = () => {
+    const location = useLocation();
     const [loading, setLoading] = useState(true);
     const [questions, setQuestions] = useState([]);
     const [subjects, setSubjects] = useState([]);
@@ -106,6 +108,41 @@ const AdminQuestions = () => {
             fetchQuestions();
         }
     }, [filters, viewMode]);
+
+    useEffect(() => {
+        if (location.state?.preSelectSubject && subjects.length > 0) {
+            const subjectId = location.state.preSelectSubject;
+            const subject = subjects.find(s => s._id === subjectId);
+
+            if (subject) {
+                // Set filters to show questions for this subject
+                setFilters(prev => ({
+                    ...prev,
+                    subject: subjectId,
+                    page: 1,
+                    type: '', // Clear other filters for clarity
+                    status: '',
+                    isGlobal: '',
+                    search: ''
+                }));
+                setViewMode('questions');
+                setSelectedFolder(subject);
+                setFolderType('subject');
+
+                // Open modal if requested
+                if (location.state.openModal === 'AI') {
+                    setShowAIGenerateModal(true);
+                } else if (location.state.openModal === 'manual') {
+                    resetForm();
+                    setFormData(prev => ({ ...prev, subject: subjectId }));
+                    setShowModal(true);
+                }
+
+                // Clear navigation state to prevent re-triggering
+                window.history.replaceState({}, document.title);
+            }
+        }
+    }, [location.state, subjects]);
 
     const fetchSubjects = async () => {
         try {

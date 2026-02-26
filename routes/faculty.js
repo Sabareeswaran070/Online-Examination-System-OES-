@@ -7,6 +7,8 @@ const {
   updateExam,
   deleteExam,
   addQuestionToExam,
+  updateExamQuestionMarks,
+  removeQuestionFromExam,
   publishExam,
   createQuestion,
   getQuestions,
@@ -65,6 +67,20 @@ router.post(
   validateObjectId('id'),
   validate,
   addQuestionToExam
+);
+
+router.put(
+  '/exams/:id/questions/:questionId/marks',
+  validateObjectId('id'),
+  validate,
+  updateExamQuestionMarks
+);
+
+router.delete(
+  '/exams/:id/questions/:questionId',
+  validateObjectId('id'),
+  validate,
+  removeQuestionFromExam
 );
 
 router.post(

@@ -147,6 +147,10 @@ export const superAdminService = {
     const response = await api.get('/superadmin/subjects');
     return response.data;
   },
+  getExams: async (params) => {
+    const response = await api.get('/superadmin/exams', { params });
+    return response.data;
+  },
   bulkUploadQuestions: async (formData) => {
     const response = await api.post('/superadmin/questions/bulk-upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -155,6 +159,10 @@ export const superAdminService = {
   },
   generateAICodingQuestion: async (params) => {
     const response = await api.post('/superadmin/questions/generate-ai', params);
+    return response.data;
+  },
+  generateAIQuestions: async (params) => {
+    const response = await api.post('/superadmin/questions/generate-ai-multi', params);
     return response.data;
   },
   getQuestionSets: async (params) => {
@@ -193,6 +201,18 @@ export const superAdminService = {
     const response = await api.post('/superadmin/users/bulk-upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+    return response.data;
+  },
+  createSubject: async (collegeId, deptId, data) => {
+    const response = await api.post(`/superadmin/colleges/${collegeId}/departments/${deptId}/subjects`, data);
+    return response.data;
+  },
+  getDepartmentSubjects: async (collegeId, deptId) => {
+    const response = await api.get(`/superadmin/colleges/${collegeId}/departments/${deptId}/subjects`);
+    return response.data;
+  },
+  deleteSubject: async (id) => {
+    const response = await api.delete(`/superadmin/subjects/${id}`);
     return response.data;
   },
 };
@@ -270,6 +290,21 @@ export const collegeAdminService = {
     const response = await api.delete(`/admin/users/${id}`);
     return response.data;
   },
+
+  getDepartmentSubjects: async (deptId) => {
+    const response = await api.get(`/admin/departments/${deptId}/subjects`);
+    return response.data;
+  },
+
+  createSubject: async (data) => {
+    const response = await api.post('/admin/subjects', data);
+    return response.data;
+  },
+
+  deleteSubject: async (id) => {
+    const response = await api.delete(`/admin/subjects/${id}`);
+    return response.data;
+  },
 };
 
 // Department Head Services
@@ -323,6 +358,11 @@ export const deptHeadService = {
     const response = await api.get('/depthead/analytics');
     return response.data;
   },
+
+  deleteSubject: async (id) => {
+    const response = await api.delete(`/depthead/subjects/${id}`);
+    return response.data;
+  },
 };
 
 // Faculty Services
@@ -364,6 +404,14 @@ export const facultyService = {
 
   addQuestionToExam: async (examId, questionId) => {
     const response = await api.post(`/faculty/exams/${examId}/questions`, { questionId });
+    return response.data;
+  },
+  updateExamQuestionMarks: async (examId, questionId, marks) => {
+    const response = await api.put(`/faculty/exams/${examId}/questions/${questionId}/marks`, { marks });
+    return response.data;
+  },
+  removeQuestionFromExam: async (examId, questionId) => {
+    const response = await api.delete(`/faculty/exams/${examId}/questions/${questionId}`);
     return response.data;
   },
 

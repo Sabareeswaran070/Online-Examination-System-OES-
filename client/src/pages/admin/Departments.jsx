@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiEdit, FiTrash2, FiUsers, FiUser } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiUsers, FiUser, FiBook, FiChevronDown, FiChevronUp, FiSearch } from 'react-icons/fi';
+import Badge from '@/components/common/Badge.jsx';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Loader from '@/components/common/Loader.jsx';
@@ -21,6 +22,17 @@ const Departments = () => {
     deptHeadId: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [expandedDeptId, setExpandedDeptId] = useState(null);
+  const [deptSubjects, setDeptSubjects] = useState({});
+  const [showSubjectModal, setShowSubjectModal] = useState(false);
+  const [subjectFormData, setSubjectFormData] = useState({
+    name: '',
+    subjectCode: '',
+    credits: 3,
+    semester: 1,
+    departmentId: '',
+  });
+  const [subjectLoading, setSubjectLoading] = useState(false);
 
   // Pagination & Search state
   const [currentPage, setCurrentPage] = useState(1);
@@ -114,9 +126,74 @@ const Departments = () => {
     }
   };
 
+  const fetchSubjects = async (deptId) => {
+    try {
+      setSubjectLoading(true);
+      const res = await collegeAdminService.getDepartmentSubjects(deptId);
+      setDeptSubjects(prev => ({
+        ...prev,
+        [deptId]: res.data || []
+      }));
+    } catch (error) {
+      console.error('Fetch subjects error:', error);
+      toast.error('Failed to load subjects');
+    } finally {
+      setSubjectLoading(false);
+    }
+  };
+
+  const toggleExpand = (deptId) => {
+    if (expandedDeptId === deptId) {
+      setExpandedDeptId(null);
+    } else {
+      setExpandedDeptId(deptId);
+      if (!deptSubjects[deptId]) {
+        fetchSubjects(deptId);
+      }
+    }
+  };
+
+  const handleSubjectSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await collegeAdminService.createSubject(subjectFormData);
+      toast.success('Subject added successfully');
+      setShowSubjectModal(false);
+      resetSubjectForm();
+      fetchSubjects(subjectFormData.departmentId);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to add subject');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteSubject = async (deptId, subjectId) => {
+    if (window.confirm('Are you sure you want to delete this subject?')) {
+      try {
+        await collegeAdminService.deleteSubject(subjectId);
+        toast.success('Subject deleted');
+        fetchSubjects(deptId);
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Delete failed');
+      }
+    }
+  };
+
   const resetForm = () => {
     setEditingDept(null);
     setFormData({ name: '', departmentCode: '', deptHeadId: '' });
+  };
+
+  const resetSubjectForm = () => {
+    setSubjectFormData({
+      name: '',
+      subjectCode: '',
+      credits: 3,
+      semester: 1,
+      departmentId: '',
+    });
   };
 
   if (loading) return <Loader fullScreen />;
@@ -179,7 +256,7 @@ const Departments = () => {
           <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
             {departments.length > 0 ? (
               departments.map((dept) => (
-                <Card key={dept._id} className="hover:shadow-lg transition-transform hover:-translate-y-1 duration-300 border-none shadow-sm">
+                <Card key={dept._id} className="hover:shadow-lg transition-transform hover:-translate-y-1 duration-300 border-none shadow-sm h-fit">
                   <div className="flex flex-col h-full">
                     <div className="flex items-start justify-between mb-4">
                       <div>
@@ -226,6 +303,66 @@ const Departments = () => {
                           Active
                         </Badge>
                       </div>
+                    </div>
+
+                    {/* Subjects Section */}
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <button
+                        onClick={() => toggleExpand(dept._id)}
+                        className="flex items-center justify-between w-full text-blue-600 hover:text-blue-700 font-medium transition-colors text-sm"
+                      >
+                        <span className="flex items-center">
+                          <FiBook className="mr-2" />
+                          {expandedDeptId === dept._id ? 'Hide Subjects' : 'View Subjects'}
+                        </span>
+                        {expandedDeptId === dept._id ? <FiChevronUp /> : <FiChevronDown />}
+                      </button>
+
+                      {expandedDeptId === dept._id && (
+                        <div className="mt-4 space-y-3">
+                          <div className="flex justify-between items-center">
+                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Subjects</h4>
+                            <button
+                              onClick={() => {
+                                setSubjectFormData({ ...subjectFormData, departmentId: dept._id });
+                                setShowSubjectModal(true);
+                              }}
+                              className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors flex items-center"
+                            >
+                              <FiPlus className="mr-1" /> Add
+                            </button>
+                          </div>
+
+                          {subjectLoading && !deptSubjects[dept._id] ? (
+                            <div className="py-2 flex justify-center">
+                              <Loader size="sm" />
+                            </div>
+                          ) : (
+                            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                              {deptSubjects[dept._id]?.length > 0 ? (
+                                deptSubjects[dept._id].map(subject => (
+                                  <div key={subject._id} className="bg-gray-50 border border-gray-100 p-2 rounded-lg flex justify-between items-center group">
+                                    <div className="overflow-hidden text-left">
+                                      <p className="text-[11px] font-bold text-gray-800 truncate">{subject.name}</p>
+                                      <p className="text-[9px] text-gray-400 font-mono">{subject.subjectCode} • {subject.credits} Cr</p>
+                                    </div>
+                                    <button
+                                      onClick={() => handleDeleteSubject(dept._id, subject._id)}
+                                      className="text-red-400 hover:text-red-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <FiTrash2 size={12} />
+                                    </button>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-[10px] text-center text-gray-400 py-4 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                                  No subjects added yet
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Card>
@@ -344,8 +481,59 @@ const Departments = () => {
           </div>
         </form>
       </Modal>
+
+      <Modal
+        isOpen={showSubjectModal}
+        onClose={() => { setShowSubjectModal(false); resetSubjectForm(); }}
+        title="Add New Subject"
+      >
+        <form onSubmit={handleSubjectSubmit} className="space-y-4 pt-2">
+          <Input
+            label="Subject Name"
+            placeholder="e.g. Data Structures"
+            value={subjectFormData.name}
+            onChange={(e) => setSubjectFormData({ ...subjectFormData, name: e.target.value })}
+            required
+          />
+          <Input
+            label="Subject Code"
+            placeholder="e.g. CS201"
+            value={subjectFormData.subjectCode}
+            onChange={(e) => setSubjectFormData({ ...subjectFormData, subjectCode: e.target.value })}
+            required
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              type="number"
+              label="Credits"
+              value={subjectFormData.credits}
+              onChange={(e) => setSubjectFormData({ ...subjectFormData, credits: parseInt(e.target.value) })}
+              required
+              min="1"
+            />
+            <Input
+              type="number"
+              label="Semester"
+              value={subjectFormData.semester}
+              onChange={(e) => setSubjectFormData({ ...subjectFormData, semester: parseInt(e.target.value) })}
+              required
+              min="1"
+            />
+          </div>
+
+          <div className="flex justify-end space-x-3 mt-8">
+            <Button variant="secondary" onClick={() => { setShowSubjectModal(false); resetSubjectForm(); }} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={submitting}>
+              Add Subject
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };
+
 
 export default Departments;

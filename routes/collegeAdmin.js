@@ -15,6 +15,9 @@ const {
   createUser,
   updateUser,
   deleteUser,
+  getDepartmentSubjects,
+  createSubject,
+  deleteSubject,
 } = require('../controllers/collegeAdminController');
 const { protect } = require('../middleware/auth');
 const { authorize, auditLog } = require('../middleware/rbac');
@@ -59,6 +62,27 @@ router
     auditLog('delete', 'Department'),
     deleteDepartment
   );
+
+router.get(
+  '/departments/:id/subjects',
+  validateObjectId('id'),
+  validate,
+  getDepartmentSubjects
+);
+
+router.post(
+  '/subjects',
+  auditLog('create', 'Subject'),
+  createSubject
+);
+
+router.delete(
+  '/subjects/:id',
+  validateObjectId('id'),
+  validate,
+  auditLog('delete', 'Subject'),
+  deleteSubject
+);
 
 router.put(
   '/departments/:id/assign-head',

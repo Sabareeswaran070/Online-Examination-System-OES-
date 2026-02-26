@@ -87,7 +87,7 @@ const SuperAdminExams = () => {
                 limit: pageSize,
                 search: searchTerm || undefined
             };
-            const response = await facultyService.getExams(params);
+            const response = await superAdminService.getExams(params);
             setExams(response.data || []);
             setTotalPages(response.totalPages || 1);
             setTotalExams(response.count || 0);
@@ -259,27 +259,27 @@ const SuperAdminExams = () => {
         { header: 'Title', accessor: 'title' },
         {
             header: 'College',
-            accessor: (row) => row.collegeId?.collegeName || 'N/A'
+            render: (row) => row.collegeId?.collegeName || 'N/A'
         },
         {
             header: 'Dept',
-            accessor: (row) => row.departmentId?.name || 'N/A'
+            render: (row) => row.departmentId?.name || 'N/A'
         },
         {
             header: 'Subject',
-            accessor: (row) => row.subject?.name || 'N/A'
+            render: (row) => row.subject?.name || 'N/A'
         },
         {
             header: 'Start Time',
-            accessor: (row) => formatDateTime(row.startTime)
+            render: (row) => formatDateTime(row.startTime)
         },
         {
             header: 'Duration',
-            accessor: (row) => `${row.duration} min`
+            render: (row) => `${row.duration} min`
         },
         {
             header: 'Status',
-            accessor: (row) => getStatusBadge(row.status)
+            render: (row) => getStatusBadge(row.status)
         },
         {
             header: 'Actions',

@@ -3,6 +3,7 @@ const College = require('../models/College');
 const Department = require('../models/Department');
 const Exam = require('../models/Exam');
 const Result = require('../models/Result');
+const Subject = require('../models/Subject');
 const CompetitionCollege = require('../models/CompetitionCollege');
 const logger = require('../config/logger');
 const fs = require('fs');
@@ -762,6 +763,124 @@ exports.deleteUser = async (req, res, next) => {
     });
   } catch (error) {
     logger.error('College Admin Delete user error:', error);
+    next(error);
+  }
+};
+// @desc    Get subjects for a department
+// @route   GET /api/admin/departments/:id/subjects
+// @access  Private/Admin
+exports.getDepartmentSubjects = async (req, res, next) => {
+  try {
+    const department = await Department.findOne({
+      _id: req.params.id,
+      collegeId: req.user.collegeId,
+    });
+
+    if (!department) {
+      return res.status(404).json({
+        success: false,
+        message: 'Department not found',
+      });
+    }
+
+    const subjects = await Subject.find({ departmentId: req.params.id })
+      .populate('assignedFaculty.facultyId', 'name email');
+
+    res.status(200).json({
+      success: true,
+      count: subjects.length,
+      data: subjects,
+    });
+  } catch (error) {
+    logger.error('Get department subjects error:', error);
+    next(error);
+  }
+};
+
+// @desc    Create subject
+// @route   POST /api/admin/subjects
+// @access  Private/Admin
+exports.createSubject = async (req, res, next) => {
+  try {
+    const { departmentId, ...subjectData } = req.body;
+
+    const department = await Department.findOne({
+      _id: departmentId,
+      collegeId: req.user.collegeId,
+    });
+
+    if (!department) {
+      return res.status(404).json({
+        success: false,
+        message: 'Department not found',
+      });
+    }
+
+    const subject = await Subject.create({
+      ...subjectData,
+      departmentId,
+      collegeId: req.user.collegeId,
+    });
+
+    // Add subject to department
+    await Department.findByIdAndUpdate(departmentId, {
+      $push: { subjects: subject._id },
+    });
+
+    logger.info(`Subject created: ${subject.name} by ${req.user.email}`);
+
+    res.status(201).json({
+      success: true,
+      data: subject,
+    });
+  } catch (error) {
+    logger.error('Create subject error:', error);
+    next(error);
+  }
+};
+
+// @desc    Delete subject
+// @route   DELETE /api/admin/subjects/:id
+// @access  Private/Admin
+exports.deleteSubject = async (req, res, next) => {
+  try {
+    const subject = await Subject.findOne({
+      _id: req.params.id,
+      collegeId: req.user.collegeId,
+    });
+
+    if (!subject) {
+      return res.status(404).json({
+        success: false,
+        message: 'Subject not found',
+      });
+    }
+
+    // Check if there are exams associated with this subject
+    const examCount = await Exam.countDocuments({ subject: req.params.id });
+    if (examCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete subject with associated exams',
+      });
+    }
+
+    const departmentId = subject.departmentId;
+    await subject.deleteOne();
+
+    // Remove subject from department
+    await Department.findByIdAndUpdate(departmentId, {
+      $pull: { subjects: subject._id },
+    });
+
+    logger.info(`Subject deleted: ${subject.name} by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Subject deleted successfully',
+    });
+  } catch (error) {
+    logger.error('Delete subject error:', error);
     next(error);
   }
 };

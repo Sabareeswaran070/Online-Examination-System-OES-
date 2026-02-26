@@ -33,8 +33,13 @@ const {
   createDepartmentForCollege,
   updateDepartmentForCollege,
   deleteDepartmentFromCollege,
+  createSubjectForDepartment,
+  getDepartmentSubjects,
+  deleteSubjectFromDepartment,
   generateAICodingQuestion,
   lookupPincode,
+  getAllExams,
+  generateAIQuestions,
 } = require('../controllers/superAdminController');
 const { protect } = require('../middleware/auth');
 const { authorize, auditLog } = require('../middleware/rbac');
@@ -115,6 +120,10 @@ router.post('/colleges/:id/departments', auditLog('create-department', 'Departme
 router.put('/colleges/:id/departments/:deptId', auditLog('update-department', 'Department'), updateDepartmentForCollege);
 router.delete('/colleges/:id/departments/:deptId', auditLog('delete-department', 'Department'), deleteDepartmentFromCollege);
 
+router.post('/colleges/:id/departments/:deptId/subjects', auditLog('create-subject', 'Subject'), createSubjectForDepartment);
+router.get('/colleges/:id/departments/:deptId/subjects', getDepartmentSubjects);
+router.delete('/subjects/:id', auditLog('delete-subject', 'Subject'), deleteSubjectFromDepartment);
+
 // Pincode lookup
 router.get('/pincode/:pincode', lookupPincode);
 
@@ -154,6 +163,7 @@ router
 
 // AI Question Generation (must be before /questions/:id to avoid route conflict)
 router.post('/questions/generate-ai', auditLog('ai-generate', 'Question'), generateAICodingQuestion);
+router.post('/questions/generate-ai-multi', auditLog('ai-generate-multi', 'Question'), generateAIQuestions);
 
 router.put('/questions/:id/status', auditLog('approve', 'Question'), updateQuestionStatus);
 
@@ -166,6 +176,7 @@ router.post('/questions/bulk-upload', upload.single('file'), auditLog('bulk-uplo
 
 
 router.get('/subjects', getAllSubjects);
+router.get('/exams', getAllExams);
 
 // Question Set (Folder) routes
 router

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { FiPlus, FiEdit, FiTrash2, FiSearch, FiUpload, FiDownload } from 'react-icons/fi';
+import { useState, useEffect, useMemo } from 'react';
+import { FiPlus, FiEdit, FiTrash2, FiSearch, FiUpload, FiDownload, FiLock } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Table from '@/components/common/Table.jsx';
@@ -140,6 +140,85 @@ const Users = () => {
     setSelectedUser(null);
   };
 
+  const handleEdit = (user) => {
+    setIsEditing(true);
+    setSelectedUser(user);
+    setFormData({
+      name: user.name,
+      email: user.email,
+      password: '', // Don't show password
+      role: user.role,
+      collegeId: user.collegeId?._id || user.collegeId || '',
+      regNo: user.regNo || '',
+    });
+    setShowModal(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      try {
+        await superAdminService.deleteUser(id);
+        toast.success('User deleted successfully');
+        fetchUsers();
+      } catch (error) {
+        console.error('Delete user error:', error);
+        toast.error(error.response?.data?.message || 'Failed to delete user');
+      }
+    }
+  };
+
+  const handleToggleStatus = async (user) => {
+    try {
+      const newStatus = user.status === 'active' ? 'inactive' : 'active';
+      await superAdminService.updateUserStatus(user._id, newStatus);
+      toast.success(`User is now ${newStatus}`);
+      fetchUsers();
+    } catch (error) {
+      console.error('Toggle status error:', error);
+      toast.error('Failed to update user status');
+    }
+  };
+
+  const downloadTemplate = () => {
+    const csvContent = "name,email,password,role,collegeId,regNo\nJohn Doe,john@example.com,password123,student,65d1a2b3c4d5e6f7a8b9c0d1,REG123";
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "user_import_template.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleBulkUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Optional: basic file type validation
+    const fileExt = file.name.split('.').pop().toLowerCase();
+    if (!['csv', 'xlsx', 'xls'].includes(fileExt)) {
+      toast.error('Please upload a CSV or Excel file');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await superAdminService.bulkUploadUsers(file);
+      setBulkResults(response);
+      setShowResultsModal(true);
+      fetchUsers();
+      toast.success('Bulk upload processed successfully');
+    } catch (error) {
+      console.error('Bulk upload error:', error);
+      toast.error(error.response?.data?.message || 'Bulk upload failed');
+    } finally {
+      setLoading(false);
+      e.target.value = ''; // Clear input for next upload
+    }
+  };
+
   const getRoleBadgeColor = (role) => {
     const colors = {
       superadmin: 'bg-purple-100 text-purple-800',
@@ -151,7 +230,7 @@ const Users = () => {
     return colors[role] || 'bg-gray-100 text-gray-800';
   };
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       header: 'Name',
       accessor: 'name',
@@ -210,10 +289,20 @@ const Users = () => {
           >
             <FiTrash2 size={16} />
           </button>
+          <button
+            onClick={() => {
+              setSelectedUser(row);
+              handleResetPassword();
+            }}
+            className="p-1 text-yellow-600 hover:bg-yellow-50 rounded transition-colors"
+            title="Reset Password"
+          >
+            <FiLock size={16} />
+          </button>
         </div>
       ),
     },
-  ];
+  ], [users, handleToggleStatus, handleEdit, handleDelete, handleResetPassword]);
 
   if (loading) return <Loader fullScreen />;
 

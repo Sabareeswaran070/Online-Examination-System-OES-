@@ -508,3 +508,47 @@ exports.approveExam = async (req, res, next) => {
     next(error);
   }
 };
+// @desc    Delete subject
+// @route   DELETE /api/depthead/subjects/:id
+// @access  Private/DeptHead
+exports.deleteSubject = async (req, res, next) => {
+  try {
+    const subject = await Subject.findOne({
+      _id: req.params.id,
+      departmentId: req.user.departmentId,
+    });
+
+    if (!subject) {
+      return res.status(404).json({
+        success: false,
+        message: 'Subject not found',
+      });
+    }
+
+    // Check if there are exams associated with this subject
+    const examCount = await Exam.countDocuments({ subject: req.params.id });
+    if (examCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete subject with associated exams',
+      });
+    }
+
+    await subject.deleteOne();
+
+    // Remove subject from department
+    await Department.findByIdAndUpdate(req.user.departmentId, {
+      $pull: { subjects: subject._id },
+    });
+
+    logger.info(`Subject deleted: ${subject.name} by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Subject deleted successfully',
+    });
+  } catch (error) {
+    logger.error('Delete subject error:', error);
+    next(error);
+  }
+};

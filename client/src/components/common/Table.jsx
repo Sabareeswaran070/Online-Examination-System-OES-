@@ -38,7 +38,11 @@ const Table = ({ columns, data, onRowClick, emptyMessage = 'No data available' }
               >
                 {columns.map((column, colIndex) => (
                   <td key={colIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {column.render ? column.render(row) : row[column.accessor]}
+                    {column.render
+                      ? column.render(row)
+                      : typeof column.accessor === 'function'
+                        ? column.accessor(row)
+                        : row[column.accessor]}
                   </td>
                 ))}
               </tr>

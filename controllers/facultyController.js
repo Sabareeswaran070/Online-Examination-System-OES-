@@ -319,6 +319,110 @@ exports.addQuestionToExam = async (req, res, next) => {
   }
 };
 
+// @desc    Update marks for a question in an exam
+// @route   PUT /api/faculty/exams/:id/questions/:questionId/marks
+// @access  Private/Faculty
+exports.updateExamQuestionMarks = async (req, res, next) => {
+  try {
+    const { marks } = req.body;
+
+    if (marks === undefined || marks === null || marks < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide valid marks (>= 0)',
+      });
+    }
+
+    const findQuery = isSuperAdmin(req.user)
+      ? { _id: req.params.id }
+      : { _id: req.params.id, facultyId: req.user._id };
+    const exam = await Exam.findOne(findQuery);
+
+    if (!exam) {
+      return res.status(404).json({
+        success: false,
+        message: 'Exam not found',
+      });
+    }
+
+    const qEntry = exam.questions.find(
+      (q) => q.questionId.toString() === req.params.questionId
+    );
+
+    if (!qEntry) {
+      return res.status(404).json({
+        success: false,
+        message: 'Question not found in this exam',
+      });
+    }
+
+    qEntry.marks = Number(marks);
+    await exam.save();
+
+    // Populate for response
+    await exam.populate('questions.questionId');
+
+    logger.info(`Marks updated for question in exam ${exam.title} by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      data: exam,
+    });
+  } catch (error) {
+    logger.error('Update exam question marks error:', error);
+    next(error);
+  }
+};
+
+// @desc    Remove question from exam
+// @route   DELETE /api/faculty/exams/:id/questions/:questionId
+// @access  Private/Faculty
+exports.removeQuestionFromExam = async (req, res, next) => {
+  try {
+    const findQuery = isSuperAdmin(req.user)
+      ? { _id: req.params.id }
+      : { _id: req.params.id, facultyId: req.user._id };
+    const exam = await Exam.findOne(findQuery);
+
+    if (!exam) {
+      return res.status(404).json({
+        success: false,
+        message: 'Exam not found',
+      });
+    }
+
+    const qIndex = exam.questions.findIndex(
+      (q) => q.questionId.toString() === req.params.questionId
+    );
+
+    if (qIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Question not found in this exam',
+      });
+    }
+
+    exam.questions.splice(qIndex, 1);
+
+    // Re-order remaining questions
+    exam.questions.forEach((q, idx) => {
+      q.order = idx + 1;
+    });
+
+    await exam.save();
+
+    logger.info(`Question removed from exam ${exam.title} by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      data: exam,
+    });
+  } catch (error) {
+    logger.error('Remove question from exam error:', error);
+    next(error);
+  }
+};
+
 // @desc    Publish exam
 // @route   POST /api/faculty/exams/:id/publish
 // @access  Private/Faculty
@@ -692,20 +796,42 @@ exports.generateRandomQuestions = async (req, res, next) => {
 
     const query = {
       isActive: true,
-      subject: subjectId || exam.subject,
     };
+
+    // Only filter by subject if one is provided or the exam has one
+    const targetSubject = subjectId || exam.subject;
+    if (targetSubject) {
+      query.subject = targetSubject;
+    }
 
     if (!isSuperAdmin(req.user)) {
       query.facultyId = req.user._id;
     }
 
-    if (difficulty) query.difficulty = difficulty;
-    if (type) query.type = type;
+    if (difficulty && difficulty !== '') query.difficulty = difficulty;
+    if (type && type !== '') query.type = type;
+
+    // Exclude questions already in the exam
+    const existingQuestionIds = (exam.questions || [])
+      .map(q => q.questionId)
+      .filter(Boolean);
+    if (existingQuestionIds.length > 0) {
+      query._id = { $nin: existingQuestionIds };
+    }
+
+    const requestedCount = parseInt(count) || 10;
 
     const questions = await Question.aggregate([
       { $match: query },
-      { $sample: { size: parseInt(count) } },
+      { $sample: { size: requestedCount } },
     ]);
+
+    if (questions.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No matching questions found. Try adjusting the filters or add questions to the bank first.',
+      });
+    }
 
     questions.forEach((question, index) => {
       exam.questions.push({

@@ -10,6 +10,7 @@ const {
   getStudents,
   getFaculty,
   approveExam,
+  deleteSubject,
 } = require('../controllers/deptHeadController');
 const { protect } = require('../middleware/auth');
 const { authorize, auditLog, checkDepartmentOwnership } = require('../middleware/rbac');
@@ -38,13 +39,20 @@ router
     createSubject
   );
 
-router.put(
-  '/subjects/:id',
-  validateObjectId('id'),
-  validate,
-  auditLog('update', 'Subject'),
-  updateSubject
-);
+router
+  .route('/subjects/:id')
+  .put(
+    validateObjectId('id'),
+    validate,
+    auditLog('update', 'Subject'),
+    updateSubject
+  )
+  .delete(
+    validateObjectId('id'),
+    validate,
+    auditLog('delete', 'Subject'),
+    deleteSubject
+  );
 
 router.post(
   '/subjects/assign',

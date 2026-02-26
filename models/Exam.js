@@ -54,6 +54,10 @@ const examSchema = new mongoose.Schema(
           ref: 'Question',
         },
         order: Number,
+        marks: {
+          type: Number,
+          default: null, // null means use the question's default marks
+        },
       },
     ],
     instructions: {

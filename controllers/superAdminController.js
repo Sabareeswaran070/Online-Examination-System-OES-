@@ -7,7 +7,7 @@ const Subject = require('../models/Subject');
 const Question = require('../models/Question');
 const QuestionSet = require('../models/QuestionSet');
 const { parseQuestionCSV } = require('../utils/csvParser');
-const { generateCodingQuestion } = require('../services/aiService');
+const { generateCodingQuestion, generateQuestion } = require('../services/aiService');
 const logger = require('../config/logger');
 
 // @desc    Get super admin dashboard statistics
@@ -105,7 +105,14 @@ exports.getAllColleges = async (req, res, next) => {
 
     const colleges = await College.find(query)
       .populate('adminIds', 'name email')
-      .populate('departments', 'name departmentCode')
+      .populate({
+        path: 'departments',
+        select: 'name departmentCode subjects',
+        populate: {
+          path: 'subjects',
+          model: 'Subject'
+        }
+      })
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -132,7 +139,13 @@ exports.getCollege = async (req, res, next) => {
   try {
     const college = await College.findById(req.params.id)
       .populate('adminIds', 'name email phone')
-      .populate('departments');
+      .populate({
+        path: 'departments',
+        populate: {
+          path: 'subjects',
+          model: 'Subject'
+        }
+      });
 
     if (!college) {
       return res.status(404).json({
@@ -796,6 +809,45 @@ exports.deleteUser = async (req, res, next) => {
   }
 };
 
+// @desc    Get all exams globally
+// @route   GET /api/superadmin/exams
+// @access  Private/SuperAdmin
+exports.getAllExams = async (req, res, next) => {
+  try {
+    const { status, search, collegeId, departmentId, page = 1, limit = 10 } = req.query;
+
+    const query = {};
+    if (status && status !== '') query.status = status;
+    if (collegeId && collegeId !== '') query.collegeId = collegeId;
+    if (departmentId && departmentId !== '') query.departmentId = departmentId;
+    if (search) {
+      query.title = { $regex: search, $options: 'i' };
+    }
+
+    const exams = await Exam.find(query)
+      .populate('subject', 'name subjectCode')
+      .populate('departmentId', 'name')
+      .populate('collegeId', 'collegeName')
+      .populate('facultyId', 'name email')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const count = await Exam.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      count,
+      totalPages: Math.ceil(count / limit),
+      currentPage: page,
+      data: exams,
+    });
+  } catch (error) {
+    logger.error('Superadmin get all exams error:', error);
+    next(error);
+  }
+};
+
 // @desc    Toggle user status
 // @route   PUT /api/superadmin/users/:id/status
 // @access  Private/SuperAdmin
@@ -844,12 +896,12 @@ exports.getQuestions = async (req, res, next) => {
     const { type, subject, questionSet, difficulty, search, page = 1, limit = 20, status, isGlobal } = req.query;
 
     const query = { isActive: true };
-    if (status) query.status = status;
-    if (isGlobal !== undefined) query.isGlobal = isGlobal === 'true';
-    if (type) query.type = type;
-    if (subject) query.subject = subject;
-    if (questionSet) query.questionSet = questionSet;
-    if (difficulty) query.difficulty = difficulty;
+    if (status && status !== '') query.status = status;
+    if (isGlobal !== undefined && isGlobal !== '') query.isGlobal = isGlobal === 'true';
+    if (type && type !== '') query.type = type;
+    if (subject && subject !== '') query.subject = subject;
+    if (questionSet && questionSet !== '') query.questionSet = questionSet;
+    if (difficulty && difficulty !== '') query.difficulty = difficulty;
     if (search) {
       query.questionText = { $regex: search, $options: 'i' };
     }
@@ -1354,6 +1406,111 @@ exports.deleteDepartmentFromCollege = async (req, res, next) => {
 // @desc    Lookup pincode details (place, district, state, country)
 // @route   GET /api/superadmin/pincode/:pincode
 // @access  Private/SuperAdmin
+// @desc    Create subject for a department
+// @route   POST /api/superadmin/colleges/:id/departments/:deptId/subjects
+// @access  Private/SuperAdmin
+exports.createSubjectForDepartment = async (req, res, next) => {
+  try {
+    const { id: collegeId, deptId: departmentId } = req.params;
+    const { name, subjectCode, description } = req.body;
+
+    // Verify department belongs to college
+    const department = await Department.findOne({ _id: departmentId, collegeId });
+    if (!department) {
+      return res.status(404).json({
+        success: false,
+        message: 'Department not found in this college',
+      });
+    }
+
+    const subject = await Subject.create({
+      name,
+      subjectCode,
+      description,
+      departmentId,
+      collegeId,
+    });
+
+    // Add subject to department
+    await Department.findByIdAndUpdate(departmentId, {
+      $push: { subjects: subject._id },
+    });
+
+    logger.info(`Subject created by Super Admin: ${subject.name} for department ${department.name}`);
+
+    res.status(201).json({
+      success: true,
+      data: subject,
+    });
+  } catch (error) {
+    logger.error('Create subject (Super Admin) error:', error);
+    next(error);
+  }
+};
+
+// @desc    Get all subjects for a department
+// @route   GET /api/superadmin/colleges/:id/departments/:deptId/subjects
+// @access  Private/SuperAdmin
+exports.getDepartmentSubjects = async (req, res, next) => {
+  try {
+    const { id: collegeId, deptId: departmentId } = req.params;
+
+    const subjects = await Subject.find({ departmentId, collegeId });
+
+    res.status(200).json({
+      success: true,
+      count: subjects.length,
+      data: subjects,
+    });
+  } catch (error) {
+    logger.error('Get department subjects (Super Admin) error:', error);
+    next(error);
+  }
+};
+
+// @desc    Delete subject
+// @route   DELETE /api/superadmin/subjects/:id
+// @access  Private/SuperAdmin
+exports.deleteSubjectFromDepartment = async (req, res, next) => {
+  try {
+    const subject = await Subject.findById(req.params.id);
+
+    if (!subject) {
+      return res.status(404).json({
+        success: false,
+        message: 'Subject not found',
+      });
+    }
+
+    // Check if there are exams associated with this subject
+    const examCount = await Exam.countDocuments({ subject: req.params.id });
+    if (examCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete subject with associated exams',
+      });
+    }
+
+    const { departmentId, _id: subjectId } = subject;
+    await subject.deleteOne();
+
+    // Remove subject from department
+    await Department.findByIdAndUpdate(departmentId, {
+      $pull: { subjects: subjectId },
+    });
+
+    logger.info(`Subject deleted by Super Admin: ${subject.name}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Subject deleted successfully',
+    });
+  } catch (error) {
+    logger.error('Delete subject (Super Admin) error:', error);
+    next(error);
+  }
+};
+
 exports.lookupPincode = async (req, res, next) => {
   try {
     const { pincode } = req.params;
@@ -1450,6 +1607,77 @@ exports.generateAICodingQuestion = async (req, res, next) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to generate question. Please try again.',
+    });
+  }
+};
+
+// @desc    Generate AI questions of any type (MCQ, Descriptive, TrueFalse, Coding)
+// @route   POST /api/superadmin/questions/generate-ai-multi
+// @access  Private/SuperAdmin
+exports.generateAIQuestions = async (req, res, next) => {
+  try {
+    const { topic, type = 'MCQ', difficulty = 'medium', count = 5, language = 'javascript', additionalInstructions = '', subjectId, examId } = req.body;
+
+    if (!topic || !topic.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Topic/Subject is required for AI question generation',
+      });
+    }
+
+    const validTypes = ['MCQ', 'Descriptive', 'TrueFalse', 'Coding'];
+    const qType = validTypes.includes(type) ? type : 'MCQ';
+
+    const questions = await generateQuestion({
+      topic: topic.trim(),
+      type: qType,
+      difficulty,
+      count: Math.min(Math.max(Number(count) || 5, 1), 20),
+      language,
+      additionalInstructions: additionalInstructions || '',
+    });
+
+    // Save all generated questions to DB
+    const savedQuestions = [];
+    for (const q of questions) {
+      const questionData = {
+        ...q,
+        facultyId: req.user._id,
+        subject: subjectId || undefined,
+        status: 'approved',
+        isActive: true,
+      };
+      const saved = await Question.create(questionData);
+      savedQuestions.push(saved);
+    }
+
+    // If examId is provided, add all questions to exam
+    if (examId) {
+      const exam = await Exam.findById(examId);
+      if (exam) {
+        savedQuestions.forEach((sq, index) => {
+          exam.questions.push({
+            questionId: sq._id,
+            order: (exam.questions?.length || 0) + index + 1,
+          });
+        });
+        await exam.save();
+      }
+    }
+
+    logger.info(`AI generated ${savedQuestions.length} ${qType} questions by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: `${savedQuestions.length} ${qType} questions generated and saved`,
+      count: savedQuestions.length,
+      data: savedQuestions,
+    });
+  } catch (error) {
+    logger.error('AI multi-type generation error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to generate questions. Please try again.',
     });
   }
 };
