@@ -1,14 +1,20 @@
 import { NavLink } from 'react-router-dom';
 import { clsx } from 'clsx';
 
-const Sidebar = ({ navigation }) => {
+const Sidebar = ({ navigation, isOpen, onClose }) => {
   return (
-    <aside className="w-64 bg-white shadow-md min-h-[calc(100vh-4rem)]">
+    <aside
+      className={clsx(
+        'fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 lg:shadow-md min-h-[calc(100vh-4rem)]',
+        isOpen ? 'translate-x-0' : '-translate-x-full'
+      )}
+    >
       <nav className="p-4 space-y-2">
         {navigation.map((item, index) => (
           <NavLink
             key={index}
             to={item.path}
+            onClick={onClose}
             className={({ isActive }) =>
               clsx(
                 'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
