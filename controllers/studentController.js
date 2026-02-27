@@ -69,14 +69,14 @@ exports.getDashboard = async (req, res, next) => {
   try {
     const totalExamsGiven = await Result.countDocuments({
       studentId: req.user._id,
-      status: { $in: ['submitted', 'evaluated'] },
+      status: { $in: ['submitted', 'evaluated', 'pending-evaluation'] },
     });
 
     const avgPerformance = await Result.aggregate([
       {
         $match: {
           studentId: req.user._id,
-          status: { $in: ['submitted', 'evaluated'] },
+          status: { $in: ['submitted', 'evaluated', 'pending-evaluation'] },
         },
       },
       {
@@ -112,7 +112,7 @@ exports.getDashboard = async (req, res, next) => {
 
     const recentResults = await Result.find({
       studentId: req.user._id,
-      status: { $in: ['submitted', 'evaluated'] },
+      status: { $in: ['submitted', 'evaluated', 'pending-evaluation'] },
     })
       .populate({
         path: 'examId',
@@ -131,7 +131,7 @@ exports.getDashboard = async (req, res, next) => {
           totalExamsGiven,
           examsPassed: await Result.countDocuments({
             studentId: req.user._id,
-            status: { $in: ['submitted', 'evaluated'] },
+            status: { $in: ['submitted', 'evaluated', 'pending-evaluation'] },
             isPassed: true,
           }),
           currentRank: 0, // Placeholder, will implement rank calculation if needed or leave as 0 for now
@@ -472,10 +472,11 @@ exports.submitExam = async (req, res, next) => {
     exam.totalAttempts += 1;
     const allResults = await Result.find({
       examId: req.params.id,
-      status: { $in: ['submitted', 'evaluated'] },
+      status: { $in: ['submitted', 'evaluated', 'pending-evaluation'] },
     });
-    const avgScore =
-      allResults.reduce((sum, r) => sum + r.score, 0) / allResults.length;
+    const avgScore = allResults.length > 0
+      ? allResults.reduce((sum, r) => sum + r.score, 0) / allResults.length
+      : 0;
     exam.averageScore = avgScore;
     await exam.save();
 
@@ -555,7 +556,7 @@ exports.getResults = async (req, res, next) => {
   try {
     const results = await Result.find({
       studentId: req.user._id,
-      status: { $in: ['submitted', 'evaluated'] },
+      status: { $in: ['submitted', 'evaluated', 'pending-evaluation'] },
     })
       .populate({
         path: 'examId',
@@ -566,10 +567,13 @@ exports.getResults = async (req, res, next) => {
       })
       .sort({ submittedAt: -1 });
 
+    // Filter out results where the exam has been deleted
+    const validResults = results.filter(r => r.examId != null);
+
     res.status(200).json({
       success: true,
-      count: results.length,
-      data: results,
+      count: validResults.length,
+      data: validResults,
     });
   } catch (error) {
     logger.error('Get results error:', error);
@@ -654,7 +658,7 @@ exports.getLeaderboard = async (req, res, next) => {
       matchQuery.examId = { $in: exams.map((e) => e._id) };
     }
 
-    matchQuery.status = { $in: ['submitted', 'evaluated'] };
+    matchQuery.status = { $in: ['submitted', 'evaluated', 'pending-evaluation'] };
 
     const leaderboard = await Result.aggregate([
       { $match: matchQuery },
@@ -717,7 +721,7 @@ exports.getAnalytics = async (req, res, next) => {
       {
         $match: {
           studentId: req.user._id,
-          status: { $in: ['submitted', 'evaluated'] },
+          status: { $in: ['submitted', 'evaluated', 'pending-evaluation'] },
         },
       },
       {
@@ -737,7 +741,7 @@ exports.getAnalytics = async (req, res, next) => {
       {
         $match: {
           studentId: req.user._id,
-          status: { $in: ['submitted', 'evaluated'] },
+          status: { $in: ['submitted', 'evaluated', 'pending-evaluation'] },
         },
       },
       {
@@ -771,7 +775,7 @@ exports.getAnalytics = async (req, res, next) => {
     // Performance trend (last 10 exams)
     const performanceTrend = await Result.find({
       studentId: req.user._id,
-      status: { $in: ['submitted', 'evaluated'] },
+      status: { $in: ['submitted', 'evaluated', 'pending-evaluation'] },
     })
       .populate('examId', 'title')
       .sort({ submittedAt: -1 })
@@ -797,7 +801,7 @@ exports.getAnalytics = async (req, res, next) => {
 // @access  Private/Student
 exports.runCode = async (req, res, next) => {
   try {
-    const { code, language, input, testCases } = req.body;
+    const { code, language, input, testCases, questionId } = req.body;
 
     if (!code || !language) {
       return res.status(400).json({
@@ -806,17 +810,75 @@ exports.runCode = async (req, res, next) => {
       });
     }
 
-    // If testCases provided, run against all test cases
+    // If testCases provided, run against visible + hidden test cases
     if (testCases && testCases.length > 0) {
-      const result = await compilerService.runAgainstTestCases(
+      // Run visible test cases (full details returned)
+      const visibleResult = await compilerService.runAgainstTestCases(
         code,
         language,
         testCases
       );
 
+      // Mark all visible results
+      visibleResult.results = visibleResult.results.map(r => ({ ...r, isHidden: false }));
+
+      // If questionId provided, also run hidden test cases
+      let hiddenResults = [];
+      let hiddenPassed = 0;
+      let hiddenFailed = 0;
+      let hiddenTotal = 0;
+
+      if (questionId) {
+        try {
+          const question = await Question.findById(questionId).select('hiddenTestCases');
+          if (question && question.hiddenTestCases && question.hiddenTestCases.length > 0) {
+            const hiddenResult = await compilerService.runAgainstTestCases(
+              code,
+              language,
+              question.hiddenTestCases
+            );
+
+            hiddenTotal = hiddenResult.summary.total;
+            hiddenPassed = hiddenResult.summary.passed;
+            hiddenFailed = hiddenResult.summary.failed;
+
+            // Strip expected/actual output from hidden test cases — only show pass/fail
+            hiddenResults = hiddenResult.results.map((r, idx) => ({
+              passed: r.passed,
+              isHidden: true,
+              status: r.status,
+              error: r.error || null,
+              compile_output: r.compile_output || '',
+              stderr: r.stderr || '',
+              time: r.time,
+              memory: r.memory,
+            }));
+          }
+        } catch (err) {
+          logger.warn('Could not fetch hidden test cases:', err.message);
+        }
+      }
+
+      // Combine results
+      const allResults = [...visibleResult.results, ...hiddenResults];
+      const totalPassed = visibleResult.summary.passed + hiddenPassed;
+      const totalFailed = visibleResult.summary.failed + hiddenFailed;
+      const totalCount = visibleResult.summary.total + hiddenTotal;
+
       return res.status(200).json({
         success: true,
-        data: result,
+        data: {
+          results: allResults,
+          summary: {
+            passed: totalPassed,
+            failed: totalFailed,
+            total: totalCount,
+            visiblePassed: visibleResult.summary.passed,
+            visibleTotal: visibleResult.summary.total,
+            hiddenPassed: hiddenPassed,
+            hiddenTotal: hiddenTotal,
+          },
+        },
       });
     }
 

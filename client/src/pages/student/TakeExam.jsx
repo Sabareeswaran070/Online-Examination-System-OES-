@@ -241,6 +241,7 @@ const TakeExam = () => {
       const response = await studentService.runCode({
         code,
         language: lang,
+        questionId: q._id,
         testCases: visibleTests.map(tc => ({
           input: tc.input || '',
           expectedOutput: tc.expectedOutput || '',
@@ -295,8 +296,8 @@ const TakeExam = () => {
                     key={q._id}
                     onClick={() => setCurrentQuestion(index)}
                     className={`h-10 w-10 rounded-lg font-medium transition-colors ${currentQuestion === index
-                        ? 'bg-primary-600 text-white ring-2 ring-primary-300'
-                        : getQuestionColor(q._id)
+                      ? 'bg-primary-600 text-white ring-2 ring-primary-300'
+                      : getQuestionColor(q._id)
                       }`}
                   >
                     {index + 1}
@@ -404,8 +405,8 @@ const TakeExam = () => {
                               type="button"
                               onClick={() => setSelectedLanguages(prev => ({ ...prev, [question._id]: lang.value }))}
                               className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all duration-200 flex items-center gap-2 ${(selectedLanguages[question._id] || question.programmingLanguage || 'javascript') === lang.value
-                                  ? 'bg-violet-100 text-violet-700 border-violet-400 shadow-sm'
-                                  : 'bg-white text-gray-600 border-gray-200 hover:border-violet-200 hover:bg-violet-50'
+                                ? 'bg-violet-100 text-violet-700 border-violet-400 shadow-sm'
+                                : 'bg-white text-gray-600 border-gray-200 hover:border-violet-200 hover:bg-violet-50'
                                 }`}
                             >
                               <span>{lang.icon}</span>
@@ -635,8 +636,8 @@ const TakeExam = () => {
                                 <FiTerminal className="w-3.5 h-3.5" /> Output
                               </span>
                               <span className={`text-xs font-bold px-2 py-0.5 rounded ${codeOutput.status?.id === 3 ? 'bg-green-900 text-green-300' :
-                                  codeOutput.status?.id === 6 ? 'bg-red-900 text-red-300' :
-                                    'bg-yellow-900 text-yellow-300'
+                                codeOutput.status?.id === 6 ? 'bg-red-900 text-red-300' :
+                                  'bg-yellow-900 text-yellow-300'
                                 }`}>
                                 {codeOutput.status?.description || 'Error'}
                               </span>
@@ -690,13 +691,34 @@ const TakeExam = () => {
                                 {testResults.summary.passed}/{testResults.summary.total} Passed
                               </span>
                             </div>
+
+                            {/* Summary badges */}
+                            {testResults.summary.hiddenTotal > 0 && (
+                              <div className="bg-gray-800 px-4 pb-2.5 flex items-center gap-3">
+                                <span className="text-[10px] font-bold text-blue-400 bg-blue-900/40 px-2 py-0.5 rounded">
+                                  👁 Visible: {testResults.summary.visiblePassed}/{testResults.summary.visibleTotal}
+                                </span>
+                                <span className="text-[10px] font-bold text-purple-400 bg-purple-900/40 px-2 py-0.5 rounded">
+                                  🔒 Hidden: {testResults.summary.hiddenPassed}/{testResults.summary.hiddenTotal}
+                                </span>
+                              </div>
+                            )}
+
                             <div className="divide-y divide-gray-700">
                               {testResults.results.map((tr, idx) => (
                                 <div key={idx} className={`p-4 ${tr.passed ? 'bg-green-950/30' : 'bg-red-950/30'
                                   }`}>
                                   <div className="flex items-center justify-between mb-2">
-                                    <span className="text-xs font-bold text-gray-300">
-                                      Test Case {idx + 1}
+                                    <span className="text-xs font-bold text-gray-300 flex items-center gap-1.5">
+                                      {tr.isHidden ? (
+                                        <>
+                                          <span className="text-purple-400">🔒</span> Hidden Test Case {idx + 1 - (testResults.summary.visibleTotal || 0)}
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="text-blue-400">👁</span> Test Case {idx + 1}
+                                        </>
+                                      )}
                                     </span>
                                     {tr.passed ? (
                                       <span className="flex items-center gap-1 text-xs font-bold text-green-400">
@@ -708,24 +730,45 @@ const TakeExam = () => {
                                       </span>
                                     )}
                                   </div>
-                                  <div className="grid grid-cols-3 gap-3 text-xs font-mono">
-                                    <div>
-                                      <span className="text-[10px] font-bold text-gray-500 uppercase">Input</span>
-                                      <pre className="text-gray-300 mt-1 whitespace-pre-wrap bg-black/30 p-2 rounded">{tr.input || '(none)'}</pre>
-                                    </div>
-                                    <div>
-                                      <span className="text-[10px] font-bold text-gray-500 uppercase">Expected</span>
-                                      <pre className="text-gray-300 mt-1 whitespace-pre-wrap bg-black/30 p-2 rounded">{tr.expectedOutput}</pre>
-                                    </div>
-                                    <div>
-                                      <span className="text-[10px] font-bold text-gray-500 uppercase">Actual</span>
-                                      <pre className={`mt-1 whitespace-pre-wrap bg-black/30 p-2 rounded ${tr.passed ? 'text-green-300' : 'text-red-300'
-                                        }`}>{tr.actualOutput || tr.error || '(no output)'}</pre>
-                                    </div>
-                                  </div>
-                                  {(tr.compile_output || tr.stderr) && (
-                                    <pre className="text-xs text-red-400 font-mono mt-2 whitespace-pre-wrap">{tr.compile_output || tr.stderr}</pre>
+
+                                  {/* Visible test cases: show full input/expected/actual */}
+                                  {!tr.isHidden && (
+                                    <>
+                                      <div className="grid grid-cols-3 gap-3 text-xs font-mono">
+                                        <div>
+                                          <span className="text-[10px] font-bold text-gray-500 uppercase">Input</span>
+                                          <pre className="text-gray-300 mt-1 whitespace-pre-wrap bg-black/30 p-2 rounded">{tr.input || '(none)'}</pre>
+                                        </div>
+                                        <div>
+                                          <span className="text-[10px] font-bold text-gray-500 uppercase">Expected</span>
+                                          <pre className="text-gray-300 mt-1 whitespace-pre-wrap bg-black/30 p-2 rounded">{tr.expectedOutput}</pre>
+                                        </div>
+                                        <div>
+                                          <span className="text-[10px] font-bold text-gray-500 uppercase">Actual</span>
+                                          <pre className={`mt-1 whitespace-pre-wrap bg-black/30 p-2 rounded ${tr.passed ? 'text-green-300' : 'text-red-300'
+                                            }`}>{tr.actualOutput || tr.error || '(no output)'}</pre>
+                                        </div>
+                                      </div>
+                                      {(tr.compile_output || tr.stderr) && (
+                                        <pre className="text-xs text-red-400 font-mono mt-2 whitespace-pre-wrap">{tr.compile_output || tr.stderr}</pre>
+                                      )}
+                                    </>
                                   )}
+
+                                  {/* Hidden test cases: show only pass/fail + error if any */}
+                                  {tr.isHidden && (
+                                    <div className="text-xs text-gray-400 italic">
+                                      {tr.passed
+                                        ? 'Your code produced the correct output for this hidden test case.'
+                                        : tr.compile_output
+                                          ? 'Compilation error — check your code syntax.'
+                                          : tr.error
+                                            ? 'Execution error — your code encountered an issue.'
+                                            : 'Your code did not produce the expected output for this hidden test case.'
+                                      }
+                                    </div>
+                                  )}
+
                                   {tr.time && (
                                     <span className="text-[10px] text-gray-500 mt-1 inline-block">
                                       ⏱ {tr.time}s | 💾 {tr.memory ? (tr.memory / 1024).toFixed(1) + ' MB' : 'N/A'}

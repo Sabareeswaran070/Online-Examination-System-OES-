@@ -932,6 +932,110 @@ exports.getAllExams = async (req, res, next) => {
   }
 };
 
+// @desc    Assign exam to multiple colleges (clone exam to each college/department)
+// @route   POST /api/superadmin/exams/:id/assign-colleges
+// @access  Private/SuperAdmin
+exports.assignExamToColleges = async (req, res, next) => {
+  try {
+    const { assignments } = req.body;
+    // assignments: [{ collegeId, departmentId, subject }]
+
+    if (!assignments || !Array.isArray(assignments) || assignments.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide at least one college assignment',
+      });
+    }
+
+    const sourceExam = await Exam.findById(req.params.id).populate('questions.questionId');
+    if (!sourceExam) {
+      return res.status(404).json({
+        success: false,
+        message: 'Source exam not found',
+      });
+    }
+
+    const results = { created: [], failed: [] };
+
+    for (const assignment of assignments) {
+      try {
+        const existing = await Exam.findOne({
+          title: sourceExam.title,
+          collegeId: assignment.collegeId,
+          departmentId: assignment.departmentId,
+        });
+
+        if (existing) {
+          results.failed.push({
+            collegeId: assignment.collegeId,
+            reason: 'Exam with same title already exists for this college/department',
+          });
+          continue;
+        }
+
+        const clonedExam = await Exam.create({
+          title: sourceExam.title,
+          description: sourceExam.description,
+          subject: assignment.subject || sourceExam.subject,
+          facultyId: req.user._id,
+          departmentId: assignment.departmentId,
+          collegeId: assignment.collegeId,
+          startTime: sourceExam.startTime,
+          endTime: sourceExam.endTime,
+          duration: sourceExam.duration,
+          totalMarks: sourceExam.totalMarks,
+          passingMarks: sourceExam.passingMarks,
+          questions: sourceExam.questions.map(q => ({
+            questionId: q.questionId._id || q.questionId,
+            order: q.order,
+            marks: q.marks,
+          })),
+          instructions: sourceExam.instructions,
+          examType: sourceExam.examType,
+          status: 'draft',
+          isRandomized: sourceExam.isRandomized,
+          allowReview: sourceExam.allowReview,
+          showResultsImmediately: sourceExam.showResultsImmediately,
+          negativeMarkingEnabled: sourceExam.negativeMarkingEnabled,
+          proctoring: sourceExam.proctoring,
+          isPublished: false,
+        });
+
+        results.created.push({
+          examId: clonedExam._id,
+          collegeId: assignment.collegeId,
+          departmentId: assignment.departmentId,
+        });
+      } catch (err) {
+        results.failed.push({
+          collegeId: assignment.collegeId,
+          reason: err.message,
+        });
+      }
+    }
+
+    // Update source exam's contributingColleges
+    const newCollegeIds = results.created.map(r => r.collegeId);
+    const existingIds = (sourceExam.contributingColleges || []).map(id => id.toString());
+    const merged = [...new Set([...existingIds, ...newCollegeIds.map(id => id.toString())])];
+    sourceExam.contributingColleges = merged;
+    await sourceExam.save();
+
+    logger.info(
+      `Exam "${sourceExam.title}" assigned to ${results.created.length} colleges by ${req.user.email}`
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Exam assigned to ${results.created.length} college(s). ${results.failed.length} failed.`,
+      data: results,
+    });
+  } catch (error) {
+    logger.error('Assign exam to colleges error:', error);
+    next(error);
+  }
+};
+
 // @desc    Toggle user status
 // @route   PUT /api/superadmin/users/:id/status
 // @access  Private/SuperAdmin

@@ -155,6 +155,10 @@ export const superAdminService = {
     const response = await api.get('/superadmin/exams', { params });
     return response.data;
   },
+  assignExamToColleges: async (examId, assignments) => {
+    const response = await api.post(`/superadmin/exams/${examId}/assign-colleges`, { assignments });
+    return response.data;
+  },
   bulkUploadQuestions: async (formData) => {
     const response = await api.post('/superadmin/questions/bulk-upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

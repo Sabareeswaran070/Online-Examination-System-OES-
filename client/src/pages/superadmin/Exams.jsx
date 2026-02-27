@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiPlus, FiEdit, FiTrash2, FiEye, FiUpload, FiFileText, FiSearch, FiFilter } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiEye, FiUpload, FiFileText, FiSearch, FiFilter, FiShare2 } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Table from '@/components/common/Table.jsx';
@@ -26,6 +26,10 @@ const SuperAdminExams = () => {
 
     const [showModal, setShowModal] = useState(false);
     const [editingExam, setEditingExam] = useState(null);
+    const [showAssignModal, setShowAssignModal] = useState(false);
+    const [assigningExam, setAssigningExam] = useState(null);
+    const [assignRows, setAssignRows] = useState([{ collegeId: '', departmentId: '', departments: [] }]);
+    const [assigning, setAssigning] = useState(false);
     const [formData, setFormData] = useState({
         title: '',
         subject: '',
@@ -243,6 +247,62 @@ const SuperAdminExams = () => {
         setModalSubjects([]);
     };
 
+    // ---- Assign to Colleges ----
+    const openAssignModal = (exam) => {
+        setAssigningExam(exam);
+        setAssignRows([{ collegeId: '', departmentId: '', departments: [] }]);
+        setShowAssignModal(true);
+    };
+
+    const handleAssignCollegeChange = (idx, collegeId) => {
+        const updated = [...assignRows];
+        updated[idx].collegeId = collegeId;
+        updated[idx].departmentId = '';
+        if (collegeId) {
+            const college = colleges.find(c => c._id === collegeId);
+            updated[idx].departments = college?.departments || [];
+        } else {
+            updated[idx].departments = [];
+        }
+        setAssignRows(updated);
+    };
+
+    const handleAssignDeptChange = (idx, departmentId) => {
+        const updated = [...assignRows];
+        updated[idx].departmentId = departmentId;
+        setAssignRows(updated);
+    };
+
+    const addAssignRow = () => {
+        setAssignRows([...assignRows, { collegeId: '', departmentId: '', departments: [] }]);
+    };
+
+    const removeAssignRow = (idx) => {
+        setAssignRows(assignRows.filter((_, i) => i !== idx));
+    };
+
+    const handleAssignSubmit = async () => {
+        const validAssignments = assignRows.filter(r => r.collegeId && r.departmentId);
+        if (validAssignments.length === 0) {
+            toast.error('Please select at least one college and department');
+            return;
+        }
+        setAssigning(true);
+        try {
+            const response = await superAdminService.assignExamToColleges(
+                assigningExam._id,
+                validAssignments.map(r => ({ collegeId: r.collegeId, departmentId: r.departmentId }))
+            );
+            toast.success(response.message || 'Exam assigned successfully');
+            setShowAssignModal(false);
+            fetchExams();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to assign exam');
+        } finally {
+            setAssigning(false);
+        }
+    };
+
     const getStatusBadge = (status) => {
         const statusMap = {
             draft: { variant: 'secondary', label: 'Draft' },
@@ -316,6 +376,14 @@ const SuperAdminExams = () => {
                         title="Delete Exam"
                     >
                         <FiTrash2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => openAssignModal(row)}
+                        title="Assign to Colleges"
+                    >
+                        <FiShare2 className="w-4 h-4" />
                     </Button>
                     {row.status === 'draft' && (
                         <Button
@@ -673,6 +741,89 @@ const SuperAdminExams = () => {
                         </Button>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Assign to Colleges Modal */}
+            <Modal
+                isOpen={showAssignModal}
+                onClose={() => setShowAssignModal(false)}
+                title={`Assign Exam to Colleges`}
+            >
+                <div className="space-y-4">
+                    {assigningExam && (
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                            <p className="font-bold text-gray-900">{assigningExam.title}</p>
+                            <p className="text-sm text-gray-500 mt-1">
+                                {assigningExam.duration} min • {assigningExam.totalMarks} marks • {assigningExam.questions?.length || 0} questions
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="space-y-3">
+                        <label className="block text-sm font-bold text-gray-700">Select Colleges & Departments</label>
+                        {assignRows.map((row, idx) => (
+                            <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div className="flex-1">
+                                    <select
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                                        value={row.collegeId}
+                                        onChange={(e) => handleAssignCollegeChange(idx, e.target.value)}
+                                    >
+                                        <option value="">Select College</option>
+                                        {colleges.map(c => (
+                                            <option key={c._id} value={c._id}>{c.collegeName}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="flex-1">
+                                    <select
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                                        value={row.departmentId}
+                                        onChange={(e) => handleAssignDeptChange(idx, e.target.value)}
+                                        disabled={!row.collegeId}
+                                    >
+                                        <option value="">Select Department</option>
+                                        {(row.departments || []).map(d => (
+                                            <option key={d._id} value={d._id}>{d.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                {assignRows.length > 1 && (
+                                    <button
+                                        onClick={() => removeAssignRow(idx)}
+                                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                        title="Remove"
+                                    >
+                                        <FiTrash2 className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                        ))}
+
+                        <button
+                            onClick={addAssignRow}
+                            className="flex items-center gap-2 text-sm font-medium text-primary-600 hover:text-primary-700 px-3 py-2 hover:bg-primary-50 rounded-lg transition-all"
+                        >
+                            <FiPlus className="w-4 h-4" /> Add Another College
+                        </button>
+                    </div>
+
+                    <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-3">
+                        <p className="text-xs text-yellow-700">
+                            <strong>Note:</strong> A copy of this exam will be created as <strong>Draft</strong> for each selected college/department. You can then publish them individually.
+                        </p>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                        <Button variant="secondary" onClick={() => setShowAssignModal(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleAssignSubmit} loading={assigning}>
+                            <FiShare2 className="w-4 h-4 mr-2" />
+                            Assign to {assignRows.filter(r => r.collegeId && r.departmentId).length} College(s)
+                        </Button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );

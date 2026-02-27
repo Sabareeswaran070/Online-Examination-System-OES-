@@ -40,6 +40,7 @@ const {
   generateAICodingQuestion,
   lookupPincode,
   getAllExams,
+  assignExamToColleges,
   generateAIQuestions,
 } = require('../controllers/superAdminController');
 const { protect } = require('../middleware/auth');
@@ -186,6 +187,7 @@ router.post('/questions/bulk-upload', upload.single('file'), auditLog('bulk-uplo
 
 router.get('/subjects', getAllSubjects);
 router.get('/exams', getAllExams);
+router.post('/exams/:id/assign-colleges', auditLog('assign-colleges', 'Exam'), assignExamToColleges);
 
 // Question Set (Folder) routes
 router
