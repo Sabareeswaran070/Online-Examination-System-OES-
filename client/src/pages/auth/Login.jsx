@@ -89,18 +89,19 @@ const Login = () => {
 
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link to="/register" className="text-primary-600 hover:text-primary-700 font-medium">
               Register here
             </Link>
           </p>
         </div>
 
-        {/* Quick Login Credentials for Testing */}
+        {/* Quick Login Credentials for Testing 
         <div className="mt-8 p-4 bg-gray-50 rounded-lg">
           <p className="text-xs text-gray-600 font-semibold mb-2">Demo Credentials:</p>
           <p className="text-xs text-gray-500">Super Admin: superadmin@system.com / SuperAdmin@123</p>
         </div>
+        */}
       </div>
     </div>
   );
