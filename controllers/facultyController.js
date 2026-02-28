@@ -3,6 +3,7 @@ const Question = require('../models/Question');
 const Result = require('../models/Result');
 const Subject = require('../models/Subject');
 const logger = require('../config/logger');
+const aiService = require('../services/aiService');
 
 // Helper: check if user is superadmin
 const isSuperAdmin = (user) => user.role === 'superadmin';
@@ -190,9 +191,18 @@ exports.getExams = async (req, res, next) => {
 // @access  Private/Faculty
 exports.getExam = async (req, res, next) => {
   try {
-    const findQuery = isSuperAdmin(req.user)
+    const isAdmin = isSuperAdmin(req.user);
+    const findQuery = isAdmin
       ? { _id: req.params.id }
-      : { _id: req.params.id, facultyId: req.user._id };
+      : {
+        _id: req.params.id,
+        $or: [
+          { facultyId: req.user._id },
+          { collegeId: req.user.collegeId },
+          { contributingColleges: req.user.collegeId },
+        ],
+      };
+
     const exam = await Exam.findOne(findQuery)
       .populate('subject', 'name subjectCode')
       .populate('questions.questionId')
@@ -755,9 +765,18 @@ exports.deleteQuestion = async (req, res, next) => {
 // @access  Private/Faculty
 exports.getExamResults = async (req, res, next) => {
   try {
-    const findQuery = isSuperAdmin(req.user)
+    const isAdmin = isSuperAdmin(req.user);
+    const findQuery = isAdmin
       ? { _id: req.params.id }
-      : { _id: req.params.id, facultyId: req.user._id };
+      : {
+        _id: req.params.id,
+        $or: [
+          { facultyId: req.user._id },
+          { collegeId: req.user.collegeId },
+          { contributingColleges: req.user.collegeId },
+        ],
+      };
+
     const exam = await Exam.findOne(findQuery);
 
     if (!exam) {
@@ -769,6 +788,7 @@ exports.getExamResults = async (req, res, next) => {
 
     const results = await Result.find({ examId: req.params.id })
       .populate('studentId', 'name email regNo enrollmentNumber')
+      .populate('answers.questionId')
       .sort({ score: -1 });
 
     // Calculate ranks
@@ -789,16 +809,56 @@ exports.getExamResults = async (req, res, next) => {
   }
 };
 
+// @desc    Get all pending submissions for evaluation
+// @route   GET /api/faculty/submissions/pending
+// @access  Private/Faculty
+exports.getPendingSubmissions = async (req, res, next) => {
+  try {
+    const isAdmin = isSuperAdmin(req.user);
+    const examQuery = isAdmin
+      ? {}
+      : {
+        $or: [
+          { facultyId: req.user._id },
+          { collegeId: req.user.collegeId },
+          { contributingColleges: req.user.collegeId },
+        ],
+      };
+
+    const exams = await Exam.find(examQuery).select('_id title');
+    const examIds = exams.map(e => e._id);
+
+    const results = await Result.find({
+      examId: { $in: examIds },
+      status: 'submitted',
+    })
+      .populate('studentId', 'name email regNo enrollmentNumber')
+      .populate('examId', 'title startTime endTime')
+      .sort({ submittedAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: results.length,
+      data: results,
+    });
+  } catch (error) {
+    logger.error('Get pending submissions error:', error);
+    next(error);
+  }
+};
+
 // @desc    Evaluate descriptive answer
 // @route   POST /api/faculty/evaluate/:resultId
 // @access  Private/Faculty
 exports.evaluateAnswer = async (req, res, next) => {
   try {
     const { answerId, marksAwarded, feedback } = req.body;
+    console.log(`Evaluating result ${req.params.resultId}, answer ${answerId}`, { marksAwarded, feedback });
 
     const result = await Result.findById(req.params.resultId).populate(
       'examId'
     );
+    console.log('Result found:', !!result);
 
     if (!result) {
       return res.status(404).json({
@@ -807,12 +867,21 @@ exports.evaluateAnswer = async (req, res, next) => {
       });
     }
 
-    // Check if faculty owns this exam (superadmin can evaluate any)
-    if (!isSuperAdmin(req.user) && result.examId.facultyId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to evaluate this result',
-      });
+    // Check if faculty has access to this exam (creator, same college, or contributor)
+    const isAdmin = isSuperAdmin(req.user);
+    if (!isAdmin) {
+      const examIdStr = result.examId._id.toString();
+      const hasAccess =
+        result.examId.facultyId.toString() === req.user._id.toString() ||
+        result.examId.collegeId.toString() === req.user.collegeId.toString() ||
+        (result.examId.contributingColleges && result.examId.contributingColleges.includes(req.user.collegeId));
+
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to evaluate this result',
+        });
+      }
     }
 
     const answer = result.answers.id(answerId);
@@ -824,7 +893,11 @@ exports.evaluateAnswer = async (req, res, next) => {
       });
     }
 
-    answer.marksAwarded = marksAwarded;
+    // Ensure marksAwarded is a valid number
+    const numericMarks = typeof marksAwarded === 'string' ? parseFloat(marksAwarded) || 0 : marksAwarded || 0;
+    console.log(`Original marks: ${marksAwarded}, Parsed numeric marks: ${numericMarks}`);
+
+    answer.marksAwarded = numericMarks;
     answer.isEvaluated = true;
     answer.evaluatedBy = req.user._id;
     answer.evaluatedAt = Date.now();
@@ -835,6 +908,7 @@ exports.evaluateAnswer = async (req, res, next) => {
       (sum, ans) => sum + (ans.marksAwarded || 0),
       0
     );
+    console.log(`New total score for result: ${result.score}`);
 
     // Check if all answers are evaluated
     const allEvaluated = result.answers.every((ans) => ans.isEvaluated);
@@ -855,6 +929,77 @@ exports.evaluateAnswer = async (req, res, next) => {
     });
   } catch (error) {
     logger.error('Evaluate answer error:', error);
+    next(error);
+  }
+};
+
+// @desc    Evaluate student answer using AI
+// @route   POST /api/faculty/evaluate/:resultId/ai
+// @access  Private/Faculty
+exports.evaluateAI = async (req, res, next) => {
+  try {
+    const { answerId } = req.body;
+    const { resultId } = req.params;
+
+    const result = await Result.findById(resultId).populate('examId');
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: 'Result not found',
+      });
+    }
+
+    // Check if faculty has access to this exam (creator, same college, or contributor)
+    const isAdmin = isSuperAdmin(req.user);
+    if (!isAdmin) {
+      const exam = result.examId;
+      const hasAccess =
+        exam.facultyId.toString() === req.user._id.toString() ||
+        exam.collegeId.toString() === req.user.collegeId.toString() ||
+        (exam.contributingColleges && exam.contributingColleges.includes(req.user.collegeId));
+
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to evaluate this result',
+        });
+      }
+    }
+
+    const answer = result.answers.id(answerId);
+    if (!answer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Answer not found',
+      });
+    }
+
+    const question = await Question.findById(answer.questionId);
+    if (!question) {
+      return res.status(404).json({
+        success: false,
+        message: 'Question not found',
+      });
+    }
+
+    if (question.type !== 'Coding') {
+      return res.status(400).json({
+        success: false,
+        message: 'AI evaluation is only supported for coding questions',
+      });
+    }
+
+    const evaluation = await aiService.evaluateCodingSubmission({
+      question,
+      submission: answer,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: evaluation,
+    });
+  } catch (error) {
+    logger.error('AI evaluation error:', error);
     next(error);
   }
 };

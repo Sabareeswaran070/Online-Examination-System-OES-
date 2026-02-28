@@ -452,8 +452,18 @@ export const facultyService = {
     return response.data;
   },
 
+  getPendingSubmissions: async () => {
+    const response = await api.get('/faculty/submissions/pending');
+    return response.data;
+  },
+
   evaluateAnswer: async (resultId, answerId, data) => {
     const response = await api.post(`/faculty/evaluate/${resultId}`, { answerId, ...data });
+    return response.data;
+  },
+
+  evaluateAI: async (resultId, answerId) => {
+    const response = await api.post(`/faculty/evaluate/${resultId}/ai`, { answerId });
     return response.data;
   },
 

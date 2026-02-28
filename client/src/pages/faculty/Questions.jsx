@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiEdit, FiTrash2, FiFilter, FiHelpCircle } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiFilter, FiHelpCircle, FiSearch } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Table from '@/components/common/Table.jsx';

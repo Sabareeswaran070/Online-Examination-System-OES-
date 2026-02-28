@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
@@ -38,12 +39,13 @@ import DeptHeadDashboard from './pages/depthead/Dashboard';
 import FacultyDashboard from './pages/faculty/Dashboard';
 import FacultyExams from './pages/faculty/Exams';
 import FacultyExamDetails from './pages/faculty/ExamDetails';
-import FacultyQuestions from './pages/faculty/Questions';
-import FacultyResults from './pages/faculty/Results';
+const FacultyQuestions = lazy(() => import('./pages/faculty/Questions'));
+const FacultyResults = lazy(() => import('./pages/faculty/Results'));
+const FacultySubmissions = lazy(() => import('./pages/faculty/Submissions'));
 
 // Student Pages
 import StudentDashboard from './pages/student/Dashboard';
-import AvailableExams from './pages/student/AvailableExams';
+const AvailableExams = lazy(() => import('./pages/student/AvailableExams'));
 import ExamPreview from './pages/student/ExamPreview';
 import TakeExam from './pages/student/TakeExam';
 import Results from './pages/student/Results';
@@ -54,7 +56,7 @@ import Competitions from './pages/student/Competitions';
 import GlobalLeaderboard from './pages/Leaderboard';
 
 // Icons
-import { FiHome, FiUsers, FiBarChart, FiFileText, FiBook, FiTrendingUp, FiAward, FiSettings } from 'react-icons/fi';
+import { FiHome, FiUsers, FiBarChart, FiFileText, FiBook, FiTrendingUp, FiAward, FiSettings, FiCheckCircle } from 'react-icons/fi';
 
 import { USER_ROLES } from './config/constants';
 
@@ -93,8 +95,7 @@ const navigationConfig = {
     { path: '/faculty/dashboard', label: 'Dashboard', icon: FiHome },
     { path: '/faculty/exams', label: 'Exams', icon: FiFileText },
     { path: '/faculty/questions', label: 'Questions', icon: FiBook },
-    { path: '/faculty/results', label: 'Results', icon: FiBarChart },
-    { path: '/faculty/evaluate', label: 'Evaluate', icon: FiSettings },
+    { path: '/faculty/evaluations', label: 'Evaluations', icon: FiCheckCircle },
   ],
   [USER_ROLES.STUDENT]: [
     { path: '/student/dashboard', label: 'Dashboard', icon: FiHome },
@@ -194,6 +195,7 @@ const FacultyRoutes = () => {
         <Route path="exams" element={<FacultyExams />} />
         <Route path="exams/:id" element={<FacultyExamDetails />} />
         <Route path="exams/:id/results" element={<FacultyResults />} />
+        <Route path="evaluations" element={<FacultySubmissions />} />
         <Route path="questions" element={<FacultyQuestions />} />
       </Routes>
     </DashboardLayout>
@@ -228,64 +230,66 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/unauthorized" element={<Unauthorized />} />
+        <Suspense fallback={<div className="h-screen w-full flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>}>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
 
-          {/* Root redirect */}
-          <Route path="/" element={<RoleBasedRedirect />} />
+            {/* Root redirect */}
+            <Route path="/" element={<RoleBasedRedirect />} />
 
-          {/* Protected Routes by Role */}
-          <Route
-            path="/super-admin/*"
-            element={
-              <ProtectedRoute allowedRoles={[USER_ROLES.SUPER_ADMIN]}>
-                <SuperAdminRoutes />
-              </ProtectedRoute>
-            }
-          />
+            {/* Protected Routes by Role */}
+            <Route
+              path="/super-admin/*"
+              element={
+                <ProtectedRoute allowedRoles={[USER_ROLES.SUPER_ADMIN]}>
+                  <SuperAdminRoutes />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/admin/*"
-            element={
-              <ProtectedRoute allowedRoles={[USER_ROLES.ADMIN]}>
-                <AdminRoutes />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/admin/*"
+              element={
+                <ProtectedRoute allowedRoles={[USER_ROLES.ADMIN]}>
+                  <AdminRoutes />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/dept-head/*"
-            element={
-              <ProtectedRoute allowedRoles={[USER_ROLES.DEPT_HEAD]}>
-                <DeptHeadRoutes />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/dept-head/*"
+              element={
+                <ProtectedRoute allowedRoles={[USER_ROLES.DEPT_HEAD]}>
+                  <DeptHeadRoutes />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/faculty/*"
-            element={
-              <ProtectedRoute allowedRoles={[USER_ROLES.FACULTY]}>
-                <FacultyRoutes />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/faculty/*"
+              element={
+                <ProtectedRoute allowedRoles={[USER_ROLES.FACULTY]}>
+                  <FacultyRoutes />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/student/*"
-            element={
-              <ProtectedRoute allowedRoles={[USER_ROLES.STUDENT]}>
-                <StudentRoutes />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/student/*"
+              element={
+                <ProtectedRoute allowedRoles={[USER_ROLES.STUDENT]}>
+                  <StudentRoutes />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* 404 */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            {/* 404 */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
 
         {/* Toast Notifications */}
         <Toaster

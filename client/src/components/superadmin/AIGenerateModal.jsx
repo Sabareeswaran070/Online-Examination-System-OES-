@@ -134,9 +134,8 @@ const AIGenerateModal = ({ isOpen, onClose, onGenerated }) => {
                                 value={topic}
                                 onChange={(e) => { setTopic(e.target.value); setError(''); }}
                                 placeholder="e.g., Two Sum Problem, Binary Search Tree, Dynamic Programming..."
-                                className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-200 ${
-                                    error ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50 focus:border-violet-400 focus:bg-white'
-                                }`}
+                                className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-200 ${error ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50 focus:border-violet-400 focus:bg-white'
+                                    }`}
                                 onKeyDown={(e) => e.key === 'Enter' && !generating && handleGenerate()}
                                 autoFocus
                             />
@@ -157,11 +156,10 @@ const AIGenerateModal = ({ isOpen, onClose, onGenerated }) => {
                                     <button
                                         key={t}
                                         onClick={() => { setTopic(t); setError(''); }}
-                                        className={`px-3 py-1.5 text-xs rounded-full border transition-all duration-150 hover:scale-105 ${
-                                            topic === t
+                                        className={`px-3 py-1.5 text-xs rounded-full border transition-all duration-150 hover:scale-105 ${topic === t
                                                 ? 'bg-violet-100 text-violet-700 border-violet-300 font-medium'
                                                 : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-violet-50 hover:text-violet-600 hover:border-violet-200'
-                                        }`}
+                                            }`}
                                     >
                                         {t}
                                     </button>
@@ -180,11 +178,10 @@ const AIGenerateModal = ({ isOpen, onClose, onGenerated }) => {
                                     <button
                                         key={d.value}
                                         onClick={() => setDifficulty(d.value)}
-                                        className={`p-3 rounded-xl border-2 transition-all duration-200 text-left hover:scale-[1.02] ${
-                                            difficulty === d.value
+                                        className={`p-3 rounded-xl border-2 transition-all duration-200 text-left hover:scale-[1.02] ${difficulty === d.value
                                                 ? `${d.color} border-current shadow-sm`
                                                 : 'bg-white border-gray-200 hover:border-gray-300'
-                                        }`}
+                                            }`}
                                     >
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className="text-lg">{d.emoji}</span>
@@ -207,11 +204,10 @@ const AIGenerateModal = ({ isOpen, onClose, onGenerated }) => {
                                     <button
                                         key={l.value}
                                         onClick={() => setLanguage(l.value)}
-                                        className={`px-4 py-2.5 rounded-xl border-2 transition-all duration-200 flex items-center gap-2 hover:scale-105 ${
-                                            language === l.value
+                                        className={`px-4 py-2.5 rounded-xl border-2 transition-all duration-200 flex items-center gap-2 hover:scale-105 ${language === l.value
                                                 ? 'bg-violet-100 text-violet-700 border-violet-400 font-medium shadow-sm'
                                                 : 'bg-white border-gray-200 text-gray-600 hover:border-violet-200'
-                                        }`}
+                                            }`}
                                     >
                                         <span className="text-lg">{l.icon}</span>
                                         <span className="text-sm">{l.label}</span>
@@ -297,11 +293,10 @@ const AIGenerateModal = ({ isOpen, onClose, onGenerated }) => {
                             <button
                                 onClick={handleGenerate}
                                 disabled={generating || !topic.trim()}
-                                className={`flex-[2] flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-semibold text-white transition-all duration-300 ${
-                                    generating || !topic.trim()
+                                className={`flex-[2] flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-semibold text-white transition-all duration-300 ${generating || !topic.trim()
                                         ? 'bg-gray-300 cursor-not-allowed'
                                         : 'bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-200 hover:shadow-xl hover:shadow-violet-300 hover:scale-[1.02]'
-                                }`}
+                                    }`}
                             >
                                 {generating ? (
                                     <>
@@ -335,14 +330,13 @@ const AIGenerateModal = ({ isOpen, onClose, onGenerated }) => {
                                     </div>
                                 </div>
                                 <div className="mt-4 grid grid-cols-4 gap-2">
-                                    {['Problem', 'Test Cases', 'Code', 'Review'].map((step, i) => (
+                                    {['Problem', 'Test Cases', 'Starter Code', 'Solution', 'Review'].map((step, i) => (
                                         <div key={step} className="flex flex-col items-center">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold mb-1 ${
-                                                i === 0 ? 'bg-violet-600 text-white animate-pulse' : 'bg-violet-100 text-violet-400'
-                                            }`}>
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold mb-1 ${i === 0 ? 'bg-violet-600 text-white animate-pulse' : 'bg-violet-100 text-violet-400'
+                                                }`}>
                                                 {i + 1}
                                             </div>
-                                            <span className="text-[10px] text-violet-500">{step}</span>
+                                            <span className="text-[10px] text-violet-500 text-center">{step}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -374,6 +368,7 @@ const GeneratedPreview = ({ question, onUse, onRegenerate, onClose, generating }
         { id: 'problem', label: 'Problem' },
         { id: 'testcases', label: 'Test Cases' },
         { id: 'code', label: 'Starter Code' },
+        { id: 'solution', label: 'Full Solution' },
     ];
 
     return (
@@ -391,11 +386,10 @@ const GeneratedPreview = ({ question, onUse, onRegenerate, onClose, generating }
 
             {/* Quick Info */}
             <div className="flex flex-wrap gap-2">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    question.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                    question.difficulty === 'hard' ? 'bg-red-100 text-red-700' :
-                    'bg-yellow-100 text-yellow-700'
-                }`}>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${question.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
+                        question.difficulty === 'hard' ? 'bg-red-100 text-red-700' :
+                            'bg-yellow-100 text-yellow-700'
+                    }`}>
                     {question.difficulty?.charAt(0).toUpperCase() + question.difficulty?.slice(1)}
                 </span>
                 <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
@@ -415,11 +409,10 @@ const GeneratedPreview = ({ question, onUse, onRegenerate, onClose, generating }
                     <button
                         key={tab.id}
                         onClick={() => setPreviewTab(tab.id)}
-                        className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                            previewTab === tab.id
+                        className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all ${previewTab === tab.id
                                 ? 'bg-white text-violet-700 shadow-sm'
                                 : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                            }`}
                     >
                         {tab.label}
                     </button>
@@ -530,10 +523,21 @@ const GeneratedPreview = ({ question, onUse, onRegenerate, onClose, generating }
                 {previewTab === 'code' && (
                     <div>
                         <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                            Starter Code ({question.programmingLanguage})
+                            Starter Code Boilerplate ({question.programmingLanguage})
                         </h4>
                         <pre className="bg-gray-900 text-green-400 p-4 rounded-lg text-sm overflow-x-auto font-mono leading-relaxed">
                             {question.starterCode || 'No starter code generated'}
+                        </pre>
+                    </div>
+                )}
+
+                {previewTab === 'solution' && (
+                    <div>
+                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                            Full Reference Solution ({question.programmingLanguage})
+                        </h4>
+                        <pre className="bg-gray-900 text-green-400 p-4 rounded-lg text-sm overflow-x-auto font-mono leading-relaxed border border-gray-700">
+                            {question.codeSnippet || question.solutionCode || 'No solution code generated'}
                         </pre>
                     </div>
                 )}

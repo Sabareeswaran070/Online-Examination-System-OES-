@@ -10,6 +10,7 @@ import Textarea from '@/components/common/Textarea.jsx';
 import Loader from '@/components/common/Loader.jsx';
 import Badge from '@/components/common/Badge.jsx';
 import { facultyService } from '@/services';
+import { useAuth } from '@/context/AuthContext';
 import { formatDateTime } from '@/utils/dateUtils';
 import toast from 'react-hot-toast';
 
@@ -28,6 +29,7 @@ const Results = () => {
     feedback: '',
   });
   const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const [loadingAI, setLoadingAI] = useState(false);
 
   useEffect(() => {
     fetchResults();
@@ -78,6 +80,26 @@ const Results = () => {
     }
   };
 
+  const handleAIEvaluate = async () => {
+    try {
+      setLoadingAI(true);
+      const response = await facultyService.evaluateAI(selectedResult._id, selectedAnswer._id);
+
+      if (response.success) {
+        setEvaluationData({
+          marksAwarded: response.data.marksAwarded,
+          feedback: response.data.feedback,
+        });
+        toast.success('AI evaluation complete!');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'AI evaluation failed');
+      console.error(error);
+    } finally {
+      setLoadingAI(false);
+    }
+  };
+
   const getStatusBadge = (status) => {
     const statusMap = {
       'in-progress': { variant: 'info', label: 'In Progress' },
@@ -90,8 +112,8 @@ const Results = () => {
 
   const columns = [
     { header: 'Rank', accessor: 'rank' },
-    { 
-      header: 'Student', 
+    {
+      header: 'Student',
       accessor: (row) => (
         <div>
           <p className="font-medium">{row.studentId?.name}</p>
@@ -99,23 +121,23 @@ const Results = () => {
         </div>
       )
     },
-    { 
-      header: 'Score', 
+    {
+      header: 'Score',
       accessor: (row) => `${row.score} / ${row.totalMarks || exam?.totalMarks || 0}`
     },
-    { 
-      header: 'Percentage', 
+    {
+      header: 'Percentage',
       accessor: (row) => {
         const percentage = ((row.score / (row.totalMarks || exam?.totalMarks || 1)) * 100).toFixed(2);
         return `${percentage}%`;
       }
     },
-    { 
-      header: 'Status', 
+    {
+      header: 'Status',
       accessor: (row) => getStatusBadge(row.status)
     },
-    { 
-      header: 'Submitted At', 
+    {
+      header: 'Submitted At',
       accessor: (row) => row.submittedAt ? formatDateTime(row.submittedAt) : 'N/A'
     },
     {
@@ -170,7 +192,7 @@ const Results = () => {
           <div className="text-center">
             <p className="text-sm text-green-700 font-medium">Average Score</p>
             <p className="text-3xl font-bold text-green-900 mt-2">
-              {results.length > 0 
+              {results.length > 0
                 ? (results.reduce((sum, r) => sum + r.score, 0) / results.length).toFixed(1)
                 : 0}
             </p>
@@ -196,7 +218,7 @@ const Results = () => {
           <div className="text-center">
             <p className="text-sm text-purple-700 font-medium">Pass Rate</p>
             <p className="text-3xl font-bold text-purple-900 mt-2">
-              {results.length > 0 
+              {results.length > 0
                 ? ((results.filter(r => r.score >= (exam?.passingMarks || 0)).length / results.length) * 100).toFixed(0)
                 : 0}%
             </p>
@@ -277,21 +299,25 @@ const Results = () => {
                         {answer.isEvaluated ? 'Evaluated' : 'Pending'}
                       </Badge>
                     </div>
-                    
+
                     <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200">
                       <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide mb-1">Student Answer</p>
-                      <p className="text-gray-900">
-                        {answer.questionId?.type === 'MCQ' 
-                          ? answer.questionId?.options[answer.selectedOption]
-                          : answer.answerText}
-                      </p>
+                      <div className="text-gray-900 break-words">
+                        {answer.questionId?.type === 'Coding' ? (
+                          <span className="text-sm text-gray-500 italic">Click Evaluate to view code</span>
+                        ) : answer.questionId?.type === 'MCQ' || answer.questionId?.type === 'TrueFalse' ? (
+                          answer.selectedAnswer || 'Not answered'
+                        ) : (
+                          answer.textAnswer || 'Not answered'
+                        )}
+                      </div>
                     </div>
 
-                    {answer.questionId?.type === 'MCQ' && (
-                      <div className="bg-gradient-to-br from-green-50 to-green-100 p-3 rounded-lg border border-green-200">
+                    {(answer.questionId?.type === 'MCQ' || answer.questionId?.type === 'TrueFalse') && (
+                      <div className="bg-gradient-to-br from-green-50 to-green-100 p-3 rounded-lg border border-green-200 mt-2">
                         <p className="text-xs font-semibold text-green-800 uppercase tracking-wide mb-1">Correct Answer</p>
-                        <p className="text-green-900 font-medium">
-                          {answer.questionId?.options[answer.questionId?.correctAnswer]}
+                        <p className="text-green-900 font-medium break-words">
+                          {answer.questionId?.options?.find(opt => opt.isCorrect)?.text || answer.questionId?.options?.[0]?.text}
                         </p>
                       </div>
                     )}
@@ -304,13 +330,13 @@ const Results = () => {
                           {answer.marksAwarded || 0} / {answer.questionId?.marks}
                         </span>
                       </div>
-                      {!answer.isEvaluated && answer.questionId?.type !== 'MCQ' && (
+                      {answer.questionId?.type !== 'MCQ' && (
                         <Button
                           size="sm"
-                          variant="primary"
+                          variant={answer.isEvaluated ? 'secondary' : 'primary'}
                           onClick={() => handleEvaluate(answer)}
                         >
-                          Evaluate
+                          {answer.isEvaluated ? 'Edit Grade' : 'Evaluate'}
                         </Button>
                       )}
                     </div>
@@ -343,8 +369,37 @@ const Results = () => {
 
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
             <p className="text-sm font-semibold text-blue-800 mb-2">Student Answer:</p>
-            <p className="text-gray-900">{selectedAnswer?.answerText}</p>
+            {selectedAnswer?.questionId?.type === 'Coding' ? (
+              <div className="rounded-xl overflow-hidden border border-blue-300 shadow-sm mt-2">
+                <div className="bg-gray-800 px-3 py-1.5 flex items-center justify-between">
+                  <span className="text-xs text-gray-300 font-mono">Submitted Code</span>
+                </div>
+                <pre className="p-3 bg-gray-900 text-green-300 font-mono text-sm overflow-x-auto whitespace-pre-wrap max-h-64">
+                  {selectedAnswer?.codeAnswer || '// No code submitted'}
+                </pre>
+              </div>
+            ) : (
+              <p className="text-gray-900 whitespace-pre-wrap">{selectedAnswer?.textAnswer || selectedAnswer?.selectedAnswer || 'Not answered'}</p>
+            )}
           </div>
+
+          {selectedAnswer?.questionId?.type === 'Coding' && selectedAnswer?.questionId?.codeSnippet && (
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-purple-800">Reference Solution (Admin Only):</p>
+              </div>
+              <div className="rounded-xl overflow-hidden border border-purple-300 shadow-sm">
+                <div className="bg-purple-900 px-3 py-1.5 flex items-center justify-between">
+                  <span className="text-xs text-purple-200 font-mono flex items-center gap-1.5">
+                    <FiCheckCircle className="w-3.5 h-3.5" /> Optimal Implementation
+                  </span>
+                </div>
+                <pre className="p-3 bg-gray-900 text-purple-300 font-mono text-sm overflow-x-auto whitespace-pre-wrap max-h-64">
+                  {selectedAnswer.questionId.codeSnippet}
+                </pre>
+              </div>
+            </div>
+          )}
 
           <Input
             label={`Marks Awarded (Max: ${selectedAnswer?.questionId?.marks})`}
@@ -364,13 +419,37 @@ const Results = () => {
             rows={3}
           />
 
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setShowEvaluateModal(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmitEvaluation}>
-              Submit Evaluation
-            </Button>
+          <div className="flex justify-between items-center bg-gray-50 -mx-6 -mb-6 px-6 py-4 mt-6 border-t border-gray-200 rounded-b-xl">
+            <div>
+              {selectedAnswer?.questionId?.type === 'Coding' && (
+                <Button
+                  variant="secondary"
+                  onClick={handleAIEvaluate}
+                  disabled={loadingAI}
+                  className="flex items-center gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                >
+                  {loadingAI ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                      AI Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <FiAward className="w-4 h-4" />
+                      AI Evaluate
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <Button variant="secondary" onClick={() => setShowEvaluateModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSubmitEvaluation}>
+                Submit Evaluation
+              </Button>
+            </div>
           </div>
         </div>
       </Modal>

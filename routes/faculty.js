@@ -16,7 +16,9 @@ const {
   updateQuestion,
   deleteQuestion,
   getExamResults,
+  getPendingSubmissions,
   evaluateAnswer,
+  evaluateAI,
   generateRandomQuestions,
 } = require('../controllers/facultyController');
 const { protect } = require('../middleware/auth');
@@ -140,13 +142,23 @@ router
     deleteQuestion
   );
 
-// Evaluation
+// Evaluation & Submissions
+router.get('/submissions/pending', getPendingSubmissions);
+
 router.post(
   '/evaluate/:resultId',
   validateObjectId('resultId'),
   validate,
   auditLog('evaluate', 'Result'),
   evaluateAnswer
+);
+
+router.post(
+  '/evaluate/:resultId/ai',
+  validateObjectId('resultId'),
+  validate,
+  auditLog('evaluateAI', 'Result'),
+  evaluateAI
 );
 
 module.exports = router;

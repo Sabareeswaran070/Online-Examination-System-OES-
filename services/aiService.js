@@ -127,7 +127,8 @@ Generate a well-structured coding question and return it as a JSON object with E
     // EXACTLY ${hiddenTestCaseCount} hidden test cases, each MUST have both "input" and "expectedOutput" (non-empty)
     { "input": "edge case input", "expectedOutput": "expected output" }
   ],
-  "starterCode": "Starter code template in ${language} with function signature, comments, and input/output handling boilerplate",
+  "starterCode": "Starter code template in ${language} with function signature, comments, and input/output handling boilerplate. DO NOT provide the full solution or implementation. Leave the actual logic blank or add a comment like // Write your code here",
+  "solutionCode": "The full working solution code in ${language} that solves the problem completely",
   "explanation": "Brief editorial explaining the optimal approach, time complexity, and space complexity",
   "timeLimit": <number in milliseconds: 1000 for easy, 2000 for medium/hard>,
   "memoryLimit": <number in MB: 256>,
@@ -143,7 +144,9 @@ IMPORTANT RULES:
 5. The starter code should have proper input parsing and output formatting
 6. Constraints should be realistic for the difficulty level
 7. All test case inputs/outputs MUST be consistent with the problem statement
-8. Return ONLY the JSON object, no additional text`;
+8. Return ONLY the JSON object, no additional text
+9. The starterCode MUST ONLY contain the boilerplate and function signature. NEVER write the actual solution inside the starterCode because it will be shown to the students directly.
+10. The solutionCode MUST contain the full working logic and solution to the problem.`;
 }
 
 /**
@@ -185,7 +188,7 @@ function normalizeAIResponse(data, { difficulty, language }) {
     timeLimit: Number(data.timeLimit) || 1000,
     memoryLimit: Number(data.memoryLimit) || 256,
     programmingLanguage: data.programmingLanguage || language,
-    codeSnippet: data.starterCode || '',
+    codeSnippet: data.solutionCode || data.starterCode || '',
     tags: Array.isArray(data.tags) ? data.tags : [],
   };
 }
@@ -373,7 +376,87 @@ function normalizeMultiTypeResponse(data, { type, difficulty }) {
   });
 }
 
+/**
+ * Evaluate a student's coding submission using AI
+ */
+async function evaluateCodingSubmission({ question, submission }) {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error('GROQ_API_KEY is not configured.');
+  }
+
+  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  const prompt = `You are an expert technical interviewer and code reviewer. Evaluate the following student code submission for a programming question.
+
+**Question:** 
+${question.questionText}
+
+**Constraints:**
+${question.constraints}
+
+**Reference Solution:**
+${question.codeSnippet || 'Not provided'}
+
+**Student Submission:**
+\`\`\`${question.programmingLanguage || 'code'}
+${submission.codeAnswer || submission.textAnswer || 'No code submitted'}
+\`\`\`
+
+**Max Marks:** ${question.marks}
+
+**Test Cases (for context):**
+${(question.testCases || []).map((tc, i) => `Case ${i + 1}: Input="${tc.input}", Expected="${tc.expectedOutput}"`).join('\n')}
+
+Evaluate the student's submission based on:
+1. **Correctness:** Does it solve the problem described?
+2. **Efficiency:** Is the time and space complexity optimal?
+3. **Code Quality:** Is the code clean, well-structured, and easy to read?
+
+Return a JSON object with:
+{
+  "marksAwarded": <number between 0 and ${question.marks}>,
+  "feedback": "Concise but helpful feedback (2-3 sentences). Highlight what was good and what can be improved.",
+  "isCorrect": <boolean>,
+  "complexityAnalysis": "Brief O(n) analysis"
+}
+
+IMPORTANT:
+- Be fair but encouraging.
+- If the code has minor syntax errors but the logic is mostly correct, award partial marks.
+- Return ONLY the JSON object.`;
+
+  const MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+
+  for (const modelName of MODELS) {
+    try {
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an AI code evaluator. You MUST respond with ONLY a valid JSON object.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        model: modelName,
+        temperature: 0.2, // Low temperature for consistent grading
+        response_format: { type: 'json_object' },
+      });
+
+      const text = chatCompletion.choices?.[0]?.message?.content;
+      return JSON.parse(text);
+    } catch (error) {
+      logger.error(`AI Evaluation error with ${modelName}:`, error);
+      continue;
+    }
+  }
+
+  throw new Error('AI evaluation service is currently unavailable.');
+}
+
 module.exports = {
   generateCodingQuestion,
   generateQuestion,
+  evaluateCodingSubmission,
 };
