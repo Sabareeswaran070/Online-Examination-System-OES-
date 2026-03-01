@@ -3,6 +3,8 @@ const Question = require('../models/Question');
 const Result = require('../models/Result');
 const Subject = require('../models/Subject');
 const User = require('../models/User');
+const College = require('../models/College');
+const Department = require('../models/Department');
 const logger = require('../config/logger');
 const aiService = require('../services/aiService');
 
@@ -121,6 +123,29 @@ exports.getSubjects = async (req, res, next) => {
   }
 };
 
+// @desc    Get proctoring defaults for user (based on College/Dept)
+// @route   GET /api/faculty/proctoring-defaults
+// @access  Private/Faculty
+exports.getProctoringDefaults = async (req, res, next) => {
+  try {
+    const college = await College.findById(req.user.collegeId);
+    const dept = await Department.findById(req.user.departmentId);
+
+    const data = {
+      college: college?.defaultProctoringSettings || {},
+      department: dept?.defaultProctoringSettings || {},
+    };
+
+    res.status(200).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    logger.error('Get proctoring defaults error:', error);
+    next(error);
+  }
+};
+
 // @desc    Create exam
 // @route   POST /api/faculty/exams
 // @access  Private/Faculty
@@ -147,6 +172,9 @@ exports.createExam = async (req, res, next) => {
     if (examData.departmentId === '') delete examData.departmentId;
     if (examData.collegeId === '') delete examData.collegeId;
     if (examData.subject === '') delete examData.subject;
+
+    // Resolve proctoring settings inheritance
+    examData.proctoring = await resolveProctoringSettings(req.user, examData.proctoring || {});
 
     if (examData.subject && !isSuperAdmin(req.user)) {
       // Validate that the subject exists and belongs to the allowed scope
@@ -240,7 +268,10 @@ exports.getExams = async (req, res, next) => {
 
     let query = {};
     if (isSuperAdmin(req.user)) {
-      query = { collegeId: null }; // Super Admin: Thier Global exams only
+      // Super Admin: Default to global, but allow filtering by college/department if provided
+      if (!collegeId && !departmentId) {
+        query.collegeId = null;
+      }
     } else if (req.user.role === 'admin') {
       query = { collegeId: req.user.collegeId }; // College Admin: All college exams
     } else if (req.user.role === 'depthead') {
@@ -298,7 +329,7 @@ exports.getExam = async (req, res, next) => {
     let findQuery = { _id: req.params.id };
 
     if (isSuperAdmin(req.user)) {
-      findQuery.collegeId = null;
+      // Super Admin: Global access to any exam ID
     } else if (req.user.role === 'admin') {
       findQuery.collegeId = req.user.collegeId;
     } else if (req.user.role === 'depthead') {
@@ -357,6 +388,11 @@ exports.updateExam = async (req, res, next) => {
         success: false,
         message: 'Cannot update ongoing or completed exam',
       });
+    }
+
+    // Resolve proctoring settings inheritance if provided
+    if (req.body.proctoring) {
+      req.body.proctoring = await resolveProctoringSettings(req.user, req.body.proctoring);
     }
 
     exam = await Exam.findByIdAndUpdate(req.params.id, req.body, {
@@ -1376,4 +1412,78 @@ exports.generateAIQuestions = async (req, res, next) => {
       message: error.message || 'Failed to generate questions. Please try again.',
     });
   }
+};
+
+/**
+ * Helper: Resolve proctoring settings based on hierarchical inheritance
+ * Rules:
+ * 1. Lower roles inherit parent's settings as defaults.
+ * 2. They can only disable features that are enabled above them.
+ * 3. They cannot enable features that the parent has disabled.
+ * 4. Locked settings cannot be changed at all.
+ */
+const resolveProctoringSettings = async (user, requestedSettings = {}) => {
+  // If Super Admin, they have full flexibility for their global exams
+  if (user.role === 'superadmin') {
+    return {
+      enabled: requestedSettings.enabled ?? false,
+      enforceFullscreen: requestedSettings.enforceFullscreen ?? false,
+      blockNotifications: requestedSettings.blockNotifications ?? false,
+      tabSwitchingAllowed: requestedSettings.tabSwitchingAllowed ?? true,
+      maxTabSwitches: requestedSettings.maxTabSwitches ?? 10,
+      maxFullscreenExits: requestedSettings.maxFullscreenExits ?? 10,
+      actionOnLimit: requestedSettings.actionOnLimit || 'warn',
+      ...requestedSettings,
+      enforcedBy: {
+        enforceFullscreen: 'superadmin',
+        blockNotifications: 'superadmin',
+        tabSwitchingAllowed: 'superadmin'
+      }
+    };
+  }
+
+  const college = await College.findById(user.collegeId);
+  const dept = await Department.findById(user.departmentId);
+
+  const collegeDefaults = college?.defaultProctoringSettings || {};
+  const deptDefaults = dept?.defaultProctoringSettings || {};
+
+  // Merge defaults: Dept overrides College defaults (if not locked)
+  const initialDefaults = {
+    enabled: requestedSettings.enabled || false,
+    enforceFullscreen: deptDefaults.enforceFullscreen ?? collegeDefaults.enforceFullscreen ?? true,
+    blockNotifications: deptDefaults.blockNotifications ?? collegeDefaults.blockNotifications ?? true,
+    tabSwitchingAllowed: deptDefaults.tabSwitchingAllowed ?? collegeDefaults.tabSwitchingAllowed ?? true,
+    maxTabSwitches: deptDefaults.maxTabSwitches ?? collegeDefaults.maxTabSwitches ?? 10,
+    maxFullscreenExits: deptDefaults.maxFullscreenExits ?? collegeDefaults.maxFullscreenExits ?? 10,
+    actionOnLimit: deptDefaults.actionOnLimit || collegeDefaults.actionOnLimit || 'warn',
+  };
+
+  const resolved = { ...initialDefaults, ...requestedSettings };
+  const enforcedBy = {};
+
+  const fields = ['enforceFullscreen', 'blockNotifications', 'tabSwitchingAllowed'];
+
+  fields.forEach(field => {
+    // Priority 1: Locked by College
+    if (collegeDefaults.isLocked?.[field]) {
+      resolved[field] = collegeDefaults[field];
+      enforcedBy[field] = 'college';
+    }
+    // Priority 2: Locked by Department
+    else if (deptDefaults.isLocked?.[field]) {
+      resolved[field] = deptDefaults[field];
+      enforcedBy[field] = 'dept';
+    }
+    // Priority 3: Otherwise, use requested value or inherited default
+    else {
+      enforcedBy[field] = 'faculty';
+    }
+  });
+
+  // Numeric limits (only enforced if locked above - keeping it simple for now as per user request to "correct logics")
+  // If parent hasn't locked the limit, faculty can set what they need.
+
+  resolved.enforcedBy = enforcedBy;
+  return resolved;
 };

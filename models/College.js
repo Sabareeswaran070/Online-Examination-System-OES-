@@ -60,6 +60,19 @@ const collegeSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    defaultProctoringSettings: {
+      enforceFullscreen: { type: Boolean, default: false },
+      blockNotifications: { type: Boolean, default: false },
+      tabSwitchingAllowed: { type: Boolean, default: true },
+      maxTabSwitches: { type: Number, default: 3 },
+      maxFullscreenExits: { type: Number, default: 2 },
+      actionOnLimit: { type: String, enum: ['warn', 'auto-submit', 'lock'], default: 'warn' },
+      isLocked: {
+        enforceFullscreen: { type: Boolean, default: false },
+        blockNotifications: { type: Boolean, default: false },
+        tabSwitchingAllowed: { type: Boolean, default: false },
+      }
+    },
   },
   {
     timestamps: true,

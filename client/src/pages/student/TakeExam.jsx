@@ -37,6 +37,13 @@ const TakeExam = () => {
   const [testResults, setTestResults] = useState(null); // test case results
   const [customInput, setCustomInput] = useState('');
 
+  // Proctoring States
+  const [isFullscreenEnforced, setIsFullscreenEnforced] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+  const [proctoringModal, setProctoringModal] = useState({ show: false, type: '', message: '', count: 0 });
+  const [fullscreenExitCount, setFullscreenExitCount] = useState(0);
+  const [isActualFullScreen, setIsActualFullScreen] = useState(false);
+
 
 
   useEffect(() => {
@@ -63,18 +70,118 @@ const TakeExam = () => {
     }
   }, [answers, result]);
 
-  // Tab switch detection
+  // Tab switch & Fullscreen detection
   useEffect(() => {
+    if (!result || !exam) return;
+
+    // Debug log to confirm proctoring status
+    console.log('Proctoring status:', {
+      enabled: exam.proctoring?.enabled,
+      fullscreen: exam.proctoring?.enforceFullscreen,
+      tabSwitchBlocked: exam.proctoring?.tabSwitchingAllowed === false
+    });
+
+    if (isLocked || !exam?.proctoring?.enabled) return;
+
     const handleVisibilityChange = () => {
-      if (document.hidden && result) {
-        setTabSwitchCount(prev => prev + 1);
-        toast.error('Warning: Tab switch detected');
+      if (document.hidden && exam?.proctoring?.tabSwitchingAllowed === false) {
+        handleViolation('tab_switch', 'Tab switch detected');
+      }
+    };
+
+    const handleBlur = () => {
+      if (exam?.proctoring?.tabSwitchingAllowed === false) {
+        handleViolation('tab_switch', 'Window focus lost');
+      }
+    };
+
+    const handleFullscreenChange = () => {
+      const isFS = !!document.fullscreenElement;
+      setIsActualFullScreen(isFS);
+      if (!isFS && exam?.proctoring?.enforceFullscreen) {
+        handleViolation('fullscreen_exit', 'Exited fullscreen mode');
+      }
+    };
+
+    const handleContextMenu = (e) => {
+      e.preventDefault();
+      toast.error('Right-click is disabled during the exam');
+    };
+
+    const handleKeyDown = (e) => {
+      // Disable Alt+Tab, Ctrl+C, Ctrl+V, etc.
+      if (
+        (e.altKey && e.key === 'Tab') ||
+        (e.ctrlKey && ['c', 'v', 't', 'w', 'n', 'r'].includes(e.key.toLowerCase())) ||
+        (e.metaKey && ['c', 'v', 't', 'w', 'n', 'r'].includes(e.key.toLowerCase()))
+      ) {
+        // e.preventDefault();
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [result]);
+    window.addEventListener('blur', handleBlur);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('contextmenu', handleContextMenu);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('contextmenu', handleContextMenu);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [exam, result?.status, isLocked]);
+
+  const handleViolation = async (type, description) => {
+    if (isLocked) return;
+
+    try {
+      const response = await studentService.logViolation(id, { type, description });
+      const { actionTaken, violationCount, tabSwitchCount: newTabCount } = response.data;
+
+      setTabSwitchCount(newTabCount);
+      if (type === 'fullscreen_exit') setFullscreenExitCount(prev => prev + 1);
+
+      if (actionTaken === 'lock' || actionTaken === 'auto-submit') {
+        setIsLocked(true);
+        toast.error(`Exam ${actionTaken === 'lock' ? 'Locked' : 'Submitted'} due to violations`);
+        if (actionTaken === 'auto-submit') {
+          navigate('/student/results');
+        }
+      } else {
+        const limit = type === 'tab_switch' ? exam.proctoring?.maxTabSwitches : exam.proctoring?.maxFullscreenExits;
+
+        // If limit is 0 (Unlimited), don't show the intrusive modal, just toast
+        if (limit === 0) {
+          toast.error(`${type === 'tab_switch' ? 'Tab switching' : 'Fullscreen exit'} detected and logged.`, { duration: 3000 });
+        } else {
+          setProctoringModal({
+            show: true,
+            type,
+            message: description,
+            count: type === 'tab_switch' ? newTabCount : (fullscreenExitCount + 1)
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to log violation:', error);
+    }
+  };
+
+  const enterFullscreen = () => {
+    const element = document.documentElement;
+    if (element.requestFullscreen) {
+      element.requestFullscreen();
+    } else if (element.mozRequestFullScreen) {
+      element.mozRequestFullScreen();
+    } else if (element.webkitRequestFullscreen) {
+      element.webkitRequestFullscreen();
+    } else if (element.msRequestFullscreen) {
+      element.msRequestFullscreen();
+    }
+  };
 
   const startExam = async () => {
     try {
@@ -83,6 +190,25 @@ const TakeExam = () => {
       setExam(examData);
       setResult(resultData);
       setTimeLeft(remainingTime);
+
+      // Handle Locked Status
+      if (resultData.status === 'locked') {
+        setIsLocked(true);
+        setLoading(false);
+        return; // Don't proceed
+      }
+
+      // Handle Fullscreen Enforcement
+      if (examData.proctoring?.enforceFullscreen) {
+        setIsFullscreenEnforced(true);
+        setIsActualFullScreen(!!document.fullscreenElement);
+        toast('This exam requires Fullscreen Mode', { icon: '🖥️' });
+      }
+
+      // Handle Notifications
+      if (examData.proctoring?.blockNotifications && Notification.permission !== 'denied') {
+        Notification.requestPermission();
+      }
 
       // Initialize answers from saved state if any
       if (resultData.answers) {
@@ -263,11 +389,47 @@ const TakeExam = () => {
 
   if (loading) return <Loader fullScreen />;
   if (!exam || !result) return <div>Exam not found</div>;
+  if (isLocked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white p-4">
+        <div className="text-center space-y-4 max-w-md">
+          <FiXCircle className="w-20 h-20 text-red-500 mx-auto" />
+          <h1 className="text-3xl font-bold">Exam Locked</h1>
+          <p className="text-gray-400">Your exam session has been locked due to multiple proctoring violations. Please contact your instructor to unlock it.</p>
+          <Button variant="secondary" onClick={() => navigate('/student/exams')}>Back to Dashboard</Button>
+        </div>
+      </div>
+    );
+  }
 
   const question = exam.questions[currentQuestion];
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Mandatory Fullscreen Overlay */}
+      {exam?.proctoring?.enforceFullscreen && !isActualFullScreen && !isLocked && (
+        <div className="fixed inset-0 z-[100] bg-gray-900 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl transform transition-all">
+            <div className="p-4 bg-primary-50 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+              <FiLoader className="w-12 h-12 text-primary-600 animate-pulse" />
+            </div>
+            <h2 className="text-3xl font-black text-gray-900 mb-4">Fullscreen Required</h2>
+            <p className="text-gray-600 mb-8 text-lg">
+              This exam is regulated and requires mandatory Fullscreen Mode to ensure academic integrity. Your access is paused until you return to fullscreen.
+            </p>
+            <Button
+              className="w-full h-14 text-xl font-black shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
+              onClick={enterFullscreen}
+            >
+              Enter Fullscreen to Continue
+            </Button>
+            <p className="mt-6 text-sm text-gray-400 font-medium">
+              Attempting to bypass this mode will be logged as a security violation.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white shadow-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
@@ -283,8 +445,13 @@ const TakeExam = () => {
               </p>
             </div>
             {tabSwitchCount > 0 && (
+              <Badge variant="warning">
+                Tab Switches: {tabSwitchCount}/{exam.proctoring?.maxTabSwitches || '∞'}
+              </Badge>
+            )}
+            {fullscreenExitCount > 0 && (
               <Badge variant="danger">
-                Violations: {tabSwitchCount}
+                FS Exits: {fullscreenExitCount}/{exam.proctoring?.maxFullscreenExits || '∞'}
               </Badge>
             )}
           </div>
@@ -771,7 +938,45 @@ const TakeExam = () => {
           </Button>
         </div>
       </Modal>
-    </div>
+
+      {/* Proctoring Violation Modal */}
+      <Modal
+        isOpen={proctoringModal.show}
+        onClose={() => { }} // Force student to click return button
+        title="⚠️ Security Violation Detected"
+        showCloseButton={false}
+      >
+        <div className="text-center space-y-4 py-4">
+          <div className="p-4 bg-red-100 rounded-full w-20 h-20 mx-auto flex items-center justify-center">
+            <FiXCircle className="w-12 h-12 text-red-600" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">
+            {proctoringModal.type === 'tab_switch' ? 'Tab Switching Detected' : 'Fullscreen Exit Detected'}
+          </h3>
+          <p className="text-gray-600">
+            {proctoringModal.message}. Tab switching and exiting fullscreen are strictly prohibited during this exam.
+          </p>
+          <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
+            <p className="text-sm font-semibold text-amber-800">
+              {proctoringModal.type === 'tab_switch'
+                ? `Warning: This is tab switch ${proctoringModal.count} of ${exam.proctoring?.maxTabSwitches || 'Unlimited'}`
+                : `Warning: This is fullscreen exit ${proctoringModal.count} of ${exam.proctoring?.maxFullscreenExits || 'Unlimited'}`
+              }
+            </p>
+            <p className="text-xs text-amber-600 mt-1">Exceeding the limit will result in your exam being {exam.proctoring?.actionOnLimit === 'warn' ? 'warned' : exam.proctoring?.actionOnLimit.replace('-', ' ')}.</p>
+          </div>
+          <Button
+            className="w-full h-12 text-lg font-bold"
+            onClick={() => {
+              setProctoringModal({ ...proctoringModal, show: false });
+              if (exam.proctoring?.enforceFullscreen) enterFullscreen();
+            }}
+          >
+            Return to Exam
+          </Button>
+        </div>
+      </Modal >
+    </div >
   );
 };
 

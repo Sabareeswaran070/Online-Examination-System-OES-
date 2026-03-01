@@ -37,7 +37,17 @@ const Exams = () => {
     negativeMarks: 0,
     isRandomized: true,
     showResultsImmediately: true,
+    proctoring: {
+      enabled: false,
+      enforceFullscreen: false,
+      blockNotifications: false,
+      tabSwitchingAllowed: true,
+      maxTabSwitches: 3,
+      maxFullscreenExits: 3,
+      actionOnLimit: 'warn',
+    }
   });
+  const [proctoringDefaults, setProctoringDefaults] = useState({ college: {}, department: {} });
   const [subjects, setSubjects] = useState([]);
   const [filterStatus, setFilterStatus] = useState('');
 
@@ -54,7 +64,17 @@ const Exams = () => {
 
   useEffect(() => {
     fetchSubjects();
+    fetchProctoringDefaults();
   }, []);
+
+  const fetchProctoringDefaults = async () => {
+    try {
+      const response = await facultyService.getProctoringDefaults();
+      setProctoringDefaults(response.data);
+    } catch (error) {
+      console.error('Failed to load proctoring defaults:', error);
+    }
+  };
 
   const fetchExams = async () => {
     try {
@@ -87,8 +107,21 @@ const Exams = () => {
   };
 
   const handleChange = (e) => {
-    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    setFormData({ ...formData, [e.target.name]: value });
+    const { name, value, type, checked } = e.target;
+    const val = type === 'checkbox' ? checked : value;
+
+    if (name.startsWith('proctoring.')) {
+      const field = name.split('.')[1];
+      setFormData({
+        ...formData,
+        proctoring: {
+          ...formData.proctoring,
+          [field]: val
+        }
+      });
+    } else {
+      setFormData({ ...formData, [name]: val });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -109,6 +142,12 @@ const Exams = () => {
       if (!payload.subject) delete payload.subject;
       if (!payload.description) delete payload.description;
       if (!payload.instructions) delete payload.instructions;
+
+      // Ensure proctoring limits are numbers
+      if (payload.proctoring) {
+        payload.proctoring.maxTabSwitches = Number(payload.proctoring.maxTabSwitches || 0);
+        payload.proctoring.maxFullscreenExits = Number(payload.proctoring.maxFullscreenExits || 0);
+      }
 
       if (editingExam) {
         await facultyService.updateExam(editingExam._id, payload);
@@ -141,6 +180,15 @@ const Exams = () => {
       negativeMarks: exam.negativeMarks || 0,
       isRandomized: exam.isRandomized !== false,
       showResultsImmediately: exam.showResultsImmediately !== false,
+      proctoring: exam.proctoring || {
+        enabled: false,
+        enforceFullscreen: false,
+        blockNotifications: false,
+        tabSwitchingAllowed: true,
+        maxTabSwitches: 3,
+        maxFullscreenExits: 3,
+        actionOnLimit: 'warning',
+      }
     });
     setShowModal(true);
   };
@@ -182,6 +230,15 @@ const Exams = () => {
       negativeMarks: 0,
       isRandomized: true,
       showResultsImmediately: true,
+      proctoring: {
+        enabled: false,
+        enforceFullscreen: false,
+        blockNotifications: false,
+        tabSwitchingAllowed: true,
+        maxTabSwitches: 3,
+        maxFullscreenExits: 3,
+        actionOnLimit: 'warn',
+      }
     });
     setEditingExam(null);
   };
@@ -538,7 +595,118 @@ const Exams = () => {
               />
             )}
 
-            <label className="flex items-center gap-2 cursor-pointer">
+            <div className="border-t pt-4 mt-6">
+              <h4 className="text-md font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <FiEye className="text-primary-600" />
+                Proctoring & Security Settings
+              </h4>
+
+              <div className="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <label className="flex items-center gap-2 cursor-pointer font-bold border-b pb-2 mb-2">
+                  <input
+                    type="checkbox"
+                    name="proctoring.enabled"
+                    checked={formData.proctoring.enabled}
+                    onChange={handleChange}
+                    className="w-4 h-4 text-primary-600 rounded"
+                  />
+                  <span className="text-sm text-gray-900">Enable Proctoring System</span>
+                </label>
+
+                {formData.proctoring.enabled && (
+                  <div className="space-y-4 pl-6 animate-in fade-in duration-300">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Fullscreen */}
+                      <label className={`flex items-center gap-2 cursor-pointer ${proctoringDefaults.college.isLocked?.enforceFullscreen || proctoringDefaults.department.isLocked?.enforceFullscreen ? 'opacity-50' : ''}`}>
+                        <input
+                          type="checkbox"
+                          name="proctoring.enforceFullscreen"
+                          checked={formData.proctoring.enforceFullscreen}
+                          onChange={handleChange}
+                          disabled={proctoringDefaults.college.isLocked?.enforceFullscreen || proctoringDefaults.department.isLocked?.enforceFullscreen}
+                          className="w-4 h-4 text-primary-600 rounded"
+                        />
+                        <span className="text-sm text-gray-700">Enforce Fullscreen Mode</span>
+                        {(proctoringDefaults.college.isLocked?.enforceFullscreen || proctoringDefaults.department.isLocked?.enforceFullscreen) && (
+                          <Badge size="xs" variant="secondary">Locked</Badge>
+                        )}
+                      </label>
+
+                      {/* Notifications */}
+                      <label className={`flex items-center gap-2 cursor-pointer ${proctoringDefaults.college.isLocked?.blockNotifications || proctoringDefaults.department.isLocked?.blockNotifications ? 'opacity-50' : ''}`}>
+                        <input
+                          type="checkbox"
+                          name="proctoring.blockNotifications"
+                          checked={formData.proctoring.blockNotifications}
+                          onChange={handleChange}
+                          disabled={proctoringDefaults.college.isLocked?.blockNotifications || proctoringDefaults.department.isLocked?.blockNotifications}
+                          className="w-4 h-4 text-primary-600 rounded"
+                        />
+                        <span className="text-sm text-gray-700">Block Notifications</span>
+                        {(proctoringDefaults.college.isLocked?.blockNotifications || proctoringDefaults.department.isLocked?.blockNotifications) && (
+                          <Badge size="xs" variant="secondary">Locked</Badge>
+                        )}
+                      </label>
+
+                      {/* Tab Switching */}
+                      <label className={`flex items-center gap-2 cursor-pointer ${proctoringDefaults.college.isLocked?.tabSwitchingAllowed || proctoringDefaults.department.isLocked?.tabSwitchingAllowed ? 'opacity-50' : ''}`}>
+                        <input
+                          type="checkbox"
+                          name="proctoring.tabSwitchingAllowed"
+                          checked={formData.proctoring.tabSwitchingAllowed}
+                          onChange={handleChange}
+                          disabled={proctoringDefaults.college.isLocked?.tabSwitchingAllowed || proctoringDefaults.department.isLocked?.tabSwitchingAllowed}
+                          className="w-4 h-4 text-primary-600 rounded"
+                        />
+                        <span className="text-sm text-gray-700">Allow Tab Switching</span>
+                        {(proctoringDefaults.college.isLocked?.tabSwitchingAllowed || proctoringDefaults.department.isLocked?.tabSwitchingAllowed) && (
+                          <Badge size="xs" variant="secondary">Locked</Badge>
+                        )}
+                      </label>
+                    </div>
+
+                    {!formData.proctoring.tabSwitchingAllowed && (
+                      <div className="grid grid-cols-2 gap-4 pt-2">
+                        <Input
+                          label="Max Tab Switches"
+                          name="proctoring.maxTabSwitches"
+                          type="number"
+                          min="0"
+                          value={formData.proctoring.maxTabSwitches}
+                          onChange={handleChange}
+                        />
+                        <Select
+                          label="Action on Limit"
+                          name="proctoring.actionOnLimit"
+                          value={formData.proctoring.actionOnLimit}
+                          onChange={handleChange}
+                          options={[
+                            { value: 'warn', label: 'Warn Only' },
+                            { value: 'auto-submit', label: 'Auto Submit' },
+                            { value: 'lock', label: 'Lock Exam' },
+                          ]}
+                        />
+                      </div>
+                    )}
+
+                    {formData.proctoring.enforceFullscreen && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input
+                          label="Max Fullscreen Exits"
+                          name="proctoring.maxFullscreenExits"
+                          type="number"
+                          min="0"
+                          value={formData.proctoring.maxFullscreenExits}
+                          onChange={handleChange}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 cursor-pointer mt-4">
               <input
                 type="checkbox"
                 name="isRandomized"

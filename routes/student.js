@@ -11,6 +11,7 @@ const {
   getLeaderboard,
   getAnalytics,
   runCode,
+  logViolation,
 } = require('../controllers/studentController');
 const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/rbac');
@@ -52,6 +53,13 @@ router.put(
   validateObjectId('id'),
   validate,
   saveAnswer
+);
+
+router.post(
+  '/exams/:id/violation',
+  validateObjectId('id'),
+  validate,
+  logViolation
 );
 
 // Results routes

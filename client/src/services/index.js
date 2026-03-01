@@ -493,6 +493,10 @@ export const facultyService = {
     const response = await api.post('/faculty/questions/generate-ai', params);
     return response.data;
   },
+  getProctoringDefaults: async () => {
+    const response = await api.get('/faculty/proctoring-defaults');
+    return response.data;
+  },
 };
 
 // Student Services
@@ -549,6 +553,10 @@ export const studentService = {
 
   runCode: async (data) => {
     const response = await api.post('/student/run-code', data);
+    return response.data;
+  },
+  logViolation: async (id, data) => {
+    const response = await api.post(`/student/exams/${id}/violation`, data);
     return response.data;
   },
 };

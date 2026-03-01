@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { FiPlus, FiEdit, FiTrash, FiToggleLeft, FiToggleRight, FiUsers, FiMapPin } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash, FiToggleLeft, FiToggleRight, FiUsers, FiMapPin, FiShield } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Table from '@/components/common/Table.jsx';
@@ -36,6 +36,19 @@ const Colleges = () => {
     contactPhone: '',
     website: '',
     establishedYear: '',
+    defaultProctoringSettings: {
+      enforceFullscreen: false,
+      blockNotifications: false,
+      tabSwitchingAllowed: true,
+      maxTabSwitches: 3,
+      maxFullscreenExits: 3,
+      actionOnLimit: 'warning',
+    },
+    isLocked: {
+      enforceFullscreen: false,
+      blockNotifications: false,
+      tabSwitchingAllowed: false,
+    }
   });
   const [pincodeLoading, setPincodeLoading] = useState(false);
   const [places, setPlaces] = useState([]);
@@ -168,6 +181,19 @@ const Colleges = () => {
       contactPhone: college.contactPhone || '',
       website: college.website || '',
       establishedYear: college.establishedYear || '',
+      defaultProctoringSettings: college.defaultProctoringSettings || {
+        enforceFullscreen: false,
+        blockNotifications: false,
+        tabSwitchingAllowed: true,
+        maxTabSwitches: 3,
+        maxFullscreenExits: 3,
+        actionOnLimit: 'warning',
+      },
+      isLocked: college.isLocked || {
+        enforceFullscreen: false,
+        blockNotifications: false,
+        tabSwitchingAllowed: false,
+      }
     });
     setPlaces([]);
     setShowModal(true);
@@ -489,6 +515,107 @@ const Colleges = () => {
             onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
             required
           />
+
+          {/* Proctoring Defaults & Locks Section */}
+          <div className="border-t pt-4 mt-6">
+            <h4 className="text-md font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <FiShield className="text-primary-600" />
+              College Proctoring Defaults & Locks
+            </h4>
+
+            <div className="space-y-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+              <p className="text-xs text-blue-600 font-medium mb-3 italic">
+                Configure default security settings for all exams in this college.
+                "Lock" a setting to prevent Departments and Faculty from overriding it.
+              </p>
+
+              <div className="space-y-4">
+                {/* Fullscreen */}
+                <div className="flex items-center justify-between p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-200">
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="checkbox"
+                      checked={formData.defaultProctoringSettings.enforceFullscreen}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        defaultProctoringSettings: { ...formData.defaultProctoringSettings, enforceFullscreen: e.target.checked }
+                      })}
+                      className="w-4 h-4 text-primary-600 rounded"
+                    />
+                    <span className="text-sm text-gray-700">Default: Enforce Fullscreen</span>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer bg-white px-2 py-1 rounded border shadow-sm">
+                    <input
+                      type="checkbox"
+                      checked={formData.isLocked.enforceFullscreen}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        isLocked: { ...formData.isLocked, enforceFullscreen: e.target.checked }
+                      })}
+                      className="w-3 h-3 text-red-600 rounded"
+                    />
+                    <span className="text-[10px] font-bold text-red-600">LOCK</span>
+                  </label>
+                </div>
+
+                {/* Notifications */}
+                <div className="flex items-center justify-between p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-200">
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="checkbox"
+                      checked={formData.defaultProctoringSettings.blockNotifications}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        defaultProctoringSettings: { ...formData.defaultProctoringSettings, blockNotifications: e.target.checked }
+                      })}
+                      className="w-4 h-4 text-primary-600 rounded"
+                    />
+                    <span className="text-sm text-gray-700">Default: Block Notifications</span>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer bg-white px-2 py-1 rounded border shadow-sm">
+                    <input
+                      type="checkbox"
+                      checked={formData.isLocked.blockNotifications}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        isLocked: { ...formData.isLocked, blockNotifications: e.target.checked }
+                      })}
+                      className="w-3 h-3 text-red-600 rounded"
+                    />
+                    <span className="text-[10px] font-bold text-red-600">LOCK</span>
+                  </label>
+                </div>
+
+                {/* Tab Switching */}
+                <div className="flex items-center justify-between p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-gray-200">
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="checkbox"
+                      checked={formData.defaultProctoringSettings.tabSwitchingAllowed}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        defaultProctoringSettings: { ...formData.defaultProctoringSettings, tabSwitchingAllowed: e.target.checked }
+                      })}
+                      className="w-4 h-4 text-primary-600 rounded"
+                    />
+                    <span className="text-sm text-gray-700">Default: Allow Tab Switching</span>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer bg-white px-2 py-1 rounded border shadow-sm">
+                    <input
+                      type="checkbox"
+                      checked={formData.isLocked.tabSwitchingAllowed}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        isLocked: { ...formData.isLocked, tabSwitchingAllowed: e.target.checked }
+                      })}
+                      className="w-3 h-3 text-red-600 rounded"
+                    />
+                    <span className="text-[10px] font-bold text-red-600">LOCK</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
           <div className="flex justify-end space-x-3 mt-6">
             <Button variant="secondary" onClick={() => { setShowModal(false); resetForm(); }}>
               Cancel

@@ -49,7 +49,7 @@ const resultSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['in-progress', 'submitted', 'evaluated', 'pending-evaluation'],
+      enum: ['in-progress', 'submitted', 'evaluated', 'pending-evaluation', 'locked'],
       default: 'in-progress',
     },
     startedAt: {
@@ -76,7 +76,7 @@ const resultSchema = new mongoose.Schema(
       {
         type: {
           type: String,
-          enum: ['tab-switch', 'copy-paste', 'fullscreen-exit'],
+          enum: ['tab_switch', 'tab-switch', 'copy_paste', 'copy-paste', 'fullscreen_exit', 'fullscreen-exit'],
         },
         timestamp: Date,
         description: String,

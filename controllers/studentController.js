@@ -261,6 +261,7 @@ exports.getExamDetails = async (req, res, next) => {
           totalMarks: exam.totalMarks,
           passingMarks: exam.passingMarks,
           instructions: exam.instructions,
+          proctoring: exam.proctoring,
           totalQuestions: exam.questions.length,
         },
         attempted: !!existingResult,
@@ -336,6 +337,7 @@ exports.startExam = async (req, res, next) => {
             duration: exam.duration,
             totalMarks: exam.totalMarks,
             passingMarks: exam.passingMarks,
+            proctoring: exam.proctoring,
             questions: existingResult.answers.map(ans => {
               const q = exam.questions.find(eq => eq.questionId._id.toString() === ans.questionId.toString());
               return q ? sanitizeQuestion(q) : null;
@@ -391,6 +393,7 @@ exports.startExam = async (req, res, next) => {
                 duration: exam.duration,
                 totalMarks: exam.totalMarks,
                 passingMarks: exam.passingMarks,
+                proctoring: exam.proctoring,
                 questions: existingResult.answers.map(ans => {
                   const q = exam.questions.find(eq => eq.questionId._id.toString() === ans.questionId.toString());
                   return q ? sanitizeQuestion(q) : null;
@@ -436,6 +439,7 @@ exports.startExam = async (req, res, next) => {
           duration: exam.duration,
           totalMarks: exam.totalMarks,
           passingMarks: exam.passingMarks,
+          proctoring: exam.proctoring,
           questions,
         },
         result,
@@ -455,7 +459,7 @@ exports.submitExam = async (req, res, next) => {
   try {
     const { answers, autoSubmitted } = req.body;
 
-    const result = await Result.findOne({
+    let result = await Result.findOne({
       studentId: req.user._id,
       examId: req.params.id,
       status: 'in-progress',
@@ -482,10 +486,35 @@ exports.submitExam = async (req, res, next) => {
 
     const timeTaken = (result.submittedAt - result.startedAt) / 60000; // in minutes
     result.totalTimeTaken = Math.round(timeTaken);
-
     result.status = evaluationResult.hasDescriptive ? 'pending-evaluation' : 'submitted';
 
-    await result.save();
+    // Handle potential VersionError if violations were logged concurrently
+    let saved = false;
+    let retries = 0;
+    while (!saved && retries < 3) {
+      try {
+        await result.save();
+        saved = true;
+      } catch (error) {
+        if (error.name === 'VersionError') {
+          const latestResult = await Result.findById(result._id);
+          if (!latestResult) throw error;
+
+          // Re-apply exam submission fields to the latest record (preserving new violations)
+          latestResult.answers = result.answers;
+          latestResult.score = result.score;
+          latestResult.submittedAt = result.submittedAt;
+          latestResult.autoSubmitted = result.autoSubmitted;
+          latestResult.totalTimeTaken = result.totalTimeTaken;
+          latestResult.status = result.status;
+
+          result = latestResult;
+          retries++;
+        } else {
+          throw error;
+        }
+      }
+    }
 
     // Update exam statistics
     exam.totalAttempts += 1;
@@ -528,40 +557,34 @@ exports.saveAnswer = async (req, res, next) => {
   try {
     const { questionId, selectedAnswer, textAnswer, codeAnswer } = req.body;
 
-    const result = await Result.findOne({
-      studentId: req.user._id,
-      examId: req.params.id,
-      status: 'in-progress',
-    });
+    const result = await Result.findOneAndUpdate(
+      {
+        studentId: req.user._id,
+        examId: req.params.id,
+        status: 'in-progress',
+        'answers.questionId': questionId,
+      },
+      {
+        $set: {
+          'answers.$.selectedAnswer': selectedAnswer,
+          'answers.$.textAnswer': textAnswer,
+          'answers.$.codeAnswer': codeAnswer,
+        },
+      },
+      { new: true }
+    );
 
     if (!result) {
       return res.status(404).json({
         success: false,
-        message: 'Exam not in progress',
+        message: 'Exam session or question not found',
       });
     }
 
-    const answerIndex = result.answers.findIndex(
-      (a) => a.questionId.toString() === questionId
-    );
-
-    if (answerIndex !== -1) {
-      result.answers[answerIndex].selectedAnswer = selectedAnswer;
-      result.answers[answerIndex].textAnswer = textAnswer;
-      result.answers[answerIndex].codeAnswer = codeAnswer;
-
-      await result.save();
-
-      res.status(200).json({
-        success: true,
-        message: 'Answer saved',
-      });
-    } else {
-      res.status(404).json({
-        success: false,
-        message: 'Question not found',
-      });
-    }
+    res.status(200).json({
+      success: true,
+      message: 'Answer saved',
+    });
   } catch (error) {
     logger.error('Save answer error:', error);
     next(error);
@@ -972,5 +995,105 @@ exports.runCode = async (req, res, next) => {
       success: false,
       message: error.message || 'Code execution failed',
     });
+  }
+};
+
+// @desc    Log exam violation
+// @route   POST /api/student/exams/:id/violation
+// @access  Private/Student
+exports.logViolation = async (req, res, next) => {
+  try {
+    const { type, description } = req.body;
+    const examId = req.params.id;
+    const studentId = req.user._id;
+
+    let result = await Result.findOne({ examId, studentId });
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: 'Exam session not found',
+      });
+    }
+
+    if (result.status !== 'in-progress') {
+      return res.status(400).json({
+        success: false,
+        message: 'Violation can only be logged for an active exam session',
+      });
+    }
+
+    const violation = {
+      type,
+      timestamp: new Date(),
+      description: description || `Violation of type ${type} detected`,
+    };
+
+    const isTabSwitch = type === 'tab_switch' || type === 'tab-switch';
+
+    // Atomic update to result document
+    const update = {
+      $push: { violations: violation }
+    };
+    if (isTabSwitch) {
+      update.$inc = { tabSwitchCount: 1 };
+    }
+
+    result = await Result.findOneAndUpdate(
+      { examId, studentId, status: 'in-progress' },
+      update,
+      { new: true }
+    );
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: 'Active exam session not found',
+      });
+    }
+
+    // Fetch exam settings to check limits
+    const exam = await Exam.findById(examId);
+    let actionTaken = 'none';
+
+    if (exam && exam.proctoring && exam.proctoring.enabled) {
+      const tabSwitchLimit = Number(exam.proctoring.maxTabSwitches || 0);
+      const fullscreenLimit = Number(exam.proctoring.maxFullscreenExits || 0);
+      const action = exam.proctoring.actionOnLimit;
+
+      const tabSwitches = result.violations.filter(v => v.type === 'tab_switch' || v.type === 'tab-switch').length;
+      const fullscreenExits = result.violations.filter(v => v.type === 'fullscreen_exit' || v.type === 'fullscreen-exit').length;
+
+      // Threshold check: Trigger action once limit be REACHED
+      const isTabLimitReached = tabSwitchLimit > 0 && tabSwitches >= tabSwitchLimit;
+      const isFullscreenLimitReached = fullscreenLimit > 0 && fullscreenExits >= fullscreenLimit;
+
+      if (isTabLimitReached || isFullscreenLimitReached) {
+        actionTaken = action; // Always set actionTaken if limit reached
+
+        if (action === 'auto-submit' || action === 'lock') {
+          result.status = action === 'lock' ? 'locked' : 'submitted';
+          result.submittedAt = new Date();
+          result.autoSubmitted = true;
+          result.remarks = `Auto-${action === 'lock' ? 'locked' : 'submitted'} due to proctoring violations (${isTabLimitReached ? 'Tab switches' : 'Fullscreen exits'} limit reached: ${isTabLimitReached ? tabSwitches : fullscreenExits})`;
+
+          await result.save();
+
+          logger.warn(`Proctoring action ${action} triggered for student ${req.user.email} on exam ${exam.title}`);
+        }
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        violationCount: result.violations.length,
+        tabSwitchCount: result.tabSwitchCount || 0,
+        actionTaken,
+      },
+    });
+  } catch (error) {
+    logger.error('Log violation error:', error);
+    next(error);
   }
 };

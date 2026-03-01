@@ -98,9 +98,36 @@ const examSchema = new mongoose.Schema(
         type: Boolean,
         default: false,
       },
-      webcamRequired: Boolean,
-      tabSwitchingAllowed: Boolean,
-      maxTabSwitches: Number,
+      enforceFullscreen: {
+        type: Boolean,
+        default: false,
+      },
+      blockNotifications: {
+        type: Boolean,
+        default: false,
+      },
+      tabSwitchingAllowed: {
+        type: Boolean,
+        default: true,
+      },
+      maxTabSwitches: {
+        type: Number,
+        default: 3,
+      },
+      maxFullscreenExits: {
+        type: Number,
+        default: 2,
+      },
+      actionOnLimit: {
+        type: String,
+        enum: ['warn', 'auto-submit', 'lock'],
+        default: 'warn',
+      },
+      enforcedBy: {
+        enforceFullscreen: { type: String, enum: ['system', 'college', 'dept', 'faculty'], default: 'faculty' },
+        blockNotifications: { type: String, enum: ['system', 'college', 'dept', 'faculty'], default: 'faculty' },
+        tabSwitchingAllowed: { type: String, enum: ['system', 'college', 'dept', 'faculty'], default: 'faculty' },
+      }
     },
     allowedStudents: [
       {

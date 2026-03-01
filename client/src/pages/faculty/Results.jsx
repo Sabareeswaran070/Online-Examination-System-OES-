@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiDownload, FiEye, FiUser, FiAward, FiCheckCircle, FiClock, FiXCircle, FiFileText } from 'react-icons/fi';
+import { FiArrowLeft, FiDownload, FiEye, FiUser, FiAward, FiCheckCircle, FiClock, FiXCircle, FiFileText, FiActivity, FiMonitor, FiAlertTriangle, FiLock, FiShield } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Table from '@/components/common/Table.jsx';
@@ -32,6 +32,17 @@ const Results = () => {
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
   const [filterType, setFilterType] = useState('All');
+  const [activeTab, setActiveTab] = useState('results'); // 'results' or 'monitoring'
+
+  useEffect(() => {
+    let interval;
+    if (activeTab === 'monitoring' && exam && (exam.status === 'ongoing' || exam.status === 'scheduled')) {
+      interval = setInterval(() => {
+        fetchResults(selectedResult?._id);
+      }, 5000); // Poll every 5 seconds for live status
+    }
+    return () => clearInterval(interval);
+  }, [activeTab, exam?.status, selectedResult]);
 
   useEffect(() => {
     fetchResults();
@@ -128,6 +139,7 @@ const Results = () => {
       'in-progress': { variant: 'info', label: 'In Progress' },
       submitted: { variant: 'warning', label: 'Submitted' },
       evaluated: { variant: 'success', label: 'Evaluated' },
+      locked: { variant: 'danger', label: 'LOCKED' },
     };
     const config = statusMap[status] || statusMap.submitted;
     return <Badge variant={config.variant}>{config.label}</Badge>;
@@ -160,8 +172,25 @@ const Results = () => {
       accessor: (row) => getStatusBadge(row.status)
     },
     {
+      header: 'Violations',
+      render: (row) => (
+        <div className="flex flex-col gap-1">
+          {row.tabSwitchCount > 0 && (
+            <span className="text-[10px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded border border-amber-100 font-bold">
+              TAB: {row.tabSwitchCount}
+            </span>
+          )}
+          {row.violations?.length > 0 && (
+            <span className="text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 font-bold">
+              EXT: {row.violations.filter(v => v.type === 'fullscreen_exit').length}
+            </span>
+          )}
+        </div>
+      )
+    },
+    {
       header: 'Submitted At',
-      accessor: (row) => row.submittedAt ? formatDateTime(row.submittedAt) : 'N/A'
+      accessor: (row) => row.submittedAt ? formatDateTime(row.submittedAt) : 'Ongoing...'
     },
     {
       header: 'Actions',
@@ -262,25 +291,129 @@ const Results = () => {
         </Card>
       </div>
 
-      {/* Results Table */}
-      <Card className="overflow-hidden">
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-          <h2 className="text-xl font-semibold text-gray-900">Student Results</h2>
-        </div>
-        {results.length > 0 ? (
-          <Table columns={columns} data={results} />
-        ) : (
-          <div className="p-12 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-              <FiFileText className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Results Yet</h3>
-            <p className="text-gray-600">
-              No students have submitted this exam yet.
-            </p>
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab('results')}
+          className={`px-6 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${activeTab === 'results' ? 'border-primary-600 text-primary-600 bg-primary-50/50' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          <FiFileText /> Completed Results
+        </button>
+        <button
+          onClick={() => setActiveTab('monitoring')}
+          className={`px-6 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${activeTab === 'monitoring' ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          <FiMonitor className={activeTab === 'monitoring' && exam?.status === 'ongoing' ? 'animate-pulse text-red-500' : ''} />
+          Live Monitoring
+        </button>
+      </div>
+
+      {activeTab === 'results' ? (
+        <Card className="overflow-hidden">
+          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+            <h2 className="text-xl font-semibold text-gray-900">Student Results</h2>
           </div>
-        )}
-      </Card>
+          {results.length > 0 ? (
+            <Table columns={columns} data={results} />
+          ) : (
+            <div className="p-12 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                <FiFileText className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Results Yet</h3>
+              <p className="text-gray-600">No students have submitted this exam yet.</p>
+            </div>
+          )}
+        </Card>
+      ) : (
+        /* Monitoring View */
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Live Feed Column */}
+            <div className="lg:col-span-2 space-y-4">
+              <Card title="Live Student Status" subtitle={`Currently ${results.filter(r => r.status === 'in-progress').length} active students`}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {results.length > 0 ? results.map((result) => (
+                    <div
+                      key={result._id}
+                      className={`p-4 rounded-xl border-2 transition-all group hover:cursor-pointer ${result.status === 'locked' ? 'bg-red-50 border-red-200' : result.status === 'submitted' ? 'bg-gray-50 border-gray-100' : 'bg-white border-transparent shadow-sm hover:shadow-md'}`}
+                      onClick={() => handleViewDetails(result)}
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${result.status === 'locked' ? 'bg-red-500 shadow-md shadow-red-100' : result.status === 'submitted' ? 'bg-gray-400' : 'bg-indigo-500 shadow-md shadow-indigo-100'}`}>
+                            {result.studentId?.name?.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-900 group-hover:text-primary-600 transition-colors">{result.studentId?.name}</p>
+                            <p className="text-[10px] font-mono text-gray-400">{result.studentId?.regNo}</p>
+                          </div>
+                        </div>
+                        {getStatusBadge(result.status)}
+                      </div>
+
+                      <div className="flex gap-2 mb-3">
+                        <div className={`flex-1 p-2 rounded-lg text-center border ${result.tabSwitchCount > 0 ? 'bg-amber-50 border-amber-100' : 'bg-gray-50 border-gray-100'}`}>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tab Switches</p>
+                          <p className={`text-lg font-black ${result.tabSwitchCount > 0 ? 'text-amber-600' : 'text-gray-300'}`}>{result.tabSwitchCount}</p>
+                        </div>
+                        <div className={`flex-1 p-2 rounded-lg text-center border ${result.violations?.length > 0 ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">FS Exits</p>
+                          <p className={`text-lg font-black ${result.violations?.length > 0 ? 'text-red-600' : 'text-gray-300'}`}>{result.violations?.length || 0}</p>
+                        </div>
+                      </div>
+
+                      {result.status === 'in-progress' && (
+                        <div className="flex items-center gap-2 text-xs text-green-500 font-bold animate-pulse">
+                          <FiActivity /> Live Session Active
+                        </div>
+                      )}
+
+                      {result.status === 'locked' && (
+                        <div className="flex items-center gap-2 text-xs text-red-600 font-black">
+                          <FiLock /> EXAM LOCKED (THRESHOLD)
+                        </div>
+                      )}
+                    </div>
+                  )) : (
+                    <div className="col-span-full py-20 text-center">
+                      <p className="text-gray-400">No students joined yet</p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </div>
+
+            {/* Recent Violations Column */}
+            <div className="space-y-4">
+              <Card title="Critical Alerts" className="bg-white">
+                <div className="space-y-3">
+                  {results.filter(r => (r.tabSwitchCount > 0 || r.violations?.length > 0)).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 10).map(r => (
+                    <div key={r._id} className="p-3 bg-red-50/50 border border-red-100 rounded-lg flex gap-3 items-start">
+                      <div className="bg-red-500 text-white p-1.5 rounded-lg">
+                        <FiAlertTriangle size={14} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-gray-900 truncate">{r.studentId?.name}</p>
+                        <p className="text-[10px] text-red-600 font-medium">
+                          {r.tabSwitchCount > 0 && `${r.tabSwitchCount} Tab Switches `}
+                          {r.violations?.length > 0 && `${r.violations.length} Fullscreen Exits`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  {results.filter(r => (r.tabSwitchCount > 0 || r.violations?.length > 0)).length === 0 && (
+                    <div className="text-center py-6">
+                      <FiShield className="w-10 h-10 text-green-100 mx-auto mb-2" />
+                      <p className="text-xs text-green-600 font-bold uppercase tracking-widest">Secure session</p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Result Details Modal */}
       {selectedResult && (
@@ -317,6 +450,44 @@ const Results = () => {
                 </div>
               </div>
             </div>
+
+            {/* Proctoring Violation Log */}
+            {(selectedResult.tabSwitchCount > 0 || (selectedResult.violations && selectedResult.violations.length > 0)) && (
+              <div className="bg-red-50 p-4 rounded-xl border border-red-100 space-y-3">
+                <div className="flex items-center justify-between border-b border-red-200 pb-2">
+                  <h3 className="text-xs font-black text-red-800 uppercase tracking-widest flex items-center gap-2">
+                    <FiAlertTriangle className="animate-pulse" />
+                    Security Violation Event Log
+                  </h3>
+                  <div className="flex gap-2">
+                    <span className="text-[10px] font-bold bg-white text-red-600 px-2 py-1 rounded border shadow-sm">
+                      TOTAL TAB SWITCHES: {selectedResult.tabSwitchCount || 0}
+                    </span>
+                    <span className="text-[10px] font-bold bg-white text-orange-600 px-2 py-1 rounded border shadow-sm">
+                      FULLSCREEN EXITS: {selectedResult.violations?.filter(v => v.type === 'fullscreen_exit').length || 0}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="max-h-40 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                  {selectedResult.violations?.slice().reverse().map((v, i) => (
+                    <div key={i} className="bg-white/80 p-2 rounded-lg text-[10px] border border-red-50 flex justify-between items-center group hover:bg-white transition-colors">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${v.type === 'fullscreen_exit' ? 'bg-orange-500' : 'bg-red-500'}`}></span>
+                        <span className="font-bold text-gray-700 uppercase">{v.type?.replace('_', ' ')}</span>
+                        <span className="text-gray-400 italic font-medium">{v.details || 'Violation detected during exam'}</span>
+                      </div>
+                      <span className="text-gray-500 font-mono">{new Date(v.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                  ))}
+                  {(!selectedResult.violations || selectedResult.violations.length === 0) && selectedResult.tabSwitchCount > 0 && (
+                    <div className="text-center py-2 italic text-[10px] text-gray-400">
+                      Check tab switching metrics above. Specific event logging may vary.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Question Type Filter */}
             <div className="flex flex-wrap gap-2 p-1 bg-gray-100 rounded-lg">
@@ -440,7 +611,8 @@ const Results = () => {
             </div>
           </div>
         </Modal>
-      )}
+      )
+      }
 
       {/* Evaluation Modal */}
       <Modal
@@ -540,7 +712,7 @@ const Results = () => {
           </div>
         </div>
       </Modal>
-    </div>
+    </div >
   );
 };
 

@@ -24,6 +24,7 @@ const {
   generateRandomQuestions,
   delegateEvaluation,
   generateAIQuestions,
+  getProctoringDefaults,
 } = require('../controllers/facultyController');
 const { protect } = require('../middleware/auth');
 const { authorize, auditLog } = require('../middleware/rbac');
@@ -42,6 +43,7 @@ router.use(authorize('faculty', 'superadmin', 'admin', 'depthead'));
 
 router.get('/dashboard', getDashboard);
 router.get('/subjects', getSubjects);
+router.get('/proctoring-defaults', getProctoringDefaults);
 
 // Exam routes
 router
