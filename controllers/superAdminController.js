@@ -18,7 +18,7 @@ exports.getDashboard = async (req, res, next) => {
     const totalColleges = await College.countDocuments();
     const activeColleges = await College.countDocuments({ status: 'active' });
     const totalUsers = await User.countDocuments();
-    const totalExams = await Exam.countDocuments();
+    const totalExams = await Exam.countDocuments({ collegeId: null }); // Global exams only
 
     const usersByRole = await User.aggregate([
       {
@@ -893,7 +893,15 @@ exports.getAllExams = async (req, res, next) => {
 
     const query = {};
     if (status && status !== '') query.status = status;
-    if (collegeId && collegeId !== '') query.collegeId = collegeId;
+
+    // If no specific college is requested, default to Global exams (collegeId: null)
+    // as per "Super Admin flow only shows Thier Global exams only"
+    if (collegeId && collegeId !== '') {
+      query.collegeId = collegeId;
+    } else {
+      query.collegeId = null;
+    }
+
     if (departmentId && departmentId !== '') query.departmentId = departmentId;
     if (search) {
       query.title = { $regex: search, $options: 'i' };

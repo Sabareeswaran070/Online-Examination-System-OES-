@@ -89,7 +89,6 @@ exports.getDashboard = async (req, res, next) => {
     ]);
 
     const upcomingExams = await Exam.find({
-      departmentId: req.user.departmentId,
       status: { $in: ['scheduled', 'ongoing'] },
       endTime: { $gte: new Date() },
       isPublished: true,
@@ -162,7 +161,6 @@ exports.getAvailableExams = async (req, res, next) => {
     const { status } = req.query;
 
     const query = {
-      departmentId: req.user.departmentId,
       isPublished: true,
       $or: [
         { allowedStudents: req.user._id },

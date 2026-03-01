@@ -14,11 +14,25 @@ const isSuperAdmin = (user) => user.role === 'superadmin';
 // @access  Private/Faculty
 exports.getDashboard = async (req, res, next) => {
   try {
-    const examQuery = isSuperAdmin(req.user) ? {} : { facultyId: req.user._id };
-    const questionQuery = isSuperAdmin(req.user) ? {} : { facultyId: req.user._id };
+    let examQuery = {};
+    let questionQuery = {};
+
+    if (isSuperAdmin(req.user)) {
+      examQuery = { collegeId: null };
+      questionQuery = { isGlobal: true };
+    } else if (req.user.role === 'admin') {
+      examQuery = { collegeId: req.user.collegeId };
+      questionQuery = { collegeId: req.user.collegeId };
+    } else if (req.user.role === 'depthead') {
+      examQuery = { departmentId: req.user.departmentId };
+      questionQuery = { departmentId: req.user.departmentId };
+    } else {
+      // Faculty
+      examQuery = { facultyId: req.user._id };
+      questionQuery = { facultyId: req.user._id };
+    }
 
     const totalExams = await Exam.countDocuments(examQuery);
-
     const totalQuestions = await Question.countDocuments(questionQuery);
 
     const completedExams = await Exam.countDocuments({
@@ -224,15 +238,17 @@ exports.getExams = async (req, res, next) => {
   try {
     const { status, search, collegeId, departmentId, page = 1, limit = 10 } = req.query;
 
-    const query = isSuperAdmin(req.user)
-      ? {}
-      : {
-        $or: [
-          { facultyId: req.user._id },
-          { collegeId: req.user.collegeId },
-          { contributingColleges: req.user.collegeId },
-        ],
-      };
+    let query = {};
+    if (isSuperAdmin(req.user)) {
+      query = { collegeId: null }; // Super Admin: Thier Global exams only
+    } else if (req.user.role === 'admin') {
+      query = { collegeId: req.user.collegeId }; // College Admin: All college exams
+    } else if (req.user.role === 'depthead') {
+      query = { departmentId: req.user.departmentId }; // Dept Head: All department exams
+    } else {
+      // Faculty: Only thier created exams
+      query = { facultyId: req.user._id };
+    }
 
     if (status) query.status = status;
     if (collegeId) query.collegeId = collegeId;
@@ -279,17 +295,18 @@ exports.getExams = async (req, res, next) => {
 // @access  Private/Faculty
 exports.getExam = async (req, res, next) => {
   try {
-    const isAdmin = isSuperAdmin(req.user);
-    const findQuery = isAdmin
-      ? { _id: req.params.id }
-      : {
-        _id: req.params.id,
-        $or: [
-          { facultyId: req.user._id },
-          { collegeId: req.user.collegeId },
-          { contributingColleges: req.user.collegeId },
-        ],
-      };
+    let findQuery = { _id: req.params.id };
+
+    if (isSuperAdmin(req.user)) {
+      findQuery.collegeId = null;
+    } else if (req.user.role === 'admin') {
+      findQuery.collegeId = req.user.collegeId;
+    } else if (req.user.role === 'depthead') {
+      findQuery.departmentId = req.user.departmentId;
+    } else {
+      // Faculty
+      findQuery.facultyId = req.user._id;
+    }
 
     const exam = await Exam.findOne(findQuery)
       .populate('subject', 'name subjectCode')
