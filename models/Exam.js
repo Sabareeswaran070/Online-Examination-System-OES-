@@ -96,11 +96,11 @@ const examSchema = new mongoose.Schema(
     proctoring: {
       enabled: {
         type: Boolean,
-        default: false,
+        default: true,
       },
       enforceFullscreen: {
         type: Boolean,
-        default: false,
+        default: true,
       },
       blockNotifications: {
         type: Boolean,
@@ -117,6 +117,10 @@ const examSchema = new mongoose.Schema(
       maxFullscreenExits: {
         type: Number,
         default: 2,
+      },
+      maxCopyPaste: {
+        type: Number,
+        default: 0,
       },
       actionOnLimit: {
         type: String,

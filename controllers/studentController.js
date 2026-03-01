@@ -1030,14 +1030,16 @@ exports.logViolation = async (req, res, next) => {
     };
 
     const isTabSwitch = type === 'tab_switch' || type === 'tab-switch';
+    const isFullscreenExit = type === 'fullscreen_exit' || type === 'fullscreen-exit';
+    const isCopyPaste = type === 'copy_paste' || type === 'copy-paste';
 
     // Atomic update to result document
     const update = {
       $push: { violations: violation }
     };
-    if (isTabSwitch) {
-      update.$inc = { tabSwitchCount: 1 };
-    }
+    if (isTabSwitch) update.$inc = { ...update.$inc, tabSwitchCount: 1 };
+    if (isFullscreenExit) update.$inc = { ...update.$inc, fullscreenExitCount: 1 };
+    if (isCopyPaste) update.$inc = { ...update.$inc, copyPasteCount: 1 };
 
     result = await Result.findOneAndUpdate(
       { examId, studentId, status: 'in-progress' },
@@ -1059,30 +1061,37 @@ exports.logViolation = async (req, res, next) => {
     if (exam && exam.proctoring && exam.proctoring.enabled) {
       const tabSwitchLimit = Number(exam.proctoring.maxTabSwitches || 0);
       const fullscreenLimit = Number(exam.proctoring.maxFullscreenExits || 0);
+      const copyPasteLimit = Number(exam.proctoring.maxCopyPaste || 0);
       const action = exam.proctoring.actionOnLimit;
 
-      const tabSwitches = result.violations.filter(v => v.type === 'tab_switch' || v.type === 'tab-switch').length;
-      const fullscreenExits = result.violations.filter(v => v.type === 'fullscreen_exit' || v.type === 'fullscreen-exit').length;
+      const tabSwitches = result.tabSwitchCount || 0;
+      const fullscreenExits = result.fullscreenExitCount || 0;
+      const copyPastes = result.copyPasteCount || 0;
 
       // Threshold check: Trigger action once limit is REACHED
-      // Interpretation: if limit is 0, it means 0 tolerance (trigger on first violation)
-      // If teacher really wanted "unlimited", they should set a very high number OR we should define a way to say unlimited
-      // However, current UI says "0" for min. Let's treat 0 as 1 for enforcement if enabled.
-
+      // If limit is 0 (warn only / no specific limit), we treat it as 1 for immediate action if enabled
       const tabLimit = tabSwitchLimit > 0 ? tabSwitchLimit : 1;
       const fsLimit = fullscreenLimit > 0 ? fullscreenLimit : 1;
+      const cpLimit = copyPasteLimit > 0 ? copyPasteLimit : 1;
 
       const isTabLimitReached = tabSwitches >= tabLimit;
       const isFullscreenLimitReached = fullscreenExits >= fsLimit;
+      const isCopyPasteLimitReached = copyPasteLimit > 0 && copyPastes >= cpLimit;
 
-      if (isTabLimitReached || isFullscreenLimitReached) {
-        actionTaken = action; // Always set actionTaken if limit reached
+      if (isTabLimitReached || isFullscreenLimitReached || isCopyPasteLimitReached) {
+        actionTaken = action;
 
         if (action === 'auto-submit' || action === 'lock') {
           result.status = action === 'lock' ? 'locked' : 'submitted';
           result.submittedAt = new Date();
           result.autoSubmitted = true;
-          result.remarks = `Auto-${action === 'lock' ? 'locked' : 'submitted'} due to proctoring violations (${isTabLimitReached ? 'Tab switches' : 'Fullscreen exits'} limit reached: ${isTabLimitReached ? tabSwitches : fullscreenExits})`;
+
+          let cause = '';
+          if (isTabLimitReached) cause = `Tab switches limit reached: ${tabSwitches}`;
+          else if (isFullscreenLimitReached) cause = `Fullscreen exits limit reached: ${fullscreenExits}`;
+          else if (isCopyPasteLimitReached) cause = `Copy-paste violations reached: ${copyPastes}`;
+
+          result.remarks = `Auto-${action === 'lock' ? 'locked' : 'submitted'} due to proctoring violations (${cause})`;
 
           await result.save();
 
@@ -1096,7 +1105,8 @@ exports.logViolation = async (req, res, next) => {
       data: {
         violationCount: result.violations.length,
         tabSwitchCount: result.tabSwitchCount || 0,
-        fullscreenExitCount: result.violations.filter(v => v.type === 'fullscreen_exit' || v.type === 'fullscreen-exit').length,
+        fullscreenExitCount: result.fullscreenExitCount || 0,
+        copyPasteCount: result.copyPasteCount || 0,
         actionTaken,
       },
     });

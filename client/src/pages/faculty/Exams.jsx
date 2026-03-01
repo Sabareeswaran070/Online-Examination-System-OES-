@@ -38,8 +38,8 @@ const Exams = () => {
     isRandomized: true,
     showResultsImmediately: true,
     proctoring: {
-      enabled: false,
-      enforceFullscreen: false,
+      enabled: true,
+      enforceFullscreen: true,
       blockNotifications: false,
       tabSwitchingAllowed: true,
       maxTabSwitches: 3,
@@ -726,27 +726,34 @@ const Exams = () => {
                       </div>
                     )}
 
-                    {!formData.proctoring.tabSwitchingAllowed && (
-                      <div className="grid grid-cols-2 gap-4 pt-2">
+                    {(formData.proctoring.enforceFullscreen || !formData.proctoring.tabSwitchingAllowed) && (
+                      <div className="grid grid-cols-3 gap-4">
+                        {!formData.proctoring.tabSwitchingAllowed && (
+                          <Input
+                            label="Max Tab Switches"
+                            name="proctoring.maxTabSwitches"
+                            type="number"
+                            min="0"
+                            value={formData.proctoring.maxTabSwitches}
+                            onChange={handleChange}
+                          />
+                        )}
+                        {formData.proctoring.enforceFullscreen && (
+                          <Input
+                            label="Max FS Exits"
+                            name="proctoring.maxFullscreenExits"
+                            type="number"
+                            min="0"
+                            value={formData.proctoring.maxFullscreenExits}
+                            onChange={handleChange}
+                          />
+                        )}
                         <Input
-                          label="Max Tab Switches"
-                          name="proctoring.maxTabSwitches"
+                          label="Max Copy-Paste"
+                          name="proctoring.maxCopyPaste"
                           type="number"
                           min="0"
-                          value={formData.proctoring.maxTabSwitches}
-                          onChange={handleChange}
-                        />
-                      </div>
-                    )}
-
-                    {formData.proctoring.enforceFullscreen && (
-                      <div className="grid grid-cols-2 gap-4">
-                        <Input
-                          label="Max Fullscreen Exits"
-                          name="proctoring.maxFullscreenExits"
-                          type="number"
-                          min="0"
-                          value={formData.proctoring.maxFullscreenExits}
+                          value={formData.proctoring.maxCopyPaste || 0}
                           onChange={handleChange}
                         />
                       </div>

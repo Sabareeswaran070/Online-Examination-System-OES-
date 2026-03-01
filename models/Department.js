@@ -47,11 +47,12 @@ const departmentSchema = new mongoose.Schema(
       default: 'active',
     },
     defaultProctoringSettings: {
-      enforceFullscreen: { type: Boolean, default: false },
+      enforceFullscreen: { type: Boolean, default: true },
       blockNotifications: { type: Boolean, default: false },
       tabSwitchingAllowed: { type: Boolean, default: true },
       maxTabSwitches: { type: Number, default: 3 },
       maxFullscreenExits: { type: Number, default: 2 },
+      maxCopyPaste: { type: Number, default: 0 },
       actionOnLimit: { type: String, enum: ['warn', 'auto-submit', 'lock'], default: 'warn' },
       isLocked: {
         enforceFullscreen: { type: Boolean, default: false },

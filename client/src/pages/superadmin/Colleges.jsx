@@ -42,7 +42,8 @@ const Colleges = () => {
       tabSwitchingAllowed: true,
       maxTabSwitches: 3,
       maxFullscreenExits: 3,
-      actionOnLimit: 'warning',
+      maxCopyPaste: 0,
+      actionOnLimit: 'warn',
     },
     isLocked: {
       enforceFullscreen: false,
@@ -187,7 +188,8 @@ const Colleges = () => {
         tabSwitchingAllowed: true,
         maxTabSwitches: 3,
         maxFullscreenExits: 3,
-        actionOnLimit: 'warning',
+        maxCopyPaste: 0,
+        actionOnLimit: 'warn',
       },
       isLocked: college.isLocked || {
         enforceFullscreen: false,
@@ -612,6 +614,55 @@ const Colleges = () => {
                     />
                     <span className="text-[10px] font-bold text-red-600">LOCK</span>
                   </label>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 pt-2">
+                  <Input
+                    label="Max Tab Switches"
+                    type="number"
+                    min="0"
+                    value={formData.defaultProctoringSettings.maxTabSwitches}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      defaultProctoringSettings: { ...formData.defaultProctoringSettings, maxTabSwitches: e.target.value }
+                    })}
+                  />
+                  <Input
+                    label="Max FS Exits"
+                    type="number"
+                    min="0"
+                    value={formData.defaultProctoringSettings.maxFullscreenExits}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      defaultProctoringSettings: { ...formData.defaultProctoringSettings, maxFullscreenExits: e.target.value }
+                    })}
+                  />
+                  <Input
+                    label="Max Copy-Paste"
+                    type="number"
+                    min="0"
+                    value={formData.defaultProctoringSettings.maxCopyPaste || 0}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      defaultProctoringSettings: { ...formData.defaultProctoringSettings, maxCopyPaste: e.target.value }
+                    })}
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Default Action on Limit</label>
+                  <select
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    value={formData.defaultProctoringSettings.actionOnLimit}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      defaultProctoringSettings: { ...formData.defaultProctoringSettings, actionOnLimit: e.target.value }
+                    })}
+                  >
+                    <option value="warn">Warn Only</option>
+                    <option value="lock">Lock Exam</option>
+                    <option value="auto-submit">Auto Submit</option>
+                  </select>
                 </div>
               </div>
             </div>

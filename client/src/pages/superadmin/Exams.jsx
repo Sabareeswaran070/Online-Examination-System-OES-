@@ -48,10 +48,12 @@ const SuperAdminExams = () => {
         departmentId: '',
         contributingColleges: [],
         proctoring: {
-            enabled: false,
-            tabSwitchLimit: 0,
-            fullscreenLimit: 0,
-            actionOnLimit: 'warn' // 'warn', 'lock', 'submit'
+            enabled: true,
+            enforceFullscreen: true,
+            maxTabSwitches: 3,
+            maxFullscreenExits: 3,
+            maxCopyPaste: 0,
+            actionOnLimit: 'warn'
         }
     });
 
@@ -794,10 +796,10 @@ const SuperAdminExams = () => {
                                     <div className="bg-white/80 p-4 rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
                                         <Input
                                             label="Tab Switch Limit"
-                                            name="proctoring.tabSwitchLimit"
+                                            name="proctoring.maxTabSwitches"
                                             type="number"
                                             min="0"
-                                            value={formData.proctoring.tabSwitchLimit}
+                                            value={formData.proctoring.maxTabSwitches}
                                             onChange={handleChange}
                                             placeholder="e.g. 3"
                                         />
@@ -810,16 +812,32 @@ const SuperAdminExams = () => {
                                     <div className="bg-white/80 p-4 rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
                                         <Input
                                             label="Fullscreen Exit Limit"
-                                            name="proctoring.fullscreenLimit"
+                                            name="proctoring.maxFullscreenExits"
                                             type="number"
                                             min="0"
-                                            value={formData.proctoring.fullscreenLimit}
+                                            value={formData.proctoring.maxFullscreenExits}
                                             onChange={handleChange}
                                             placeholder="e.g. 2"
                                         />
                                         <div className="flex items-center gap-1.5 mt-2">
                                             <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div>
                                             <p className="text-[10px] text-gray-500 font-medium">Violation count before enforcement</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white/80 p-4 rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
+                                        <Input
+                                            label="Max Copy-Paste"
+                                            name="proctoring.maxCopyPaste"
+                                            type="number"
+                                            min="0"
+                                            value={formData.proctoring.maxCopyPaste || 0}
+                                            onChange={handleChange}
+                                            placeholder="e.g. 0"
+                                        />
+                                        <div className="flex items-center gap-1.5 mt-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div>
+                                            <p className="text-[10px] text-gray-500 font-medium">0 means no limit (log only)</p>
                                         </div>
                                     </div>
                                 </div>
@@ -830,7 +848,7 @@ const SuperAdminExams = () => {
                                         {[
                                             { id: 'warn', label: 'Warn Only', desc: 'Notify student upon violation', color: 'indigo' },
                                             { id: 'lock', label: 'Lock Exam', desc: 'Secure session; requires Admin manual unlock', color: 'red' },
-                                            { id: 'submit', label: 'Auto-Submit', desc: 'Finalize and submit session progress', color: 'amber' }
+                                            { id: 'auto-submit', label: 'Auto-Submit', desc: 'Finalize and submit session progress', color: 'amber' }
                                         ].map(action => (
                                             <label
                                                 key={action.id}

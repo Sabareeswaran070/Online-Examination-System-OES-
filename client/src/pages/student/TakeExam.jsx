@@ -48,6 +48,8 @@ const TakeExam = () => {
   const [unlockReason, setUnlockReason] = useState('');
   const [requestingUnlock, setRequestingUnlock] = useState(false);
   const [unlockRequestStatus, setUnlockRequestStatus] = useState('none'); // 'none', 'pending', 'approved', 'rejected'
+  const [showInstructions, setShowInstructions] = useState(true);
+  const [hasStartedTimer, setHasStartedTimer] = useState(false);
 
 
 
@@ -57,10 +59,10 @@ const TakeExam = () => {
 
   // Timer
   useEffect(() => {
-    if (timeLeft > 0) {
+    if (timeLeft > 0 && hasStartedTimer) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && exam) {
+    } else if (timeLeft === 0 && exam && hasStartedTimer) {
       handleSubmit(true); // Auto-submit
     }
   }, [timeLeft]);
@@ -113,6 +115,20 @@ const TakeExam = () => {
       toast.error('Right-click is disabled during the exam');
     };
 
+    const handleCopy = (e) => {
+      if (exam?.proctoring?.enabled) {
+        handleViolation('copy_paste', 'Content copying detected');
+        toast.error('Copying is prohibited!');
+      }
+    };
+
+    const handlePaste = (e) => {
+      if (exam?.proctoring?.enabled) {
+        handleViolation('copy_paste', 'Content pasting detected');
+        toast.error('Pasting is prohibited!');
+      }
+    };
+
     const handleKeyDown = (e) => {
       // Disable Alt+Tab, Ctrl+C, Ctrl+V, etc.
       if (
@@ -128,6 +144,8 @@ const TakeExam = () => {
     window.addEventListener('blur', handleBlur);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('copy', handleCopy);
+    document.addEventListener('paste', handlePaste);
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
@@ -135,6 +153,8 @@ const TakeExam = () => {
       window.removeEventListener('blur', handleBlur);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('copy', handleCopy);
+      document.removeEventListener('paste', handlePaste);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [exam, result?.status, isLocked]);
@@ -193,7 +213,7 @@ const TakeExam = () => {
             show: true,
             type,
             message: description,
-            count: currentCount
+            count: type === 'copy_paste' ? result.violations.filter(v => v.type === 'copy_paste' || v.type === 'copy-paste').length : currentCount
           });
         }
       }
@@ -556,9 +576,17 @@ const TakeExam = () => {
       {/* Header */}
       <div className="bg-white shadow-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">{exam.title}</h1>
-            <p className="text-sm text-gray-500">{exam.subject?.name}</p>
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">{exam.title}</h1>
+              <p className="text-sm text-gray-500">{exam.subject?.name}</p>
+            </div>
+            {exam.proctoring?.enabled && (
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-red-50 border border-red-100 rounded-full animate-pulse">
+                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest">Proctoring Active</span>
+              </div>
+            )}
           </div>
           <div className="flex items-center space-x-6">
             <div className="text-right">
@@ -1086,7 +1114,7 @@ const TakeExam = () => {
                 : `Warning: This is fullscreen exit ${proctoringModal.count} of ${exam.proctoring?.maxFullscreenExits || 'Unlimited'}`
               }
             </p>
-            <p className="text-xs text-amber-600 mt-1">Exceeding the limit will result in your exam being {exam.proctoring?.actionOnLimit === 'warn' ? 'warned' : exam.proctoring?.actionOnLimit.replace('-', ' ')}.</p>
+            <p className="text-xs text-amber-600 mt-1">Exceeding the limit will result in your exam being {(exam.proctoring?.actionOnLimit || 'warn').replace('-', ' ')}.</p>
           </div>
           <Button
             className="w-full h-12 text-lg font-bold"
@@ -1099,6 +1127,74 @@ const TakeExam = () => {
           </Button>
         </div>
       </Modal >
+
+      {/* Instructions Modal */}
+      <Modal
+        isOpen={showInstructions}
+        onClose={() => { }}
+        title="Exam Instructions & Proctoring Rules"
+        showCloseButton={false}
+      >
+        <div className="space-y-6">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+            <h4 className="flex items-center gap-2 text-amber-800 font-bold mb-3">
+              <FiAlertTriangle className="text-amber-600" />
+              Proctoring Rules
+            </h4>
+            <ul className="space-y-2.5 text-sm text-amber-900/80">
+              {exam.proctoring?.enforceFullscreen && (
+                <li className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+                  <span><b>Fullscreen Mandatory</b>: Exiting fullscreen will be logged as a violation.</span>
+                </li>
+              )}
+              {exam.proctoring?.tabSwitchingAllowed === false && (
+                <li className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+                  <span><b>Tab Switching Blocked</b>: Do not switch tabs or windows. Max allowed: {exam.proctoring?.maxTabSwitches || 'None'}.</span>
+                </li>
+              )}
+              <li className="flex items-start gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+                <span><b>Copy-Paste Disabled</b>: Integrity monitoring is active for all text inputs.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+                <span><b>Consequence</b>: Exceeding violation limits will trigger <b>{(exam.proctoring?.actionOnLimit || 'warn').toUpperCase().replace('-', ' ')}</b>.</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="font-bold text-gray-900 px-1">General Instructions</h4>
+            <div className="prose prose-sm text-gray-600 bg-gray-50 p-4 rounded-xl max-h-40 overflow-y-auto border border-gray-100">
+              {exam.instructions || 'No specific instructions provided.'}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-center">
+              <span className="block text-[10px] font-bold text-gray-400 uppercase">Duration</span>
+              <span className="font-bold text-gray-900">{exam.duration} Minutes</span>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-center">
+              <span className="block text-[10px] font-bold text-gray-400 uppercase">Total Marks</span>
+              <span className="font-bold text-gray-900">{exam.totalMarks} Marks</span>
+            </div>
+          </div>
+
+          <Button
+            className="w-full h-14 text-xl font-black shadow-xl"
+            onClick={() => {
+              setShowInstructions(false);
+              setHasStartedTimer(true);
+              if (exam.proctoring?.enforceFullscreen) enterFullscreen();
+            }}
+          >
+            I Understand, Start Exam
+          </Button>
+        </div>
+      </Modal>
     </div >
   );
 };

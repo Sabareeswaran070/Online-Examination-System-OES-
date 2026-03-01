@@ -1459,6 +1459,7 @@ const resolveProctoringSettings = async (user, requestedSettings = {}) => {
     tabSwitchingAllowed: deptDefaults.tabSwitchingAllowed ?? collegeDefaults.tabSwitchingAllowed ?? true,
     maxTabSwitches: deptDefaults.maxTabSwitches ?? collegeDefaults.maxTabSwitches ?? 10,
     maxFullscreenExits: deptDefaults.maxFullscreenExits ?? collegeDefaults.maxFullscreenExits ?? 10,
+    maxCopyPaste: deptDefaults.maxCopyPaste ?? collegeDefaults.maxCopyPaste ?? 0,
     actionOnLimit: deptDefaults.actionOnLimit || collegeDefaults.actionOnLimit || 'warn',
   };
 

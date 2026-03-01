@@ -72,6 +72,14 @@ const resultSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    fullscreenExitCount: {
+      type: Number,
+      default: 0,
+    },
+    copyPasteCount: {
+      type: Number,
+      default: 0,
+    },
     violations: [
       {
         type: {
