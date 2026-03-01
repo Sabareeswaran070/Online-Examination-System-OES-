@@ -385,7 +385,7 @@ const SuperAdminExams = () => {
                     >
                         <FiShare2 className="w-4 h-4" />
                     </Button>
-                    {row.status === 'draft' && (
+                    {(row.status === 'draft' || row.status === 'scheduled') && (
                         <Button
                             size="sm"
                             variant="success"
@@ -692,11 +692,11 @@ const SuperAdminExams = () => {
                                 <span className="text-sm text-gray-700 font-bold">Shuffle Questions</span>
                             </label>
 
-                        {/* Results now always require manual publication as per new security requirement */}
-                        <div className="flex-1 p-3 bg-blue-50 rounded-lg border border-blue-100 flex items-center gap-2">
-                            <FiCheckCircle className="text-blue-600 w-4 h-4" />
-                            <span className="text-[10px] text-blue-800 font-medium">Results will require manual publication after the exam ends.</span>
-                        </div>
+                            {/* Results now always require manual publication as per new security requirement */}
+                            <div className="flex-1 p-3 bg-blue-50 rounded-lg border border-blue-100 flex items-center gap-2">
+                                <FiCheckCircle className="text-blue-600 w-4 h-4" />
+                                <span className="text-[10px] text-blue-800 font-medium">Results will require manual publication after the exam ends.</span>
+                            </div>
                         </div>
                     </div>
 

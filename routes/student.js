@@ -12,6 +12,7 @@ const {
   getAnalytics,
   runCode,
   logViolation,
+  requestUnlock,
 } = require('../controllers/studentController');
 const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/rbac');
@@ -60,6 +61,13 @@ router.post(
   validateObjectId('id'),
   validate,
   logViolation
+);
+
+router.post(
+  '/exams/:id/request-unlock',
+  validateObjectId('id'),
+  validate,
+  requestUnlock
 );
 
 // Results routes

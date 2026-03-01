@@ -417,10 +417,7 @@ exports.updateExam = async (req, res, next) => {
 // @access  Private/Faculty
 exports.deleteExam = async (req, res, next) => {
   try {
-    const findQuery = isSuperAdmin(req.user)
-      ? { _id: req.params.id }
-      : { _id: req.params.id, facultyId: req.user._id };
-    const exam = await Exam.findOne(findQuery);
+    const exam = await Exam.findById(req.params.id);
 
     if (!exam) {
       return res.status(404).json({
@@ -429,8 +426,21 @@ exports.deleteExam = async (req, res, next) => {
       });
     }
 
-    // Only restrict deletion for non-superadmin users
-    if (!isSuperAdmin(req.user) && (exam.status === 'ongoing' || exam.status === 'completed')) {
+    // Role-based Access Control for Deletion
+    const isOwner = exam.facultyId.toString() === req.user._id.toString();
+    const isSuper = req.user.role === 'superadmin';
+    const isCollegeAdmin = req.user.role === 'admin' && exam.collegeId?.toString() === req.user.collegeId?.toString();
+    const isDeptHead = req.user.role === 'depthead' && exam.departmentId?.toString() === req.user.departmentId?.toString();
+
+    if (!isOwner && !isSuper && !isCollegeAdmin && !isDeptHead) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to delete this exam',
+      });
+    }
+
+    // Restrict deletion for ongoing or completed exams (unless superadmin)
+    if (!isSuper && (exam.status === 'ongoing' || exam.status === 'completed')) {
       return res.status(400).json({
         success: false,
         message: 'Cannot delete ongoing or completed exam',
@@ -439,7 +449,7 @@ exports.deleteExam = async (req, res, next) => {
 
     await exam.deleteOne();
 
-    logger.info(`Exam deleted: ${exam.title} by ${req.user.email}`);
+    logger.info(`Exam deleted: ${exam.title} by ${req.user.email} (${req.user.role})`);
 
     res.status(200).json({
       success: true,
@@ -1486,4 +1496,67 @@ const resolveProctoringSettings = async (user, requestedSettings = {}) => {
 
   resolved.enforcedBy = enforcedBy;
   return resolved;
+};
+
+// @desc    Handle exam unlock request
+// @route   POST /api/faculty/results/:id/unlock
+// @access  Private/Faculty/Admin/DeptHead/SuperAdmin
+exports.handleUnlockRequest = async (req, res, next) => {
+  try {
+    const { status } = req.body; // 'approved' or 'rejected'
+    const { id } = req.params;
+
+    const result = await Result.findById(id).populate('examId');
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: 'Result not found',
+      });
+    }
+
+    // Authorization: SuperAdmin, CollegeAdmin (of same college), DeptHead (of same dept), or Faculty (creator/evaluator)
+    const exam = result.examId;
+    const user = req.user;
+    let isAuthorized = false;
+
+    if (user.role === 'superadmin') isAuthorized = true;
+    else if (user.role === 'collegeadmin' && user.collegeId.toString() === exam.collegeId?.toString()) isAuthorized = true;
+    else if (user.role === 'depthead' && user.departmentId?.toString() === exam.departmentId?.toString()) isAuthorized = true;
+    else if (user.role === 'faculty' && (exam.facultyId.toString() === user._id.toString() ||
+      (exam.authorizedEvaluators && exam.authorizedEvaluators.some(eid => eid.toString() === user._id.toString())))) {
+      isAuthorized = true;
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to handle this unlock request',
+      });
+    }
+
+    if (status === 'approved') {
+      result.status = 'in-progress';
+      result.unlockRequest.status = 'approved';
+      // Reset proctoring metrics to allow continuation without immediate re-locking
+      result.tabSwitchCount = 0;
+      result.violations = []; // Clear past violations history for this session to reset counters
+      result.remarks = (result.remarks || '') + ` | Unlocked by ${user.role} ${user.name} at ${new Date().toLocaleString()}`;
+    } else {
+      result.unlockRequest.status = 'rejected';
+      result.unlockRequest.isRequested = false; // Allow them to request again if needed, or keep as rejected
+    }
+
+    await result.save();
+
+    logger.info(`Exam unlock request ${status} for student ${result.studentId} by ${user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: `Unlock request ${status} successfully`,
+      data: result,
+    });
+  } catch (error) {
+    logger.error('Handle unlock request error:', error);
+    next(error);
+  }
 };

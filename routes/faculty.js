@@ -25,6 +25,7 @@ const {
   delegateEvaluation,
   generateAIQuestions,
   getProctoringDefaults,
+  handleUnlockRequest,
 } = require('../controllers/facultyController');
 const { protect } = require('../middleware/auth');
 const { authorize, auditLog } = require('../middleware/rbac');
@@ -188,6 +189,14 @@ router.post(
   validate,
   auditLog('evaluateAI', 'Result'),
   evaluateAI
+);
+
+router.post(
+  '/results/:id/unlock',
+  validateObjectId('id'),
+  validate,
+  auditLog('unlock', 'Result'),
+  handleUnlockRequest
 );
 
 module.exports = router;

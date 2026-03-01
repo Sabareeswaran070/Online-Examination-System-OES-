@@ -497,6 +497,10 @@ export const facultyService = {
     const response = await api.get('/faculty/proctoring-defaults');
     return response.data;
   },
+  handleUnlockRequest: async (resultId, status) => {
+    const response = await api.post(`/faculty/results/${resultId}/unlock`, { status });
+    return response.data;
+  },
 };
 
 // Student Services
@@ -557,6 +561,10 @@ export const studentService = {
   },
   logViolation: async (id, data) => {
     const response = await api.post(`/student/exams/${id}/violation`, data);
+    return response.data;
+  },
+  requestUnlock: async (id, reason) => {
+    const response = await api.post(`/student/exams/${id}/request-unlock`, { reason });
     return response.data;
   },
 };

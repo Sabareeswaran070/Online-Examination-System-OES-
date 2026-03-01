@@ -39,6 +39,15 @@ const Exams = () => {
         negativeMarks: 0,
         isRandomized: true,
         showResultsImmediately: true,
+        proctoring: {
+            enabled: false,
+            enforceFullscreen: false,
+            blockNotifications: false,
+            tabSwitchingAllowed: true,
+            maxTabSwitches: 3,
+            maxFullscreenExits: 3,
+            actionOnLimit: 'warn',
+        }
     });
 
     const [filterStatus, setFilterStatus] = useState('');
@@ -106,8 +115,21 @@ const Exams = () => {
     };
 
     const handleChange = (e) => {
-        const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-        setFormData({ ...formData, [e.target.name]: value });
+        const { name, value, type, checked } = e.target;
+        const val = type === 'checkbox' ? checked : value;
+
+        if (name.startsWith('proctoring.')) {
+            const field = name.split('.')[1];
+            setFormData({
+                ...formData,
+                proctoring: {
+                    ...formData.proctoring,
+                    [field]: val
+                }
+            });
+        } else {
+            setFormData({ ...formData, [name]: val });
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -156,6 +178,15 @@ const Exams = () => {
             negativeMarks: exam.negativeMarks || 0,
             isRandomized: exam.isRandomized !== false,
             showResultsImmediately: exam.showResultsImmediately !== false,
+            proctoring: exam.proctoring || {
+                enabled: false,
+                enforceFullscreen: false,
+                blockNotifications: false,
+                tabSwitchingAllowed: true,
+                maxTabSwitches: 3,
+                maxFullscreenExits: 3,
+                actionOnLimit: 'warn',
+            }
         });
         setShowModal(true);
     };
@@ -198,6 +229,15 @@ const Exams = () => {
             negativeMarks: 0,
             isRandomized: true,
             showResultsImmediately: true,
+            proctoring: {
+                enabled: false,
+                enforceFullscreen: false,
+                blockNotifications: false,
+                tabSwitchingAllowed: true,
+                maxTabSwitches: 3,
+                maxFullscreenExits: 3,
+                actionOnLimit: 'warn',
+            }
         });
         setEditingExam(null);
         setSubjects([]);
@@ -455,7 +495,7 @@ const Exams = () => {
                             />
                         )}
 
-                        <div className="flex gap-4 pt-1">
+                        <div className="flex flex-col gap-4 pt-1">
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input
                                     type="checkbox"
@@ -467,11 +507,109 @@ const Exams = () => {
                                 <span className="text-sm text-gray-700 font-bold">Shuffle Questions</span>
                             </label>
 
-                        {/* Results now always require manual publication as per new security requirement */}
-                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 flex items-center gap-2">
-                            <FiCheckCircle className="text-blue-600 w-4 h-4" />
-                            <span className="text-xs text-blue-800 font-medium">Results will require manual publication after the exam ends.</span>
-                        </div>
+                            {/* Proctoring Settings */}
+                            <div className="border-t pt-4 mt-2">
+                                <h4 className="text-md font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                    <FiEye className="text-primary-600" />
+                                    Proctoring & Security
+                                </h4>
+
+                                <div className="space-y-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                    <label className="flex items-center gap-2 cursor-pointer font-bold border-b pb-2 mb-2">
+                                        <input
+                                            type="checkbox"
+                                            name="proctoring.enabled"
+                                            checked={formData.proctoring.enabled}
+                                            onChange={handleChange}
+                                            className="w-4 h-4 text-primary-600 rounded"
+                                        />
+                                        <span className="text-sm text-gray-900">Enable Proctoring System</span>
+                                    </label>
+
+                                    {formData.proctoring.enabled && (
+                                        <div className="space-y-4 pl-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        name="proctoring.enforceFullscreen"
+                                                        checked={formData.proctoring.enforceFullscreen}
+                                                        onChange={handleChange}
+                                                        className="w-4 h-4 text-primary-600 rounded"
+                                                    />
+                                                    <span className="text-sm text-gray-700 font-bold">Enforce Fullscreen</span>
+                                                </label>
+
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        name="proctoring.blockNotifications"
+                                                        checked={formData.proctoring.blockNotifications}
+                                                        onChange={handleChange}
+                                                        className="w-4 h-4 text-primary-600 rounded"
+                                                    />
+                                                    <span className="text-sm text-gray-700 font-bold">Block Notifications</span>
+                                                </label>
+
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        name="proctoring.tabSwitchingAllowed"
+                                                        checked={formData.proctoring.tabSwitchingAllowed}
+                                                        onChange={handleChange}
+                                                        className="w-4 h-4 text-primary-600 rounded"
+                                                    />
+                                                    <span className="text-sm text-gray-700 font-bold">Allow Tab Switching</span>
+                                                </label>
+                                            </div>
+
+                                            {(!formData.proctoring.tabSwitchingAllowed || formData.proctoring.enforceFullscreen) && (
+                                                <div className="grid grid-cols-1 gap-4 pt-2 border-t mt-2">
+                                                    <Select
+                                                        label="Action on Limit"
+                                                        name="proctoring.actionOnLimit"
+                                                        value={formData.proctoring.actionOnLimit}
+                                                        onChange={handleChange}
+                                                        options={[
+                                                            { value: 'warn', label: 'Warn Only' },
+                                                            { value: 'auto-submit', label: 'Auto Submit' },
+                                                            { value: 'lock', label: 'Lock Exam' },
+                                                        ]}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {!formData.proctoring.tabSwitchingAllowed && (
+                                                <Input
+                                                    label="Max Tab Switches"
+                                                    name="proctoring.maxTabSwitches"
+                                                    type="number"
+                                                    min="0"
+                                                    value={formData.proctoring.maxTabSwitches}
+                                                    onChange={handleChange}
+                                                />
+                                            )}
+
+                                            {formData.proctoring.enforceFullscreen && (
+                                                <Input
+                                                    label="Max Fullscreen Exits"
+                                                    name="proctoring.maxFullscreenExits"
+                                                    type="number"
+                                                    min="0"
+                                                    value={formData.proctoring.maxFullscreenExits}
+                                                    onChange={handleChange}
+                                                />
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Results always manual publication footer */}
+                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 flex items-center gap-2 mt-2">
+                                <FiCheckCircle className="text-blue-600 w-4 h-4" />
+                                <span className="text-xs text-blue-800 font-medium italic">Results will require manual publication.</span>
+                            </div>
                         </div>
                     </div>
 

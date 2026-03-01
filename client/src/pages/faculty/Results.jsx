@@ -12,14 +12,24 @@ import Badge from '@/components/common/Badge.jsx';
 import { facultyService } from '@/services';
 import { useAuth } from '@/context/AuthContext';
 import { formatDateTime } from '@/utils/dateUtils';
-import { QUESTION_TYPES } from '@/config/constants';
+import { QUESTION_TYPES, USER_ROLES } from '@/config/constants';
 import toast from 'react-hot-toast';
 
 const Results = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const basePath = user?.role === 'superadmin' ? '/super-admin' : '/faculty';
+
+  const getBasePath = () => {
+    switch (user?.role) {
+      case USER_ROLES.SUPER_ADMIN: return '/super-admin';
+      case USER_ROLES.ADMIN: return '/admin';
+      case USER_ROLES.DEPT_HEAD: return '/dept-head';
+      case USER_ROLES.FACULTY: return '/faculty';
+      default: return '/faculty';
+    }
+  };
+  const basePath = getBasePath();
   const [loading, setLoading] = useState(true);
   const [exam, setExam] = useState(null);
   const [results, setResults] = useState([]);
@@ -131,6 +141,16 @@ const Results = () => {
       fetchResults(); // Refresh data to get updated exam status
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to publish results');
+    }
+  };
+
+  const handleUnlock = async (resultId, status) => {
+    try {
+      await facultyService.handleUnlockRequest(resultId, status);
+      toast.success(`Unlock request ${status} successfully`);
+      fetchResults(selectedResult?._id);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to handle unlock request');
     }
   };
 
@@ -336,9 +356,16 @@ const Results = () => {
                   {results.length > 0 ? results.map((result) => (
                     <div
                       key={result._id}
-                      className={`p-4 rounded-xl border-2 transition-all group hover:cursor-pointer ${result.status === 'locked' ? 'bg-red-50 border-red-200' : result.status === 'submitted' ? 'bg-gray-50 border-gray-100' : 'bg-white border-transparent shadow-sm hover:shadow-md'}`}
+                      className={`p-4 rounded-xl border-2 transition-all group hover:cursor-pointer relative ${result.status === 'locked' ? 'bg-red-50 border-red-200' : result.status === 'submitted' ? 'bg-gray-50 border-gray-100' : 'bg-white border-transparent shadow-sm hover:shadow-md'}`}
                       onClick={() => handleViewDetails(result)}
                     >
+                      {result.unlockRequest?.status === 'pending' && (
+                        <div className="absolute -top-2 -right-2 z-10 animate-bounce">
+                          <Badge variant="warning" className="shadow-lg border-2 border-white flex items-center gap-1">
+                            <FiAlertTriangle className="w-3 h-3" /> UNLOCK REQ
+                          </Badge>
+                        </div>
+                      )}
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-3">
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${result.status === 'locked' ? 'bg-red-500 shadow-md shadow-red-100' : result.status === 'submitted' ? 'bg-gray-400' : 'bg-indigo-500 shadow-md shadow-indigo-100'}`}>
@@ -386,6 +413,45 @@ const Results = () => {
 
             {/* Recent Violations Column */}
             <div className="space-y-4">
+              {results.some(r => r.unlockRequest?.status === 'pending') && (
+                <Card title="Pending Unlock Requests" className="bg-amber-50 border-amber-200">
+                  <div className="space-y-3">
+                    {results.filter(r => r.unlockRequest?.status === 'pending').map(r => (
+                      <div key={r._id} className="p-3 bg-white border border-amber-200 rounded-lg shadow-sm">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-xs">
+                              {r.studentId?.name?.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-gray-900">{r.studentId?.name}</p>
+                              <p className="text-[10px] text-gray-400">Locked due to violations</p>
+                            </div>
+                          </div>
+                          <Button
+                            size="xs"
+                            variant="primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewDetails(r);
+                            }}
+                          >
+                            Review
+                          </Button>
+                        </div>
+                        <div className="bg-amber-50 p-2 rounded text-[10px] text-amber-800 italic border border-amber-100 mb-2">
+                          "{r.unlockRequest?.reason}"
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="xs" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => handleUnlock(r._id, 'approved')}>Approve</Button>
+                          <Button size="xs" variant="danger" className="flex-1" onClick={() => handleUnlock(r._id, 'rejected')}>Reject</Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
               <Card title="Critical Alerts" className="bg-white">
                 <div className="space-y-3">
                   {results.filter(r => (r.tabSwitchCount > 0 || r.violations?.length > 0)).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 10).map(r => (
@@ -450,6 +516,41 @@ const Results = () => {
                 </div>
               </div>
             </div>
+
+            {/* Unlock Request Banner in Modal */}
+            {selectedResult.unlockRequest?.status === 'pending' && (
+              <div className="bg-amber-50 border-2 border-amber-200 p-5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-amber-100 rounded-full text-amber-600">
+                    <FiAlertTriangle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-amber-900 uppercase tracking-tight">Pending Unlock Request</h4>
+                    <p className="text-sm text-amber-800 mt-1 italic">
+                      "{selectedResult.unlockRequest.reason}"
+                    </p>
+                    <p className="text-[10px] text-amber-600 mt-2 font-bold uppercase tracking-widest">
+                      Requested at: {formatDateTime(selectedResult.unlockRequest.requestedAt)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                  <Button
+                    className="flex-1 md:flex-none h-11 px-8 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-100"
+                    onClick={() => handleUnlock(selectedResult._id, 'approved')}
+                  >
+                    Approve & Unlock
+                  </Button>
+                  <Button
+                    variant="danger"
+                    className="flex-1 md:flex-none h-11 px-8"
+                    onClick={() => handleUnlock(selectedResult._id, 'rejected')}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Proctoring Violation Log */}
             {(selectedResult.tabSwitchCount > 0 || (selectedResult.violations && selectedResult.violations.length > 0)) && (

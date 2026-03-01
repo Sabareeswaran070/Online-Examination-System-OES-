@@ -1064,9 +1064,16 @@ exports.logViolation = async (req, res, next) => {
       const tabSwitches = result.violations.filter(v => v.type === 'tab_switch' || v.type === 'tab-switch').length;
       const fullscreenExits = result.violations.filter(v => v.type === 'fullscreen_exit' || v.type === 'fullscreen-exit').length;
 
-      // Threshold check: Trigger action once limit be REACHED
-      const isTabLimitReached = tabSwitchLimit > 0 && tabSwitches >= tabSwitchLimit;
-      const isFullscreenLimitReached = fullscreenLimit > 0 && fullscreenExits >= fullscreenLimit;
+      // Threshold check: Trigger action once limit is REACHED
+      // Interpretation: if limit is 0, it means 0 tolerance (trigger on first violation)
+      // If teacher really wanted "unlimited", they should set a very high number OR we should define a way to say unlimited
+      // However, current UI says "0" for min. Let's treat 0 as 1 for enforcement if enabled.
+
+      const tabLimit = tabSwitchLimit > 0 ? tabSwitchLimit : 1;
+      const fsLimit = fullscreenLimit > 0 ? fullscreenLimit : 1;
+
+      const isTabLimitReached = tabSwitches >= tabLimit;
+      const isFullscreenLimitReached = fullscreenExits >= fsLimit;
 
       if (isTabLimitReached || isFullscreenLimitReached) {
         actionTaken = action; // Always set actionTaken if limit reached
@@ -1089,11 +1096,57 @@ exports.logViolation = async (req, res, next) => {
       data: {
         violationCount: result.violations.length,
         tabSwitchCount: result.tabSwitchCount || 0,
+        fullscreenExitCount: result.violations.filter(v => v.type === 'fullscreen_exit' || v.type === 'fullscreen-exit').length,
         actionTaken,
       },
     });
   } catch (error) {
     logger.error('Log violation error:', error);
+    next(error);
+  }
+};
+
+// @desc    Request exam unlock
+// @route   POST /api/student/exams/:id/request-unlock
+// @access  Private/Student
+exports.requestUnlock = async (req, res, next) => {
+  try {
+    const { reason } = req.body;
+    const examId = req.params.id;
+    const studentId = req.user._id;
+
+    const result = await Result.findOne({ examId, studentId });
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: 'Exam session not found',
+      });
+    }
+
+    if (result.status !== 'locked') {
+      return res.status(400).json({
+        success: false,
+        message: 'Unlock can only be requested for a locked exam session',
+      });
+    }
+
+    result.unlockRequest = {
+      isRequested: true,
+      reason: reason || 'No reason provided',
+      requestedAt: new Date(),
+      status: 'pending',
+    };
+
+    await result.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Unlock request submitted successfully',
+      data: result.unlockRequest,
+    });
+  } catch (error) {
+    logger.error('Request unlock error:', error);
     next(error);
   }
 };

@@ -665,16 +665,8 @@ const Exams = () => {
                       </label>
                     </div>
 
-                    {!formData.proctoring.tabSwitchingAllowed && (
-                      <div className="grid grid-cols-2 gap-4 pt-2">
-                        <Input
-                          label="Max Tab Switches"
-                          name="proctoring.maxTabSwitches"
-                          type="number"
-                          min="0"
-                          value={formData.proctoring.maxTabSwitches}
-                          onChange={handleChange}
-                        />
+                    {(!formData.proctoring.tabSwitchingAllowed || formData.proctoring.enforceFullscreen) && (
+                      <div className="grid grid-cols-2 gap-4 pt-2 border-t mt-2">
                         <Select
                           label="Action on Limit"
                           name="proctoring.actionOnLimit"
@@ -685,6 +677,19 @@ const Exams = () => {
                             { value: 'auto-submit', label: 'Auto Submit' },
                             { value: 'lock', label: 'Lock Exam' },
                           ]}
+                        />
+                      </div>
+                    )}
+
+                    {!formData.proctoring.tabSwitchingAllowed && (
+                      <div className="grid grid-cols-2 gap-4 pt-2">
+                        <Input
+                          label="Max Tab Switches"
+                          name="proctoring.maxTabSwitches"
+                          type="number"
+                          min="0"
+                          value={formData.proctoring.maxTabSwitches}
+                          onChange={handleChange}
                         />
                       </div>
                     )}

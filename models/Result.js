@@ -86,6 +86,16 @@ const resultSchema = new mongoose.Schema(
       type: Boolean,
       default: false, // True if submitted automatically on timeout
     },
+    unlockRequest: {
+      isRequested: { type: Boolean, default: false },
+      reason: { type: String },
+      requestedAt: { type: Date },
+      status: {
+        type: String,
+        enum: ['none', 'pending', 'approved', 'rejected'],
+        default: 'none'
+      }
+    }
   },
   {
     timestamps: true,

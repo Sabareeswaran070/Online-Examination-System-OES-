@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiCode, FiPlay, FiClock, FiCpu, FiChevronDown, FiChevronUp, FiEye, FiFileText, FiTerminal, FiCheckCircle, FiXCircle, FiLoader } from 'react-icons/fi';
+import { FiCode, FiPlay, FiClock, FiCpu, FiChevronDown, FiChevronUp, FiEye, FiFileText, FiTerminal, FiCheckCircle, FiXCircle, FiLoader, FiLock, FiAlertTriangle } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Modal from '@/components/common/Modal.jsx';
@@ -43,6 +43,11 @@ const TakeExam = () => {
   const [proctoringModal, setProctoringModal] = useState({ show: false, type: '', message: '', count: 0 });
   const [fullscreenExitCount, setFullscreenExitCount] = useState(0);
   const [isActualFullScreen, setIsActualFullScreen] = useState(false);
+
+  // Unlock Request States
+  const [unlockReason, setUnlockReason] = useState('');
+  const [requestingUnlock, setRequestingUnlock] = useState(false);
+  const [unlockRequestStatus, setUnlockRequestStatus] = useState('none'); // 'none', 'pending', 'approved', 'rejected'
 
 
 
@@ -134,15 +139,40 @@ const TakeExam = () => {
     };
   }, [exam, result?.status, isLocked]);
 
+  // Poll for unlock if pending
+  useEffect(() => {
+    let interval;
+    if (isLocked && unlockRequestStatus === 'pending') {
+      interval = setInterval(async () => {
+        try {
+          // Re-fetch result to check status update
+          const response = await studentService.startExam(id);
+          const { result: resultData } = response.data;
+          if (resultData.status === 'in-progress') {
+            setIsLocked(false);
+            setUnlockRequestStatus('approved');
+            setTabSwitchCount(resultData.tabSwitchCount || 0);
+            const fsExits = resultData.violations?.filter(v => v.type === 'fullscreen_exit' || v.type === 'fullscreen-exit').length || 0;
+            setFullscreenExitCount(fsExits);
+            toast.success('Exam Unlocked! You can now continue.', { duration: 5000 });
+          }
+        } catch (error) {
+          console.error('Polling for unlock failed:', error);
+        }
+      }, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [isLocked, unlockRequestStatus, id]);
+
   const handleViolation = async (type, description) => {
     if (isLocked) return;
 
     try {
       const response = await studentService.logViolation(id, { type, description });
-      const { actionTaken, violationCount, tabSwitchCount: newTabCount } = response.data;
+      const { actionTaken, tabSwitchCount: newTabCount, fullscreenExitCount: newFSCount } = response.data;
 
       setTabSwitchCount(newTabCount);
-      if (type === 'fullscreen_exit') setFullscreenExitCount(prev => prev + 1);
+      setFullscreenExitCount(newFSCount);
 
       if (actionTaken === 'lock' || actionTaken === 'auto-submit') {
         setIsLocked(true);
@@ -152,21 +182,27 @@ const TakeExam = () => {
         }
       } else {
         const limit = type === 'tab_switch' ? exam.proctoring?.maxTabSwitches : exam.proctoring?.maxFullscreenExits;
+        const currentCount = type === 'tab_switch' ? newTabCount : newFSCount;
 
-        // If limit is 0 (Unlimited), don't show the intrusive modal, just toast
-        if (limit === 0) {
+        // If limit is 0, backend handles it as 1. If limit is truly 0 and actionTaken is none, we just toast.
+        // But with my backend fix, if limit is 0, it should trigger an action (lock/submit/warn).
+        if (limit === 0 && actionTaken === 'none') {
           toast.error(`${type === 'tab_switch' ? 'Tab switching' : 'Fullscreen exit'} detected and logged.`, { duration: 3000 });
         } else {
           setProctoringModal({
             show: true,
             type,
             message: description,
-            count: type === 'tab_switch' ? newTabCount : (fullscreenExitCount + 1)
+            count: currentCount
           });
         }
       }
     } catch (error) {
       console.error('Failed to log violation:', error);
+      // If backend returns error, it might be due to locked/already submitted session
+      if (error.response?.status === 400 && (error.response?.data?.message?.includes('locked') || error.response?.data?.message?.includes('submitted'))) {
+        setIsLocked(true);
+      }
     }
   };
 
@@ -194,6 +230,7 @@ const TakeExam = () => {
       // Handle Locked Status
       if (resultData.status === 'locked') {
         setIsLocked(true);
+        setUnlockRequestStatus(resultData.unlockRequest?.status || 'none');
         setLoading(false);
         return; // Don't proceed
       }
@@ -204,6 +241,11 @@ const TakeExam = () => {
         setIsActualFullScreen(!!document.fullscreenElement);
         toast('This exam requires Fullscreen Mode', { icon: '🖥️' });
       }
+
+      // Initialize violation counts from resultData
+      setTabSwitchCount(resultData.tabSwitchCount || 0);
+      const fsExits = resultData.violations?.filter(v => v.type === 'fullscreen_exit' || v.type === 'fullscreen-exit').length || 0;
+      setFullscreenExitCount(fsExits);
 
       // Handle Notifications
       if (examData.proctoring?.blockNotifications && Notification.permission !== 'denied') {
@@ -392,11 +434,92 @@ const TakeExam = () => {
   if (isLocked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white p-4">
-        <div className="text-center space-y-4 max-w-md">
-          <FiXCircle className="w-20 h-20 text-red-500 mx-auto" />
-          <h1 className="text-3xl font-bold">Exam Locked</h1>
-          <p className="text-gray-400">Your exam session has been locked due to multiple proctoring violations. Please contact your instructor to unlock it.</p>
-          <Button variant="secondary" onClick={() => navigate('/student/exams')}>Back to Dashboard</Button>
+        <div className="text-center space-y-6 max-w-md w-full bg-gray-800 p-8 rounded-3xl shadow-2xl border border-gray-700">
+          <div className="relative">
+            <FiLock className="w-20 h-20 text-red-500 mx-auto" />
+            <div className="absolute top-0 right-1/4 animate-ping">
+              <div className="w-4 h-4 bg-red-400 rounded-full opacity-75"></div>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-3xl font-black tracking-tight text-white">Exam Locked</h1>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              Your session was secured due to multiple proctoring violations.
+            </p>
+          </div>
+
+          {unlockRequestStatus === 'pending' ? (
+            <div className="bg-amber-900/30 border border-amber-800 p-4 rounded-xl space-y-3">
+              <div className="flex items-center justify-center gap-2 text-amber-400 font-bold">
+                <FiLoader className="animate-spin" />
+                <span>Request Pending Approval</span>
+              </div>
+              <p className="text-xs text-amber-200/70">
+                Your instructor has been notified. This page will automatically refresh once unlocked.
+              </p>
+            </div>
+          ) : unlockRequestStatus === 'rejected' ? (
+            <div className="bg-red-900/30 border border-red-800 p-4 rounded-xl space-y-3">
+              <div className="flex items-center justify-center gap-2 text-red-400 font-bold">
+                <FiXCircle />
+                <span>Request Rejected</span>
+              </div>
+              <p className="text-xs text-red-200/70">
+                The administrator has declined your unlock request.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setUnlockRequestStatus('none')}
+                className="text-white border-white/20 hover:bg-white/10"
+              >
+                Try Again
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!unlockReason.trim()) return toast.error('Please enter a reason');
+              setRequestingUnlock(true);
+              try {
+                await studentService.requestUnlock(id, unlockReason);
+                setUnlockRequestStatus('pending');
+                toast.success('Unlock request sent!');
+              } catch (err) {
+                toast.error(err.response?.data?.message || 'Failed to send request');
+              } finally {
+                setRequestingUnlock(false);
+              }
+            }} className="space-y-4">
+              <div className="text-left">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 px-1">Reason for Unlock</label>
+                <textarea
+                  className="w-full bg-gray-900/50 border border-gray-700 rounded-xl p-3 text-sm text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all outline-none"
+                  placeholder="e.g. Accidental tab switch, technical glitch..."
+                  rows={3}
+                  value={unlockReason}
+                  onChange={(e) => setUnlockReason(e.target.value)}
+                  required
+                />
+              </div>
+              <Button
+                className="w-full h-12 text-lg font-bold shadow-lg"
+                type="submit"
+                loading={requestingUnlock}
+              >
+                Send Unlock Request
+              </Button>
+            </form>
+          )}
+
+          <div className="pt-4 border-t border-gray-700">
+            <button
+              onClick={() => navigate('/student/exams')}
+              className="text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              Exit to Dashboard
+            </button>
+          </div>
         </div>
       </div>
     );
