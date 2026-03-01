@@ -1804,7 +1804,7 @@ exports.generateAICodingQuestion = async (req, res, next) => {
 // @access  Private/SuperAdmin
 exports.generateAIQuestions = async (req, res, next) => {
   try {
-    const { topic, type = 'MCQ', difficulty = 'medium', count = 5, language = 'javascript', additionalInstructions = '', subjectId, examId } = req.body;
+    const { topic, type = 'MCQ', difficulty = 'medium', count = 5, language = 'javascript', additionalInstructions = '', subjectId, examId, preview = false } = req.body;
 
     if (!topic || !topic.trim()) {
       return res.status(400).json({
@@ -1824,6 +1824,15 @@ exports.generateAIQuestions = async (req, res, next) => {
       language,
       additionalInstructions: additionalInstructions || '',
     });
+
+    // If preview mode, return without saving
+    if (preview) {
+      return res.status(200).json({
+        success: true,
+        message: 'Preview generated successfully',
+        data: count === 1 || questions.length === 1 ? questions[0] : questions,
+      });
+    }
 
     // Save all generated questions to DB
     const savedQuestions = [];

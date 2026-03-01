@@ -1,6 +1,7 @@
 const express = require('express');
 const {
   getDashboard,
+  getSubjects,
   createExam,
   getExams,
   getExam,
@@ -16,10 +17,13 @@ const {
   updateQuestion,
   deleteQuestion,
   getExamResults,
+  publishResults,
   getPendingSubmissions,
   evaluateAnswer,
   evaluateAI,
   generateRandomQuestions,
+  delegateEvaluation,
+  generateAIQuestions,
 } = require('../controllers/facultyController');
 const { protect } = require('../middleware/auth');
 const { authorize, auditLog } = require('../middleware/rbac');
@@ -32,11 +36,12 @@ const {
 
 const router = express.Router();
 
-// Protect all routes and authorize faculty and superadmin
+// Protect all routes and authorize faculty, superadmin, admin, and depthead
 router.use(protect);
-router.use(authorize('faculty', 'superadmin'));
+router.use(authorize('faculty', 'superadmin', 'admin', 'depthead'));
 
 router.get('/dashboard', getDashboard);
+router.get('/subjects', getSubjects);
 
 // Exam routes
 router
@@ -109,11 +114,26 @@ router.post(
   generateRandomQuestions
 );
 
+router.put(
+  '/exams/:id/delegate',
+  validateObjectId('id'),
+  validate,
+  delegateEvaluation
+);
+
 router.get(
   '/exams/:id/results',
   validateObjectId('id'),
   validate,
   getExamResults
+);
+
+router.post(
+  '/exams/:id/publish-results',
+  validateObjectId('id'),
+  validate,
+  auditLog('publishResults', 'Exam'),
+  publishResults
 );
 
 // Question routes
@@ -141,6 +161,13 @@ router
     auditLog('delete', 'Question'),
     deleteQuestion
   );
+
+// AI Question Generation
+router.post(
+  '/questions/generate-ai',
+  auditLog('ai-generate', 'Question'),
+  generateAIQuestions
+);
 
 // Evaluation & Submissions
 router.get('/submissions/pending', getPendingSubmissions);

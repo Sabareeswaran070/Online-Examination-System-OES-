@@ -8,7 +8,7 @@ const Result = require('../models/Result');
  * @param {Object} answer - The student's answer
  * @returns {Object} - Evaluated answer object with marks
  */
-const evaluateAnswer = (question, answer, negativeMarkingEnabled) => {
+const evaluateAnswer = (question, answer, negativeMarkingEnabled, examNegativeMarks) => {
     let isCorrect = false;
     let marksAwarded = 0;
 
@@ -21,7 +21,9 @@ const evaluateAnswer = (question, answer, negativeMarkingEnabled) => {
             marksAwarded = question.marks;
         } else {
             isCorrect = false;
-            marksAwarded = negativeMarkingEnabled ? -question.negativeMarks : 0;
+            // Use question's negativeMarks if > 0, otherwise use exam's global negativeMarks
+            const negativeValue = question.negativeMarks > 0 ? question.negativeMarks : (examNegativeMarks || 0);
+            marksAwarded = negativeMarkingEnabled ? -negativeValue : 0;
         }
     }
 
@@ -57,7 +59,7 @@ exports.evaluateExamSubmission = async (exam, result, submittedAnswers) => {
         };
 
         // Evaluate
-        const evaluation = evaluateAnswer(question, submittedAnswer, exam.negativeMarkingEnabled);
+        const evaluation = evaluateAnswer(question, submittedAnswer, exam.negativeMarkingEnabled, exam.negativeMarks);
 
         // Check if manual evaluation is needed
         if (!evaluation.isEvaluated) {

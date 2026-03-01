@@ -12,6 +12,7 @@ import Badge from '@/components/common/Badge.jsx';
 import { facultyService } from '@/services';
 import { useAuth } from '@/context/AuthContext';
 import { formatDateTime } from '@/utils/dateUtils';
+import { QUESTION_TYPES } from '@/config/constants';
 import toast from 'react-hot-toast';
 
 const Results = () => {
@@ -30,17 +31,25 @@ const Results = () => {
   });
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
+  const [filterType, setFilterType] = useState('All');
 
   useEffect(() => {
     fetchResults();
   }, [id]);
 
-  const fetchResults = async () => {
+  const fetchResults = async (syncSelectedId = null) => {
     try {
-      setLoading(true);
+      if (!syncSelectedId) setLoading(true);
       const response = await facultyService.getExamResults(id);
-      setResults(response.data);
-      if (response.data.length > 0) {
+      const data = response.data;
+      setResults(data);
+
+      if (syncSelectedId) {
+        const updated = data.find((r) => r._id === syncSelectedId);
+        if (updated) setSelectedResult(updated);
+      }
+
+      if (data.length > 0) {
         const examResponse = await facultyService.getExam(id);
         setExam(examResponse.data);
       }
@@ -74,7 +83,7 @@ const Results = () => {
       );
       toast.success('Answer evaluated successfully');
       setShowEvaluateModal(false);
-      fetchResults();
+      fetchResults(selectedResult._id);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to evaluate');
     }
@@ -97,6 +106,20 @@ const Results = () => {
       console.error(error);
     } finally {
       setLoadingAI(false);
+    }
+  };
+
+  const handlePublishResults = async () => {
+    if (!window.confirm('Are you sure you want to publish the results? Once published, students will be able to see their scores and detailed performance.')) {
+      return;
+    }
+
+    try {
+      await facultyService.publishResults(id);
+      toast.success('Results published successfully');
+      fetchResults(); // Refresh data to get updated exam status
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to publish results');
     }
   };
 
@@ -163,21 +186,34 @@ const Results = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
-            variant="secondary"
+            variant="outline"
             onClick={() => navigate(`${basePath}/exams`)}
-            size="sm"
+            icon={<FiArrowLeft />}
           >
-            <FiArrowLeft className="w-5 h-5" />
+            Back to Exams
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Exam Results</h1>
             <p className="text-gray-600 mt-1">{exam?.title}</p>
           </div>
         </div>
-        <Button variant="success">
-          <FiDownload className="w-5 h-5 mr-2" />
-          Export Results
-        </Button>
+        <div className="flex items-center gap-2">
+          {exam?.status === 'completed' && !exam?.resultsPublished && (
+            <Button
+              variant="success"
+              onClick={handlePublishResults}
+              icon={<FiCheckCircle />}
+            >
+              Publish Results
+            </Button>
+          )}
+          {exam?.resultsPublished && (
+            <Badge variant="success" className="px-3 py-2 flex items-center gap-1 font-bold">
+              <FiCheckCircle /> Results Published
+            </Badge>
+          )}
+          <Button icon={<FiDownload />}>Export Results</Button>
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -282,74 +318,125 @@ const Results = () => {
               </div>
             </div>
 
-            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-              {selectedResult.answers?.map((answer, index) => (
-                <Card key={answer._id} className="hover:shadow-md transition-shadow">
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-start gap-3">
-                      <div className="flex items-start gap-2 flex-1">
-                        <span className="inline-flex items-center justify-center w-7 h-7 bg-primary-100 text-primary-700 rounded-full text-sm font-semibold flex-shrink-0">
-                          {index + 1}
-                        </span>
-                        <p className="font-medium text-gray-900 flex-1">
-                          {answer.questionId?.questionText}
-                        </p>
-                      </div>
-                      <Badge variant={answer.isEvaluated ? 'success' : 'warning'} className="flex-shrink-0">
-                        {answer.isEvaluated ? 'Evaluated' : 'Pending'}
-                      </Badge>
+            {/* Question Type Filter */}
+            <div className="flex flex-wrap gap-2 p-1 bg-gray-100 rounded-lg">
+              {['All', QUESTION_TYPES.MCQ, QUESTION_TYPES.TRUE_FALSE, QUESTION_TYPES.DESCRIPTIVE, QUESTION_TYPES.CODING].map((type) => {
+                const count = type === 'All'
+                  ? selectedResult.answers?.length
+                  : selectedResult.answers?.filter(a => a.questionId?.type === type).length;
+
+                if (type !== 'All' && count === 0) return null;
+
+                return (
+                  <button
+                    key={type}
+                    onClick={() => setFilterType(type)}
+                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${filterType === type
+                      ? 'bg-white text-primary-600 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                  >
+                    {type === 'All' ? 'All Questions' : type}
+                    <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] ${filterType === type ? 'bg-primary-50 text-primary-700' : 'bg-gray-200 text-gray-600'
+                      }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+              {[
+                { type: QUESTION_TYPES.MCQ, label: 'Multiple Choice Questions', icon: '🔘' },
+                { type: QUESTION_TYPES.TRUE_FALSE, label: 'True/False Questions', icon: '⚖️' },
+                { type: QUESTION_TYPES.DESCRIPTIVE, label: 'Descriptive Questions', icon: '✍️' },
+                { type: QUESTION_TYPES.CODING, label: 'Coding Questions', icon: '💻' },
+              ].filter(section => filterType === 'All' || filterType === section.type).map((section) => {
+                const sectionAnswers = selectedResult.answers
+                  ?.map((ans, idx) => ({ ...ans, originalIndex: idx }))
+                  .filter((ans) => ans.questionId?.type === section.type);
+
+                if (!sectionAnswers || sectionAnswers.length === 0) return null;
+
+                return (
+                  <div key={section.type} className="space-y-3">
+                    <div className="flex items-center gap-2 px-1 pb-1 border-b border-gray-100">
+                      <span className="text-xl">{section.icon}</span>
+                      <h3 className="font-bold text-gray-800 uppercase tracking-wider text-xs">
+                        {section.label} ({sectionAnswers.length})
+                      </h3>
                     </div>
+                    {sectionAnswers.map((answer) => (
+                      <Card key={answer._id} className="hover:shadow-md transition-shadow border-l-4 border-l-primary-500">
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-start gap-3">
+                            <div className="flex items-start gap-2 flex-1">
+                              <span className="inline-flex items-center justify-center w-7 h-7 bg-primary-100 text-primary-700 rounded-full text-sm font-semibold flex-shrink-0">
+                                {answer.originalIndex + 1}
+                              </span>
+                              <p className="font-medium text-gray-900 flex-1">
+                                {answer.questionId?.questionText}
+                              </p>
+                            </div>
+                            <Badge variant={answer.isEvaluated ? 'success' : 'warning'} className="flex-shrink-0">
+                              {answer.isEvaluated ? 'Evaluated' : 'Pending'}
+                            </Badge>
+                          </div>
 
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200">
-                      <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide mb-1">Student Answer</p>
-                      <div className="text-gray-900 break-words">
-                        {answer.questionId?.type === 'Coding' ? (
-                          <span className="text-sm text-gray-500 italic">Click Evaluate to view code</span>
-                        ) : answer.questionId?.type === 'MCQ' || answer.questionId?.type === 'TrueFalse' ? (
-                          answer.selectedAnswer || 'Not answered'
-                        ) : (
-                          answer.textAnswer || 'Not answered'
-                        )}
-                      </div>
-                    </div>
+                          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200">
+                            <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide mb-1">Student Answer</p>
+                            <div className="text-gray-900 break-words">
+                              {answer.questionId?.type === 'Coding' ? (
+                                <span className="text-sm text-gray-500 italic">Click Evaluate to view code</span>
+                              ) : answer.questionId?.type === 'MCQ' || answer.questionId?.type === 'TrueFalse' ? (
+                                answer.selectedAnswer || 'Not answered'
+                              ) : (
+                                answer.textAnswer || 'Not answered'
+                              )}
+                            </div>
+                          </div>
 
-                    {(answer.questionId?.type === 'MCQ' || answer.questionId?.type === 'TrueFalse') && (
-                      <div className="bg-gradient-to-br from-green-50 to-green-100 p-3 rounded-lg border border-green-200 mt-2">
-                        <p className="text-xs font-semibold text-green-800 uppercase tracking-wide mb-1">Correct Answer</p>
-                        <p className="text-green-900 font-medium break-words">
-                          {answer.questionId?.options?.find(opt => opt.isCorrect)?.text || answer.questionId?.options?.[0]?.text}
-                        </p>
-                      </div>
-                    )}
+                          {(answer.questionId?.type === 'MCQ' || answer.questionId?.type === 'TrueFalse') && (
+                            <div className="bg-gradient-to-br from-green-50 to-green-100 p-3 rounded-lg border border-green-200 mt-2">
+                              <p className="text-xs font-semibold text-green-800 uppercase tracking-wide mb-1">Correct Answer</p>
+                              <p className="text-green-900 font-medium break-words">
+                                {answer.questionId?.options?.find(opt => opt.isCorrect)?.text || answer.questionId?.options?.[0]?.text}
+                              </p>
+                            </div>
+                          )}
 
-                    <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                      <div className="flex items-center gap-2">
-                        <FiAward className="w-4 h-4 text-primary-600" />
-                        <span className="text-sm text-gray-700">Marks: </span>
-                        <span className="font-bold text-gray-900">
-                          {answer.marksAwarded || 0} / {answer.questionId?.marks}
-                        </span>
-                      </div>
-                      {answer.questionId?.type !== 'MCQ' && (
-                        <Button
-                          size="sm"
-                          variant={answer.isEvaluated ? 'secondary' : 'primary'}
-                          onClick={() => handleEvaluate(answer)}
-                        >
-                          {answer.isEvaluated ? 'Edit Grade' : 'Evaluate'}
-                        </Button>
-                      )}
-                    </div>
+                          <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                            <div className="flex items-center gap-2">
+                              <FiAward className="w-4 h-4 text-primary-600" />
+                              <span className="text-sm text-gray-700">Marks: </span>
+                              <span className="font-bold text-gray-900">
+                                {answer.marksAwarded || 0} / {answer.questionId?.marks}
+                              </span>
+                            </div>
+                            {answer.questionId?.type !== 'MCQ' && (
+                              <Button
+                                size="sm"
+                                variant={answer.isEvaluated ? 'secondary' : 'primary'}
+                                onClick={() => handleEvaluate(answer)}
+                              >
+                                {answer.isEvaluated ? 'Edit Grade' : 'Evaluate'}
+                              </Button>
+                            )}
+                          </div>
 
-                    {answer.feedback && (
-                      <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-3 rounded-lg border border-amber-200">
-                        <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-1">Feedback</p>
-                        <p className="text-gray-900">{answer.feedback}</p>
-                      </div>
-                    )}
+                          {answer.feedback && (
+                            <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-3 rounded-lg border border-amber-200">
+                              <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-1">Feedback</p>
+                              <p className="text-gray-900">{answer.feedback}</p>
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
                   </div>
-                </Card>
-              ))}
+                );
+              })}
             </div>
           </div>
         </Modal>

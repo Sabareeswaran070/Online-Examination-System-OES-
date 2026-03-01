@@ -313,6 +313,10 @@ export const collegeAdminService = {
     const response = await api.delete(`/admin/subjects/${id}`);
     return response.data;
   },
+  generateAIQuestions: async (params) => {
+    const response = await api.post('/admin/questions/generate-ai', params);
+    return response.data;
+  },
 };
 
 // Department Head Services
@@ -371,6 +375,10 @@ export const deptHeadService = {
     const response = await api.delete(`/depthead/subjects/${id}`);
     return response.data;
   },
+  generateAIQuestions: async (params) => {
+    const response = await api.post('/depthead/questions/generate-ai', params);
+    return response.data;
+  },
 };
 
 // Faculty Services
@@ -382,6 +390,10 @@ export const facultyService = {
 
   getExams: async (params) => {
     const response = await api.get('/faculty/exams', { params });
+    return response.data;
+  },
+  getSubjects: async () => {
+    const response = await api.get('/faculty/subjects');
     return response.data;
   },
 
@@ -410,8 +422,9 @@ export const facultyService = {
     return response.data;
   },
 
-  addQuestionToExam: async (examId, questionId) => {
-    const response = await api.post(`/faculty/exams/${examId}/questions`, { questionId });
+  addQuestionToExam: async (examId, data) => {
+    // data can be { questionId: '...' } or { questionIds: [...] }
+    const response = await api.post(`/faculty/exams/${examId}/questions`, typeof data === 'string' ? { questionId: data } : data);
     return response.data;
   },
   updateExamQuestionMarks: async (examId, questionId, marks) => {
@@ -470,6 +483,14 @@ export const facultyService = {
   generateRandomQuestions: async (data) => {
     const { examId, ...params } = data;
     const response = await api.post(`/faculty/exams/${examId}/generate-questions`, params);
+    return response.data;
+  },
+  publishResults: async (id) => {
+    const response = await api.post(`/faculty/exams/${id}/publish-results`);
+    return response.data;
+  },
+  generateAIQuestions: async (params) => {
+    const response = await api.post('/faculty/questions/generate-ai', params);
     return response.data;
   },
 };

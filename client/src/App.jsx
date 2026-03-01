@@ -31,9 +31,11 @@ import Faculty from './pages/admin/Faculty';
 import AdminAnalytics from './pages/admin/Analytics';
 import Leaderboard from './pages/admin/Leaderboard';
 import CollegeCompetitions from './pages/admin/Competitions';
+import AdminExams from './pages/admin/Exams';
 
 // Dept Head Pages
 import DeptHeadDashboard from './pages/depthead/Dashboard';
+import DeptHeadExams from './pages/depthead/Exams';
 
 // Faculty Pages
 import FacultyDashboard from './pages/faculty/Dashboard';
@@ -79,6 +81,7 @@ const navigationConfig = {
     { path: '/admin/departments', label: 'Departments', icon: FiBook },
     { path: '/admin/students', label: 'Students', icon: FiUsers },
     { path: '/admin/faculty', label: 'Faculty', icon: FiUsers },
+    { path: '/admin/exams', label: 'Exams', icon: FiFileText },
     { path: '/admin/competitions', label: 'Competitions', icon: FiAward },
     { path: '/admin/analytics', label: 'Analytics', icon: FiBarChart },
     { path: '/admin/leaderboard', label: 'Leaderboard', icon: FiAward },
@@ -164,6 +167,9 @@ const AdminRoutes = () => {
         <Route path="departments" element={<Departments />} />
         <Route path="students" element={<Students />} />
         <Route path="faculty" element={<Faculty />} />
+        <Route path="exams" element={<AdminExams />} />
+        <Route path="exams/:id" element={<FacultyExamDetails />} />
+        <Route path="exams/:id/results" element={<FacultyResults />} />
         <Route path="competitions" element={<CollegeCompetitions />} />
         <Route path="analytics" element={<AdminAnalytics />} />
         <Route path="leaderboard" element={<Leaderboard />} />
@@ -180,7 +186,9 @@ const DeptHeadRoutes = () => {
         <Route path="subjects" element={<div>Subjects Page (Coming Soon)</div>} />
         <Route path="faculty" element={<div>Faculty Page (Coming Soon)</div>} />
         <Route path="students" element={<div>Students Page (Coming Soon)</div>} />
-        <Route path="exams" element={<div>Exams Page (Coming Soon)</div>} />
+        <Route path="exams" element={<DeptHeadExams />} />
+        <Route path="exams/:id" element={<FacultyExamDetails />} />
+        <Route path="exams/:id/results" element={<FacultyResults />} />
         <Route path="analytics" element={<div>Analytics Page (Coming Soon)</div>} />
       </Routes>
     </DashboardLayout>

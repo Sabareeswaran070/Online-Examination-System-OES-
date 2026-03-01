@@ -11,6 +11,7 @@ const {
   getFaculty,
   approveExam,
   deleteSubject,
+  generateAIQuestions,
 } = require('../controllers/deptHeadController');
 const { protect } = require('../middleware/auth');
 const { authorize, auditLog, checkDepartmentOwnership } = require('../middleware/rbac');
@@ -70,6 +71,13 @@ router.put(
   validate,
   auditLog('approve', 'Exam'),
   approveExam
+);
+
+// AI Question Generation
+router.post(
+  '/questions/generate-ai',
+  auditLog('ai-generate', 'Question'),
+  generateAIQuestions
 );
 
 module.exports = router;

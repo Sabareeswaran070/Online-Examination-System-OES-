@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiPlus, FiEdit, FiTrash2, FiEye, FiUpload, FiFileText, FiSearch } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiEye, FiUpload, FiFileText, FiSearch, FiCheckCircle } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Table from '@/components/common/Table.jsx';
@@ -33,10 +33,10 @@ const Exams = () => {
     totalMarks: '',
     passingMarks: '',
     instructions: '',
-    allowNegativeMarking: false,
+    negativeMarkingEnabled: false,
     negativeMarks: 0,
-    shuffleQuestions: true,
-    showResults: true,
+    isRandomized: true,
+    showResultsImmediately: true,
   });
   const [subjects, setSubjects] = useState([]);
   const [filterStatus, setFilterStatus] = useState('');
@@ -79,8 +79,8 @@ const Exams = () => {
 
   const fetchSubjects = async () => {
     try {
-      const response = await facultyService.getDashboard();
-      setSubjects(response.data.subjects || []);
+      const response = await facultyService.getSubjects();
+      setSubjects(response.data || []);
     } catch (error) {
       console.error('Failed to load subjects:', error);
     }
@@ -100,6 +100,9 @@ const Exams = () => {
         totalMarks: Number(formData.totalMarks),
         passingMarks: Number(formData.passingMarks),
         negativeMarks: Number(formData.negativeMarks || 0),
+        negativeMarkingEnabled: formData.negativeMarkingEnabled,
+        isRandomized: formData.isRandomized,
+        showResultsImmediately: formData.showResultsImmediately,
       };
 
       // Clean up optional ObjectId fields
@@ -134,10 +137,10 @@ const Exams = () => {
       totalMarks: exam.totalMarks || '',
       passingMarks: exam.passingMarks || '',
       instructions: exam.instructions || '',
-      allowNegativeMarking: exam.allowNegativeMarking || false,
+      negativeMarkingEnabled: exam.negativeMarkingEnabled || false,
       negativeMarks: exam.negativeMarks || 0,
-      shuffleQuestions: exam.shuffleQuestions !== false,
-      showResults: exam.showResults !== false,
+      isRandomized: exam.isRandomized !== false,
+      showResultsImmediately: exam.showResultsImmediately !== false,
     });
     setShowModal(true);
   };
@@ -175,10 +178,10 @@ const Exams = () => {
       totalMarks: '',
       passingMarks: '',
       instructions: '',
-      allowNegativeMarking: false,
+      negativeMarkingEnabled: false,
       negativeMarks: 0,
-      shuffleQuestions: true,
-      showResults: true,
+      isRandomized: true,
+      showResultsImmediately: true,
     });
     setEditingExam(null);
   };
@@ -438,7 +441,10 @@ const Exams = () => {
             name="subject"
             value={formData.subject}
             onChange={handleChange}
-            options={subjects.map(s => ({ value: s._id, label: s.name }))}
+            options={[
+              { value: '', label: 'Select Subject' },
+              ...subjects.map(s => ({ value: s._id, label: s.name }))
+            ]}
             required
           />
 
@@ -508,49 +514,46 @@ const Exams = () => {
           />
 
           <div className="space-y-2">
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
-                name="allowNegativeMarking"
-                checked={formData.allowNegativeMarking}
+                name="negativeMarkingEnabled"
+                checked={formData.negativeMarkingEnabled}
                 onChange={handleChange}
                 className="w-4 h-4 text-primary-600 rounded"
               />
               <span className="text-sm text-gray-700">Allow Negative Marking</span>
             </label>
 
-            {formData.allowNegativeMarking && (
+            {formData.negativeMarkingEnabled && (
               <Input
                 label="Negative Marks per Wrong Answer"
                 name="negativeMarks"
                 type="number"
                 step="0.25"
+                min="0"
                 value={formData.negativeMarks}
                 onChange={handleChange}
+                placeholder="0.25, 0.5, etc."
               />
             )}
 
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
-                name="shuffleQuestions"
-                checked={formData.shuffleQuestions}
+                name="isRandomized"
+                checked={formData.isRandomized}
                 onChange={handleChange}
                 className="w-4 h-4 text-primary-600 rounded"
               />
               <span className="text-sm text-gray-700">Shuffle Questions</span>
             </label>
 
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                name="showResults"
-                checked={formData.showResults}
-                onChange={handleChange}
-                className="w-4 h-4 text-primary-600 rounded"
-              />
-              <span className="text-sm text-gray-700">Show Results After Submission</span>
-            </label>
+            {/* Results now always require manual publication as per new security requirement */}
+            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 flex items-center gap-2">
+              <FiCheckCircle className="text-blue-600 w-4 h-4" />
+              <span className="text-xs text-blue-800 font-medium">Results will require manual publication after the exam ends.</span>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4">

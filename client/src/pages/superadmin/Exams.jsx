@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiPlus, FiEdit, FiTrash2, FiEye, FiUpload, FiFileText, FiSearch, FiFilter, FiShare2 } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiEye, FiUpload, FiFileText, FiSearch, FiFilter, FiShare2, FiCheckCircle } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Table from '@/components/common/Table.jsx';
@@ -40,10 +40,10 @@ const SuperAdminExams = () => {
         totalMarks: '',
         passingMarks: '',
         instructions: '',
-        allowNegativeMarking: false,
+        negativeMarkingEnabled: false,
         negativeMarks: 0,
-        shuffleQuestions: true,
-        showResults: true,
+        isRandomized: true,
+        showResultsImmediately: true,
         collegeId: '',
         departmentId: '',
         contributingColleges: [],
@@ -190,10 +190,10 @@ const SuperAdminExams = () => {
             totalMarks: exam.totalMarks || '',
             passingMarks: exam.passingMarks || '',
             instructions: exam.instructions || '',
-            allowNegativeMarking: exam.allowNegativeMarking || false,
+            negativeMarkingEnabled: exam.negativeMarkingEnabled || false,
             negativeMarks: exam.negativeMarks || 0,
-            shuffleQuestions: exam.shuffleQuestions !== false,
-            showResults: exam.showResults !== false,
+            isRandomized: exam.isRandomized !== false,
+            showResultsImmediately: exam.showResultsImmediately !== false,
             collegeId: exam.collegeId?._id || exam.collegeId || '',
             departmentId: exam.departmentId?._id || exam.departmentId || '',
             contributingColleges: exam.contributingColleges?.map(c => c._id || c) || [],
@@ -234,10 +234,10 @@ const SuperAdminExams = () => {
             totalMarks: '',
             passingMarks: '',
             instructions: '',
-            allowNegativeMarking: false,
+            negativeMarkingEnabled: false,
             negativeMarks: 0,
-            shuffleQuestions: true,
-            showResults: true,
+            isRandomized: true,
+            showResultsImmediately: true,
             collegeId: '',
             departmentId: '',
             contributingColleges: [],
@@ -655,51 +655,48 @@ const SuperAdminExams = () => {
                         rows={2}
                     />
 
-                    <div className="space-y-2 bg-gray-50 p-3 rounded-lg">
-                        <label className="flex items-center gap-2">
+                    <div className="space-y-2 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                        <label className="flex items-center gap-2 cursor-pointer">
                             <input
                                 type="checkbox"
-                                name="allowNegativeMarking"
-                                checked={formData.allowNegativeMarking}
+                                name="negativeMarkingEnabled"
+                                checked={formData.negativeMarkingEnabled}
                                 onChange={handleChange}
                                 className="w-4 h-4 text-primary-600 rounded"
                             />
-                            <span className="text-sm text-gray-700 font-medium">Allow Negative Marking</span>
+                            <span className="text-sm text-gray-700 font-bold">Allow Negative Marking</span>
                         </label>
 
-                        {formData.allowNegativeMarking && (
+                        {formData.negativeMarkingEnabled && (
                             <Input
                                 label="Penalty per Wrong Answer"
                                 name="negativeMarks"
                                 type="number"
                                 step="0.25"
+                                min="0"
                                 value={formData.negativeMarks}
                                 onChange={handleChange}
+                                placeholder="0.25, 0.5, etc."
                             />
                         )}
 
                         <div className="flex flex-wrap gap-4 pt-1">
-                            <label className="flex items-center gap-2">
+                            <label className="flex items-center gap-2 cursor-pointer">
                                 <input
                                     type="checkbox"
-                                    name="shuffleQuestions"
-                                    checked={formData.shuffleQuestions}
+                                    name="isRandomized"
+                                    checked={formData.isRandomized}
                                     onChange={handleChange}
                                     className="w-4 h-4 text-primary-600 rounded"
                                 />
-                                <span className="text-sm text-gray-700 font-medium">Shuffle Questions</span>
+                                <span className="text-sm text-gray-700 font-bold">Shuffle Questions</span>
                             </label>
 
-                            <label className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    name="showResults"
-                                    checked={formData.showResults}
-                                    onChange={handleChange}
-                                    className="w-4 h-4 text-primary-600 rounded"
-                                />
-                                <span className="text-sm text-gray-700 font-medium">Show Results After Submission</span>
-                            </label>
+                        {/* Results now always require manual publication as per new security requirement */}
+                        <div className="flex-1 p-3 bg-blue-50 rounded-lg border border-blue-100 flex items-center gap-2">
+                            <FiCheckCircle className="text-blue-600 w-4 h-4" />
+                            <span className="text-[10px] text-blue-800 font-medium">Results will require manual publication after the exam ends.</span>
+                        </div>
                         </div>
                     </div>
 

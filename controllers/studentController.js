@@ -338,7 +338,10 @@ exports.startExam = async (req, res, next) => {
             duration: exam.duration,
             totalMarks: exam.totalMarks,
             passingMarks: exam.passingMarks,
-            questions: exam.questions.map((q) => sanitizeQuestion(q)),
+            questions: existingResult.answers.map(ans => {
+              const q = exam.questions.find(eq => eq.questionId._id.toString() === ans.questionId.toString());
+              return q ? sanitizeQuestion(q) : null;
+            }).filter(q => !!q),
           },
           result: existingResult,
           remainingTime,
@@ -349,12 +352,18 @@ exports.startExam = async (req, res, next) => {
     // Create new result
     let result;
     try {
+      // Shuffle questions if randomized
+      let resultQuestions = exam.questions;
+      if (exam.isRandomized) {
+        resultQuestions = [...exam.questions].sort(() => Math.random() - 0.5);
+      }
+
       result = await Result.create({
         studentId: req.user._id,
         examId: req.params.id,
         status: 'in-progress',
         startedAt: Date.now(),
-        answers: exam.questions.map((q) => ({
+        answers: resultQuestions.map((q) => ({
           questionId: q.questionId._id,
           isEvaluated: false,
         })),
@@ -384,7 +393,10 @@ exports.startExam = async (req, res, next) => {
                 duration: exam.duration,
                 totalMarks: exam.totalMarks,
                 passingMarks: exam.passingMarks,
-                questions: exam.questions.map((q) => sanitizeQuestion(q)),
+                questions: existingResult.answers.map(ans => {
+                  const q = exam.questions.find(eq => eq.questionId._id.toString() === ans.questionId.toString());
+                  return q ? sanitizeQuestion(q) : null;
+                }).filter(q => !!q),
               },
               result: existingResult,
               remainingTime,
@@ -400,8 +412,17 @@ exports.startExam = async (req, res, next) => {
       throw createError;
     }
 
-    // Prepare questions (hide correct answers)
-    const questions = exam.questions.map((q) => sanitizeQuestion(q));
+    // Prepare questions in the order of result.answers
+    const questionsOrder = result.answers.map(a => a.questionId.toString());
+    const questionsMap = {};
+    exam.questions.forEach(q => {
+      questionsMap[q.questionId._id.toString()] = q;
+    });
+
+    const questions = questionsOrder
+      .map(id => questionsMap[id])
+      .filter(q => !!q)
+      .map(q => sanitizeQuestion(q));
 
     logger.info(
       `Exam started: ${exam.title} by student ${req.user.email}`
@@ -490,9 +511,9 @@ exports.submitExam = async (req, res, next) => {
         ? 'Exam submitted. Awaiting evaluation for descriptive answers.'
         : 'Exam submitted successfully',
       data: {
-        score: evaluationResult.score,
-        percentage: result.percentage,
-        isPassed: result.isPassed,
+        score: exam.resultsPublished ? evaluationResult.score : null,
+        percentage: exam.resultsPublished ? result.percentage : null,
+        isPassed: exam.resultsPublished ? result.isPassed : null,
         status: result.status,
       },
     });
@@ -567,13 +588,34 @@ exports.getResults = async (req, res, next) => {
       })
       .sort({ submittedAt: -1 });
 
-    // Filter out results where the exam has been deleted
-    const validResults = results.filter(r => r.examId != null);
+    // Filter: Show result if published OR if showResultsImmediately is true
+    const filteredResults = results.map(r => {
+      // Safety check if examId is populated
+      if (!r.examId) return null;
+
+      const isPublished = r.examId.resultsPublished; // Simplified to only check resultsPublished
+
+      // If not published, we strip sensitive info but keep the entry so they know it's being evaluated
+      if (!isPublished) {
+        return {
+          _id: r._id,
+          examId: r.examId,
+          status: r.status,
+          submittedAt: r.submittedAt,
+          isPublished: false,
+          // Hide scores
+          score: null,
+          percentage: null,
+          rank: null,
+        };
+      }
+      return { ...r.toObject(), isPublished: true };
+    }).filter(r => r !== null);
 
     res.status(200).json({
       success: true,
-      count: validResults.length,
-      data: validResults,
+      count: filteredResults.length,
+      data: filteredResults,
     });
   } catch (error) {
     logger.error('Get results error:', error);
@@ -620,11 +662,12 @@ exports.getResultDetails = async (req, res, next) => {
       });
     }
 
-    // Check if exam allows review
-    if (!result.examId.allowReview && result.status === 'in-progress') {
+    // Check if results are published
+    const isPublished = result.examId.resultsPublished;
+    if (!isPublished) {
       return res.status(403).json({
         success: false,
-        message: 'Result review is not allowed for this exam',
+        message: 'Results for this exam have not been published yet.',
       });
     }
 
@@ -646,18 +689,25 @@ exports.getLeaderboard = async (req, res, next) => {
     const { examId, departmentWide } = req.query;
 
     let matchQuery = {};
+    let examIds = [];
 
     if (examId) {
-      // Exam-specific leaderboard
-      matchQuery.examId = mongoose.Types.ObjectId(examId);
+      examIds = [mongoose.Types.ObjectId(examId)];
     } else if (departmentWide) {
-      // Department-wide leaderboard
-      const exams = await Exam.find({
+      const deptExams = await Exam.find({
         departmentId: req.user.departmentId,
       }).select('_id');
-      matchQuery.examId = { $in: exams.map((e) => e._id) };
+      examIds = deptExams.map((e) => e._id);
     }
 
+    // Always filter by publication status
+    const publishedExams = await Exam.find({
+      _id: examIds.length > 0 ? { $in: examIds } : { $exists: true },
+      resultsPublished: true
+    }).select('_id');
+    const publishedExamIds = publishedExams.map(e => e._id);
+
+    matchQuery.examId = { $in: publishedExamIds };
     matchQuery.status = { $in: ['submitted', 'evaluated', 'pending-evaluation'] };
 
     const leaderboard = await Result.aggregate([
@@ -725,6 +775,22 @@ exports.getAnalytics = async (req, res, next) => {
         },
       },
       {
+        $lookup: {
+          from: 'exams',
+          localField: 'examId',
+          foreignField: '_id',
+          as: 'exam',
+        },
+      },
+      { $unwind: '$exam' },
+      {
+        $match: {
+          $or: [
+            { 'exam.resultsPublished': true },
+          ],
+        },
+      },
+      {
         $group: {
           _id: null,
           totalExams: { $sum: 1 },
@@ -754,6 +820,13 @@ exports.getAnalytics = async (req, res, next) => {
       },
       { $unwind: '$exam' },
       {
+        $match: {
+          $or: [
+            { 'exam.resultsPublished': true },
+          ],
+        },
+      },
+      {
         $lookup: {
           from: 'subjects',
           localField: 'exam.subject',
@@ -773,9 +846,15 @@ exports.getAnalytics = async (req, res, next) => {
     ]);
 
     // Performance trend (last 10 exams)
+    const publishedExams = await Exam.find({
+      resultsPublished: true
+    }).select('_id');
+    const publishedExamIds = publishedExams.map(e => e._id);
+
     const performanceTrend = await Result.find({
       studentId: req.user._id,
       status: { $in: ['submitted', 'evaluated', 'pending-evaluation'] },
+      examId: { $in: publishedExamIds },
     })
       .populate('examId', 'title')
       .sort({ submittedAt: -1 })

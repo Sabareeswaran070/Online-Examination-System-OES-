@@ -10,7 +10,7 @@ import Input from '@/components/common/Input.jsx';
 import Loader from '@/components/common/Loader.jsx';
 import Badge from '@/components/common/Badge.jsx';
 import AIGenerateModal from '@/components/superadmin/AIGenerateModal.jsx';
-import { facultyService, superAdminService } from '@/services';
+import { facultyService, superAdminService, collegeAdminService, deptHeadService } from '@/services';
 import { useAuth } from '@/context/AuthContext';
 import { formatDateTime, getExamLiveStatus, getTimeRemainingText } from '@/utils/dateUtils';
 import toast from 'react-hot-toast';
@@ -27,7 +27,7 @@ const ExamDetails = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [showAIGenerateModal, setShowAIGenerateModal] = useState(false);
-  const [selectedQuestion, setSelectedQuestion] = useState('');
+  const [selectedQuestions, setSelectedQuestions] = useState([]);
   const [questionSearch, setQuestionSearch] = useState('');
   const [questionTypeFilter, setQuestionTypeFilter] = useState('');
   const [questionDifficultyFilter, setQuestionDifficultyFilter] = useState('');
@@ -99,19 +99,19 @@ const ExamDetails = () => {
   }, [questionSearch, questionTypeFilter, questionDifficultyFilter, showAddModal]);
 
   const handleAddQuestion = async () => {
-    if (!selectedQuestion) {
-      toast.error('Please select a question');
+    if (selectedQuestions.length === 0) {
+      toast.error('Please select at least one question');
       return;
     }
     try {
-      await facultyService.addQuestionToExam(id, selectedQuestion);
-      toast.success('Question added to exam');
+      await facultyService.addQuestionToExam(id, { questionIds: selectedQuestions });
+      toast.success(`${selectedQuestions.length} questions added to exam`);
       setShowAddModal(false);
-      setSelectedQuestion('');
+      setSelectedQuestions([]);
       setQuestionSearch('');
       fetchExamDetails();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to add question');
+      toast.error(error.response?.data?.message || 'Failed to add questions');
     }
   };
 
@@ -149,7 +149,12 @@ const ExamDetails = () => {
     }
     try {
       setGenerateLoading(true);
-      const response = await superAdminService.generateAIQuestions({
+      const service = isSuperAdmin ? superAdminService :
+        user?.role === 'admin' ? collegeAdminService :
+          user?.role === 'depthead' ? deptHeadService :
+            facultyService;
+
+      const response = await service.generateAIQuestions({
         topic: topic.trim(),
         type: generateData.aiType || 'MCQ',
         difficulty: generateData.aiDifficulty || 'medium',
@@ -195,17 +200,17 @@ const ExamDetails = () => {
       };
 
       let savedQuestion;
-      if (isSuperAdmin) {
-        const res = await superAdminService.createQuestion(questionData);
-        savedQuestion = res.data;
-      } else {
-        const res = await facultyService.createQuestion(questionData);
-        savedQuestion = res.data;
-      }
+      const service = isSuperAdmin ? superAdminService :
+        user?.role === 'admin' ? collegeAdminService :
+          user?.role === 'depthead' ? deptHeadService :
+            facultyService;
+
+      const res = await service.createQuestion(questionData);
+      savedQuestion = res.data;
 
       // Now add the saved question to the exam
       if (savedQuestion?._id) {
-        await facultyService.addQuestionToExam(id, savedQuestion._id);
+        await facultyService.addQuestionToExam(id, { questionId: savedQuestion._id });
         toast.success('AI question saved and added to exam!');
         fetchExamDetails();
       } else {
@@ -269,6 +274,20 @@ const ExamDetails = () => {
       fetchExamDetails();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to publish exam');
+    }
+  };
+
+  const handlePublishResults = async () => {
+    if (!window.confirm('Are you sure you want to publish the results? Once published, students will be able to see their scores and detailed performance.')) {
+      return;
+    }
+
+    try {
+      await facultyService.publishResults(id);
+      toast.success('Results published successfully');
+      fetchExamDetails();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to publish results');
     }
   };
 
@@ -382,6 +401,20 @@ const ExamDetails = () => {
               <FiUpload className="w-5 h-5 mr-2" />
               Publish Exam
             </Button>
+          )}
+          {exam.status === 'completed' && !exam.resultsPublished && (
+            <Button
+              variant="success"
+              onClick={handlePublishResults}
+            >
+              <FiUpload className="w-5 h-5 mr-2" />
+              Publish Results
+            </Button>
+          )}
+          {exam.resultsPublished && (
+            <Badge variant="success" className="px-3 py-2 flex items-center gap-1 font-bold">
+              Results Published
+            </Badge>
           )}
           <Button onClick={() => navigate(`${basePath}/exams/${id}/results`)}>
             <FiUsers className="w-5 h-5 mr-2" />
@@ -534,15 +567,13 @@ const ExamDetails = () => {
               )}
               {exam.status === 'draft' && (
                 <>
-                  {isSuperAdmin && (
-                    <button
-                      onClick={() => setShowAIGenerateModal(true)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-white bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-sm hover:shadow-md transition-all text-sm"
-                    >
-                      <FiZap className="w-4 h-4" />
-                      AI Generate
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setShowAIGenerateModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-white bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-sm hover:shadow-md transition-all text-sm"
+                  >
+                    <FiZap className="w-4 h-4" />
+                    AI Generate
+                  </button>
                   <Button size="sm" onClick={() => setShowGenerateModal(true)}>
                     Generate Random
                   </Button>
@@ -578,30 +609,46 @@ const ExamDetails = () => {
                 onChange={(e) => setQuestionSearch(e.target.value)}
               />
             </div>
-            <div className="flex gap-2">
-              <Select
-                value={questionTypeFilter}
-                onChange={(e) => setQuestionTypeFilter(e.target.value)}
-                options={[
-                  { value: '', label: 'All Types' },
-                  { value: 'MCQ', label: 'MCQ' },
-                  { value: 'Coding', label: 'Coding' },
-                  { value: 'Descriptive', label: 'Descriptive' },
-                  { value: 'TrueFalse', label: 'True/False' },
-                ]}
-                className="flex-1"
-              />
-              <Select
-                value={questionDifficultyFilter}
-                onChange={(e) => setQuestionDifficultyFilter(e.target.value)}
-                options={[
-                  { value: '', label: 'All Difficulty' },
-                  { value: 'easy', label: 'Easy' },
-                  { value: 'medium', label: 'Medium' },
-                  { value: 'hard', label: 'Hard' },
-                ]}
-                className="flex-1"
-              />
+            <div className="flex items-center justify-between">
+              <div className="flex gap-2 flex-1">
+                <Select
+                  value={questionTypeFilter}
+                  onChange={(e) => setQuestionTypeFilter(e.target.value)}
+                  options={[
+                    { value: '', label: 'All Types' },
+                    { value: 'MCQ', label: 'MCQ' },
+                    { value: 'Coding', label: 'Coding' },
+                    { value: 'Descriptive', label: 'Descriptive' },
+                    { value: 'TrueFalse', label: 'True/False' },
+                  ]}
+                  className="flex-1"
+                />
+                <Select
+                  value={questionDifficultyFilter}
+                  onChange={(e) => setQuestionDifficultyFilter(e.target.value)}
+                  options={[
+                    { value: '', label: 'All Difficulty' },
+                    { value: 'easy', label: 'Easy' },
+                    { value: 'medium', label: 'Medium' },
+                    { value: 'hard', label: 'Hard' },
+                  ]}
+                  className="flex-1"
+                />
+              </div>
+              {availableQuestions.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (selectedQuestions.length === availableQuestions.length) {
+                      setSelectedQuestions([]);
+                    } else {
+                      setSelectedQuestions(availableQuestions.map(q => q._id));
+                    }
+                  }}
+                  className="ml-3 text-xs text-primary-600 font-medium hover:underline"
+                >
+                  {selectedQuestions.length === availableQuestions.length ? 'Deselect All' : 'Select All'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -618,15 +665,20 @@ const ExamDetails = () => {
                 availableQuestions.map((q) => (
                   <label
                     key={q._id}
-                    className={`flex items-start gap-3 p-3 cursor-pointer hover:bg-gray-50 transition-colors ${selectedQuestion === q._id ? 'bg-primary-50 ring-1 ring-primary-300' : ''}`}
+                    className={`flex items-start gap-3 p-3 cursor-pointer hover:bg-gray-50 transition-colors ${selectedQuestions.includes(q._id) ? 'bg-primary-50 ring-1 ring-primary-300' : ''}`}
                   >
                     <input
-                      type="radio"
-                      name="questionSelect"
+                      type="checkbox"
                       value={q._id}
-                      checked={selectedQuestion === q._id}
-                      onChange={() => setSelectedQuestion(q._id)}
-                      className="mt-1 w-4 h-4 text-primary-600"
+                      checked={selectedQuestions.includes(q._id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedQuestions([...selectedQuestions, q._id]);
+                        } else {
+                          setSelectedQuestions(selectedQuestions.filter(id => id !== q._id));
+                        }
+                      }}
+                      className="mt-1 w-4 h-4 text-primary-600 rounded"
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{q.questionText}</p>
@@ -645,14 +697,14 @@ const ExamDetails = () => {
 
           <div className="flex justify-between items-center pt-2">
             <span className="text-xs text-gray-500">
-              {availableQuestions.length} question{availableQuestions.length !== 1 ? 's' : ''} available
+              {selectedQuestions.length} selected / {availableQuestions.length} available
             </span>
             <div className="flex gap-3">
-              <Button variant="secondary" onClick={() => { setShowAddModal(false); setQuestionSearch(''); setSelectedQuestion(''); }}>
+              <Button variant="secondary" onClick={() => { setShowAddModal(false); setQuestionSearch(''); setSelectedQuestions([]); }}>
                 Cancel
               </Button>
-              <Button onClick={handleAddQuestion} disabled={!selectedQuestion}>
-                Add Question
+              <Button onClick={handleAddQuestion} disabled={selectedQuestions.length === 0}>
+                Add Selected
               </Button>
             </div>
           </div>
@@ -785,13 +837,15 @@ const ExamDetails = () => {
       </Modal>
 
       {/* AI Generate Modal */}
-      {isSuperAdmin && (
-        <AIGenerateModal
-          isOpen={showAIGenerateModal}
-          onClose={() => setShowAIGenerateModal(false)}
-          onGenerated={handleAIGenerated}
-        />
-      )}
+      <AIGenerateModal
+        isOpen={showAIGenerateModal}
+        onClose={() => setShowAIGenerateModal(false)}
+        onGenerated={handleAIGenerated}
+        service={isSuperAdmin ? superAdminService :
+          user?.role === 'admin' ? collegeAdminService :
+            user?.role === 'depthead' ? deptHeadService :
+              facultyService}
+      />
     </div>
   );
 };

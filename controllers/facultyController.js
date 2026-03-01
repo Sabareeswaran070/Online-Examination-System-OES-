@@ -2,6 +2,7 @@ const Exam = require('../models/Exam');
 const Question = require('../models/Question');
 const Result = require('../models/Result');
 const Subject = require('../models/Subject');
+const User = require('../models/User');
 const logger = require('../config/logger');
 const aiService = require('../services/aiService');
 
@@ -43,7 +44,7 @@ exports.getDashboard = async (req, res, next) => {
 
     const subjectQuery = isSuperAdmin(req.user)
       ? {}
-      : { 'assignedFaculty.facultyId': req.user._id };
+      : { departmentId: req.user.departmentId };
     const subjects = await Subject.find(subjectQuery);
 
     console.log('Faculty Dashboard - Data fetched:', {
@@ -75,6 +76,37 @@ exports.getDashboard = async (req, res, next) => {
   }
 };
 
+// @desc    Get faculty assigned subjects
+// @route   GET /api/faculty/subjects
+// @access  Private/Faculty
+exports.getSubjects = async (req, res, next) => {
+  try {
+    let query = {};
+
+    if (isSuperAdmin(req.user)) {
+      if (req.query.collegeId) query.collegeId = req.query.collegeId;
+      if (req.query.departmentId) query.departmentId = req.query.departmentId;
+    } else if (req.user.role === 'admin') {
+      query.collegeId = req.user.collegeId;
+      if (req.query.departmentId) query.departmentId = req.query.departmentId;
+    } else {
+      // Dept Head and Faculty restricted to their department
+      query.departmentId = req.user.departmentId;
+    }
+
+    const subjects = await Subject.find(query).sort({ name: 1 });
+
+    res.status(200).json({
+      success: true,
+      count: subjects.length,
+      data: subjects,
+    });
+  } catch (error) {
+    logger.error('Get faculty subjects error:', error);
+    next(error);
+  }
+};
+
 // @desc    Create exam
 // @route   POST /api/faculty/exams
 // @access  Private/Faculty
@@ -83,14 +115,62 @@ exports.createExam = async (req, res, next) => {
     const examData = {
       ...req.body,
       facultyId: req.body.facultyId || req.user._id,
-      departmentId: req.body.departmentId || req.user.departmentId || undefined,
-      collegeId: req.body.collegeId || req.user.collegeId || undefined,
     };
 
-    // Remove empty string IDs to prevent Mongoose CastError
+    // Role-based scope enforcement
+    if (req.user.role === 'admin') {
+      examData.collegeId = req.user.collegeId;
+    } else if (req.user.role === 'depthead') {
+      examData.collegeId = req.user.collegeId;
+      examData.departmentId = req.user.departmentId;
+    } else if (req.user.role === 'faculty') {
+      examData.collegeId = req.user.collegeId;
+      examData.departmentId = req.user.departmentId;
+    }
+    // Superadmin can provide their own college/dept if they want, or use what's in req.body
+
+    // Ensure IDs are valid objects or undefined
     if (examData.departmentId === '') delete examData.departmentId;
     if (examData.collegeId === '') delete examData.collegeId;
     if (examData.subject === '') delete examData.subject;
+
+    if (examData.subject && !isSuperAdmin(req.user)) {
+      // Validate that the subject exists and belongs to the allowed scope
+      const subject = await Subject.findById(examData.subject);
+
+      if (!subject) {
+        return res.status(404).json({
+          success: false,
+          message: 'Subject not found',
+        });
+      }
+
+      // Check department match for anyone below superadmin
+      const userDeptId = req.user.departmentId?.toString();
+      const subjectDeptId = subject.departmentId?.toString();
+
+      // Dept Head and Faculty must match their department
+      if (['depthead', 'faculty'].includes(req.user.role)) {
+        if (userDeptId && subjectDeptId && userDeptId !== subjectDeptId) {
+          return res.status(403).json({
+            success: false,
+            message: `Authorization failed. This subject belongs to a different department.`,
+          });
+        }
+      }
+
+      // College Admin must match their college
+      if (req.user.role === 'admin') {
+        const userCollegeId = req.user.collegeId?.toString();
+        const subjectCollegeId = subject.collegeId?.toString();
+        if (userCollegeId && subjectCollegeId && userCollegeId !== subjectCollegeId) {
+          return res.status(403).json({
+            success: false,
+            message: `Authorization failed. This subject belongs to a different college.`,
+          });
+        }
+      }
+    }
 
     const exam = await Exam.create(examData);
 
@@ -101,6 +181,14 @@ exports.createExam = async (req, res, next) => {
       data: exam,
     });
   } catch (error) {
+    console.error('DEBUG: Create Exam failed:', error);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(val => val.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(', '),
+      });
+    }
     logger.error('Create exam error:', error);
     next(error);
   }
@@ -310,12 +398,27 @@ exports.deleteExam = async (req, res, next) => {
   }
 };
 
-// @desc    Add question to exam
+// @desc    Add questions to exam (Single or multiple)
 // @route   POST /api/faculty/exams/:id/questions
 // @access  Private/Faculty
 exports.addQuestionToExam = async (req, res, next) => {
   try {
-    const { questionId } = req.body;
+    const { questionId, questionIds } = req.body;
+
+    // Normalize to an array of IDs
+    let idsToAdd = [];
+    if (questionIds && Array.isArray(questionIds)) {
+      idsToAdd = questionIds;
+    } else if (questionId) {
+      idsToAdd = [questionId];
+    }
+
+    if (idsToAdd.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide at least one question ID',
+      });
+    }
 
     const findQuery = isSuperAdmin(req.user)
       ? { _id: req.params.id }
@@ -329,27 +432,42 @@ exports.addQuestionToExam = async (req, res, next) => {
       });
     }
 
-    const question = await Question.findById(questionId);
+    // Filter out questions already in the exam to prevent duplicates
+    const existingQuestionIds = exam.questions.map(q => q.questionId.toString());
+    const uniqueIdsToAdd = idsToAdd.filter(id => !existingQuestionIds.includes(id));
 
-    if (!question) {
-      return res.status(404).json({
+    if (uniqueIdsToAdd.length === 0) {
+      return res.status(400).json({
         success: false,
-        message: 'Question not found',
+        message: 'Selected questions are already added to this exam',
       });
     }
 
-    exam.questions.push({
-      questionId,
-      order: exam.questions.length + 1,
+    // Verify all new questions exist
+    const questions = await Question.find({ _id: { $in: uniqueIdsToAdd } });
+    if (questions.length !== uniqueIdsToAdd.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'One or more questions not found',
+      });
+    }
+
+    // Add new questions
+    uniqueIdsToAdd.forEach((qId) => {
+      exam.questions.push({
+        questionId: qId,
+        order: exam.questions.length + 1,
+      });
     });
 
     await exam.save();
 
-    logger.info(`Question added to exam ${exam.title} by ${req.user.email}`);
+    logger.info(`${uniqueIdsToAdd.length} questions added to exam ${exam.title} by ${req.user.email}`);
 
     res.status(200).json({
       success: true,
       data: exam,
+      message: `${uniqueIdsToAdd.length} questions added successfully`,
     });
   } catch (error) {
     logger.error('Add question to exam error:', error);
@@ -612,12 +730,21 @@ exports.getQuestions = async (req, res, next) => {
       // Regular faculty case
       // 1. Can ALWAYS see their own questions (regardless of status/global)
       // OR 2. Can see any APPROVED question (global or local)
-      query.$or = [
-        { facultyId: req.user._id },
-        { status: 'approved' }
+      // BUT: Exclude questions created by Super Admins
+      const superAdmins = await User.find({ role: 'superadmin' }).select('_id');
+      const superAdminIds = superAdmins.map(admin => admin._id);
+
+      query.$and = [
+        { facultyId: { $nin: superAdminIds } },
+        {
+          $or: [
+            { facultyId: req.user._id },
+            { status: 'approved' }
+          ]
+        }
       ];
 
-      // Additional filters apply to BOTH sides of the OR (except when specifically filtering by status)
+      // Additional filters apply
       if (status) query.status = status;
       if (isGlobal !== undefined) query.isGlobal = isGlobal === 'true';
     }
@@ -765,17 +892,13 @@ exports.deleteQuestion = async (req, res, next) => {
 // @access  Private/Faculty
 exports.getExamResults = async (req, res, next) => {
   try {
-    const isAdmin = isSuperAdmin(req.user);
-    const findQuery = isAdmin
-      ? { _id: req.params.id }
-      : {
-        _id: req.params.id,
-        $or: [
-          { facultyId: req.user._id },
-          { collegeId: req.user.collegeId },
-          { contributingColleges: req.user.collegeId },
-        ],
-      };
+    const findQuery = {
+      _id: req.params.id,
+      $or: [
+        { facultyId: req.user._id },
+        { authorizedEvaluators: req.user._id },
+      ],
+    };
 
     const exam = await Exam.findOne(findQuery);
 
@@ -809,21 +932,63 @@ exports.getExamResults = async (req, res, next) => {
   }
 };
 
+// @desc    Publish exam results
+// @route   POST /api/faculty/exams/:id/publish-results
+// @access  Private/Faculty
+exports.publishResults = async (req, res, next) => {
+  try {
+    const findQuery = {
+      _id: req.params.id,
+      $or: [
+        { facultyId: req.user._id },
+        { authorizedEvaluators: req.user._id },
+      ],
+    };
+
+    const exam = await Exam.findOne(findQuery);
+
+    if (!exam) {
+      return res.status(404).json({
+        success: false,
+        message: 'Exam not found',
+      });
+    }
+
+    if (exam.status !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Can only publish results for completed exams',
+      });
+    }
+
+    exam.resultsPublished = true;
+    exam.resultsPublishedAt = Date.now();
+    await exam.save();
+
+    logger.info(`Results published for exam: ${exam.title} by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Results published successfully',
+      data: exam,
+    });
+  } catch (error) {
+    logger.error('Publish results error:', error);
+    next(error);
+  }
+};
+
 // @desc    Get all pending submissions for evaluation
 // @route   GET /api/faculty/submissions/pending
 // @access  Private/Faculty
 exports.getPendingSubmissions = async (req, res, next) => {
   try {
-    const isAdmin = isSuperAdmin(req.user);
-    const examQuery = isAdmin
-      ? {}
-      : {
-        $or: [
-          { facultyId: req.user._id },
-          { collegeId: req.user.collegeId },
-          { contributingColleges: req.user.collegeId },
-        ],
-      };
+    const examQuery = {
+      $or: [
+        { facultyId: req.user._id },
+        { authorizedEvaluators: req.user._id },
+      ],
+    };
 
     const exams = await Exam.find(examQuery).select('_id title');
     const examIds = exams.map(e => e._id);
@@ -867,21 +1032,15 @@ exports.evaluateAnswer = async (req, res, next) => {
       });
     }
 
-    // Check if faculty has access to this exam (creator, same college, or contributor)
-    const isAdmin = isSuperAdmin(req.user);
-    if (!isAdmin) {
-      const examIdStr = result.examId._id.toString();
-      const hasAccess =
-        result.examId.facultyId.toString() === req.user._id.toString() ||
-        result.examId.collegeId.toString() === req.user.collegeId.toString() ||
-        (result.examId.contributingColleges && result.examId.contributingColleges.includes(req.user.collegeId));
+    const isCreator = result.examId.facultyId.toString() === req.user._id.toString();
+    const isAuthorizedEvaluator = result.examId.authorizedEvaluators &&
+      result.examId.authorizedEvaluators.some(id => id.toString() === req.user._id.toString());
 
-      if (!hasAccess) {
-        return res.status(403).json({
-          success: false,
-          message: 'Not authorized to evaluate this result',
-        });
-      }
+    if (!isCreator && !isAuthorizedEvaluator) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to evaluate this result',
+      });
     }
 
     const answer = result.answers.id(answerId);
@@ -949,21 +1108,16 @@ exports.evaluateAI = async (req, res, next) => {
       });
     }
 
-    // Check if faculty has access to this exam (creator, same college, or contributor)
-    const isAdmin = isSuperAdmin(req.user);
-    if (!isAdmin) {
-      const exam = result.examId;
-      const hasAccess =
-        exam.facultyId.toString() === req.user._id.toString() ||
-        exam.collegeId.toString() === req.user.collegeId.toString() ||
-        (exam.contributingColleges && exam.contributingColleges.includes(req.user.collegeId));
+    const exam = result.examId;
+    const isCreator = exam.facultyId.toString() === req.user._id.toString();
+    const isAuthorizedEvaluator = exam.authorizedEvaluators &&
+      exam.authorizedEvaluators.some(id => id.toString() === req.user._id.toString());
 
-      if (!hasAccess) {
-        return res.status(403).json({
-          success: false,
-          message: 'Not authorized to evaluate this result',
-        });
-      }
+    if (!isCreator && !isAuthorizedEvaluator) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to evaluate this result',
+      });
     }
 
     const answer = result.answers.id(answerId);
@@ -1083,5 +1237,126 @@ exports.generateRandomQuestions = async (req, res, next) => {
   } catch (error) {
     logger.error('Generate random questions error:', error);
     next(error);
+  }
+};
+// @desc    Delegate evaluation access
+// @route   PUT /api/faculty/exams/:id/delegate
+// @access  Private/Faculty
+exports.delegateEvaluation = async (req, res, next) => {
+  try {
+    const { userIds } = req.body; // Array of user IDs to delegate to
+
+    if (!userIds || !Array.isArray(userIds)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide an array of user IDs',
+      });
+    }
+
+    const exam = await Exam.findOne({
+      _id: req.params.id,
+      facultyId: req.user._id, // Only creator can delegate
+    });
+
+    if (!exam) {
+      return res.status(404).json({
+        success: false,
+        message: 'Exam not found or you are not the creator',
+      });
+    }
+
+    exam.authorizedEvaluators = userIds;
+    await exam.save();
+
+    logger.info(`Evaluation access delegated for exam ${exam.title} by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Evaluation access updated successfully',
+      data: exam,
+    });
+  } catch (error) {
+    logger.error('Delegate evaluation error:', error);
+    next(error);
+  }
+};
+
+// @desc    Generate AI questions (MCQ, Descriptive, TrueFalse, Coding)
+// @route   POST /api/faculty/questions/generate-ai
+// @access  Private/Faculty
+exports.generateAIQuestions = async (req, res, next) => {
+  try {
+    const { topic, type = 'MCQ', difficulty = 'medium', count = 5, language = 'javascript', additionalInstructions = '', subjectId, examId, preview = false } = req.body;
+
+    if (!topic || !topic.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Topic/Subject is required for AI question generation',
+      });
+    }
+
+    const validTypes = ['MCQ', 'Descriptive', 'TrueFalse', 'Coding'];
+    const qType = validTypes.includes(type) ? type : 'MCQ';
+
+    const questions = await aiService.generateQuestion({
+      topic: topic.trim(),
+      type: qType,
+      difficulty,
+      count: Math.min(Math.max(Number(count) || 5, 1), 20),
+      language,
+      additionalInstructions: additionalInstructions || '',
+    });
+
+    // If preview mode, return without saving
+    if (preview) {
+      return res.status(200).json({
+        success: true,
+        message: 'Preview generated successfully',
+        data: count === 1 || questions.length === 1 ? questions[0] : questions,
+      });
+    }
+
+    // Save all generated questions to DB
+    const savedQuestions = [];
+    for (const q of questions) {
+      const questionData = {
+        ...q,
+        facultyId: req.user._id,
+        subject: subjectId || undefined,
+        status: 'approved', // Faculty generated AI questions are pre-approved
+        isActive: true,
+      };
+      const saved = await Question.create(questionData);
+      savedQuestions.push(saved);
+    }
+
+    // If examId is provided, add all questions to exam
+    if (examId) {
+      const exam = await Exam.findOne({ _id: examId, facultyId: req.user._id });
+      if (exam) {
+        savedQuestions.forEach((sq, index) => {
+          exam.questions.push({
+            questionId: sq._id,
+            order: (exam.questions?.length || 0) + index + 1,
+          });
+        });
+        await exam.save();
+      }
+    }
+
+    logger.info(`AI generated ${savedQuestions.length} ${qType} questions by faculty ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: `${savedQuestions.length} ${qType} questions generated and saved`,
+      count: savedQuestions.length,
+      data: savedQuestions,
+    });
+  } catch (error) {
+    logger.error('Faculty AI generation error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to generate questions. Please try again.',
+    });
   }
 };

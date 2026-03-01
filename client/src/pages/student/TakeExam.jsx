@@ -3,12 +3,21 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { FiCode, FiPlay, FiClock, FiCpu, FiChevronDown, FiChevronUp, FiEye, FiFileText, FiTerminal, FiCheckCircle, FiXCircle, FiLoader } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
+import Modal from '@/components/common/Modal.jsx';
 import Loader from '@/components/common/Loader.jsx';
 import Badge from '@/components/common/Badge.jsx';
 import { studentService } from '@/services';
 import { formatDuration } from '@/utils/dateUtils';
 import { QUESTION_TYPES } from '@/config/constants';
 import toast from 'react-hot-toast';
+
+const CODING_LANGUAGES = [
+  { value: 'javascript', label: 'JavaScript', icon: '🟨' },
+  { value: 'python', label: 'Python', icon: '🐍' },
+  { value: 'java', label: 'Java', icon: '☕' },
+  { value: 'cpp', label: 'C++', icon: '⚡' },
+  { value: 'c', label: 'C', icon: '🔧' },
+];
 
 const TakeExam = () => {
   const { id } = useParams();
@@ -28,13 +37,7 @@ const TakeExam = () => {
   const [testResults, setTestResults] = useState(null); // test case results
   const [customInput, setCustomInput] = useState('');
 
-  const CODING_LANGUAGES = [
-    { value: 'javascript', label: 'JavaScript', icon: '🟨' },
-    { value: 'python', label: 'Python', icon: '🐍' },
-    { value: 'java', label: 'Java', icon: '☕' },
-    { value: 'cpp', label: 'C++', icon: '⚡' },
-    { value: 'c', label: 'C', icon: '🔧' },
-  ];
+
 
   useEffect(() => {
     startExam();
@@ -64,11 +67,8 @@ const TakeExam = () => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden && result) {
-        setTabSwitchCount(prev => {
-          const newCount = prev + 1;
-          toast.error(`Warning: Tab switch detected (${newCount})`);
-          return newCount;
-        });
+        setTabSwitchCount(prev => prev + 1);
+        toast.error('Warning: Tab switch detected');
       }
     };
 
@@ -138,6 +138,9 @@ const TakeExam = () => {
     }
   };
 
+  const [showResultsModal, setShowResultsModal] = useState(false);
+  const [submissionResult, setSubmissionResult] = useState(null);
+
   const handleSubmit = async (autoSubmit = false) => {
     if (!autoSubmit && !window.confirm('Are you sure you want to submit the exam?')) {
       return;
@@ -157,13 +160,20 @@ const TakeExam = () => {
         };
       });
 
-      await studentService.submitExam(id, {
+      const response = await studentService.submitExam(id, {
         answers: formattedAnswers,
         violations: tabSwitchCount,
       });
 
       toast.success(autoSubmit ? 'Exam auto-submitted' : 'Exam submitted successfully');
-      navigate('/student/results');
+
+      if (exam.showResultsImmediately) {
+        setSubmissionResult(response.data.data);
+        setShowResultsModal(true);
+        setSubmitting(false);
+      } else {
+        navigate('/student/results');
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to submit exam');
       setSubmitting(false);
@@ -187,38 +197,7 @@ const TakeExam = () => {
     return selectedLanguages[question._id] || question.programmingLanguage || 'javascript';
   };
 
-  const handleRunCode = async () => {
-    const q = exam.questions[currentQuestion];
-    const code = answers[q._id] || q.starterCode || '';
-    const lang = getCurrentLanguage(q);
-
-    if (!code.trim()) {
-      toast.error('Please write some code first');
-      return;
-    }
-
-    setRunningCode(true);
-    setCodeOutput(null);
-    setTestResults(null);
-
-    try {
-      const response = await studentService.runCode({
-        code,
-        language: lang,
-        input: customInput,
-      });
-      setCodeOutput(response.data);
-    } catch (error) {
-      setCodeOutput({
-        stderr: error.response?.data?.message || 'Code execution failed. Please try again.',
-        status: { description: 'Error' },
-      });
-    } finally {
-      setRunningCode(false);
-    }
-  };
-
-  const handleRunTestCases = async () => {
+  const handleRun = async () => {
     const q = exam.questions[currentQuestion];
     const code = answers[q._id] || q.starterCode || '';
     const lang = getCurrentLanguage(q);
@@ -228,28 +207,55 @@ const TakeExam = () => {
       toast.error('Please write some code first');
       return;
     }
-    if (visibleTests.length === 0) {
-      toast.error('No test cases available for this question');
-      return;
-    }
 
     setRunningCode(true);
     setCodeOutput(null);
     setTestResults(null);
 
     try {
-      const response = await studentService.runCode({
-        code,
-        language: lang,
-        questionId: q._id,
-        testCases: visibleTests.map(tc => ({
-          input: tc.input || '',
-          expectedOutput: tc.expectedOutput || '',
-        })),
-      });
-      setTestResults(response.data);
+      // 1. Run with Custom Input if provided
+      if (customInput.trim()) {
+        const response = await studentService.runCode({
+          code,
+          language: lang,
+          input: customInput,
+        });
+        setCodeOutput(response.data);
+      }
+
+      // 2. Run with Visible Test Cases if they exist
+      if (visibleTests.length > 0) {
+        const response = await studentService.runCode({
+          code,
+          language: lang,
+          questionId: q._id,
+          testCases: visibleTests.map(tc => ({
+            input: tc.input || '',
+            expectedOutput: tc.expectedOutput || '',
+          })),
+        });
+        setTestResults(response.data);
+      }
+
+      // 3. Fallback: If neither custom input nor test cases, run once with empty input
+      if (!customInput.trim() && visibleTests.length === 0) {
+        const response = await studentService.runCode({
+          code,
+          language: lang,
+          input: '',
+        });
+        setCodeOutput(response.data);
+      }
+
+      toast.success('Run completed');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to run test cases');
+      toast.error(error.response?.data?.message || 'Execution failed');
+      if (!customInput.trim() && visibleTests.length === 0) {
+        setCodeOutput({
+          stderr: error.response?.data?.message || 'Code execution failed.',
+          status: { description: 'Error' },
+        });
+      }
     } finally {
       setRunningCode(false);
     }
@@ -600,183 +606,71 @@ const TakeExam = () => {
                           />
                         </div>
 
-                        {/* Run Buttons */}
-                        <div className="flex gap-3">
+                        {/* Run Button */}
+                        <div className="flex items-center gap-4">
                           <button
-                            onClick={handleRunCode}
+                            onClick={handleRun}
                             disabled={runningCode}
-                            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-semibold text-sm hover:from-green-600 hover:to-emerald-700 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 shadow-sm transition-all disabled:opacity-50"
                           >
                             {runningCode ? (
                               <><FiLoader className="w-4 h-4 animate-spin" /> Running...</>
                             ) : (
-                              <><FiPlay className="w-4 h-4" /> Run Code</>
+                              <><FiPlay className="w-4 h-4" /> Run</>
                             )}
                           </button>
-                          {question.visibleTestCases?.length > 0 && (
-                            <button
-                              onClick={handleRunTestCases}
-                              disabled={runningCode}
-                              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-semibold text-sm hover:from-blue-600 hover:to-indigo-700 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {runningCode ? (
-                                <><FiLoader className="w-4 h-4 animate-spin" /> Running...</>
-                              ) : (
-                                <><FiCheckCircle className="w-4 h-4" /> Run Test Cases ({question.visibleTestCases.length})</>
-                              )}
-                            </button>
+
+                          {testResults && (
+                            <span className={`text-sm font-bold px-3 py-1 rounded-full ${testResults.summary.failed === 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                              Test Cases: {testResults.summary.passed}/{testResults.summary.total} Passed
+                            </span>
                           )}
                         </div>
 
-                        {/* Single Run Output */}
-                        {codeOutput && (
-                          <div className="rounded-xl border-2 border-gray-200 overflow-hidden">
-                            <div className="bg-gray-800 px-4 py-2 flex items-center justify-between">
-                              <span className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
-                                <FiTerminal className="w-3.5 h-3.5" /> Output
-                              </span>
-                              <span className={`text-xs font-bold px-2 py-0.5 rounded ${codeOutput.status?.id === 3 ? 'bg-green-900 text-green-300' :
-                                codeOutput.status?.id === 6 ? 'bg-red-900 text-red-300' :
-                                  'bg-yellow-900 text-yellow-300'
-                                }`}>
-                                {codeOutput.status?.description || 'Error'}
-                              </span>
-                            </div>
-                            <div className="bg-gray-900 p-4 space-y-2">
-                              {codeOutput.compile_output && (
-                                <div>
-                                  <span className="text-[10px] font-bold text-red-400 uppercase">Compile Error</span>
-                                  <pre className="text-xs text-red-400 font-mono whitespace-pre-wrap mt-1">{codeOutput.compile_output}</pre>
+                        {/* Simplified Results Section */}
+                        {(codeOutput || testResults) && (
+                          <div className="space-y-4 pt-2">
+                            {/* Console Output (Custom Input) */}
+                            {codeOutput && (
+                              <div className="bg-gray-900 rounded-lg overflow-hidden">
+                                <div className="px-3 py-1.5 bg-gray-800 flex justify-between items-center">
+                                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Console Output</span>
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${codeOutput.status?.id === 3 ? 'text-green-400' : 'text-red-400'}`}>
+                                    {codeOutput.status?.description}
+                                  </span>
                                 </div>
-                              )}
-                              {codeOutput.stderr && (
-                                <div>
-                                  <span className="text-[10px] font-bold text-red-400 uppercase">Error</span>
-                                  <pre className="text-xs text-red-400 font-mono whitespace-pre-wrap mt-1">{codeOutput.stderr}</pre>
-                                </div>
-                              )}
-                              {codeOutput.stdout !== undefined && (
-                                <div>
-                                  <span className="text-[10px] font-bold text-green-400 uppercase">Output</span>
-                                  <pre className="text-xs text-green-300 font-mono whitespace-pre-wrap mt-1">{codeOutput.stdout || '(no output)'}</pre>
-                                </div>
-                              )}
-                              {(codeOutput.time || codeOutput.memory) && (
-                                <div className="flex gap-4 pt-2 border-t border-gray-700">
-                                  {codeOutput.time && (
-                                    <span className="text-xs text-gray-400 flex items-center gap-1">
-                                      <FiClock className="w-3 h-3" /> {codeOutput.time}s
-                                    </span>
-                                  )}
-                                  {codeOutput.memory && (
-                                    <span className="text-xs text-gray-400 flex items-center gap-1">
-                                      <FiCpu className="w-3 h-3" /> {(codeOutput.memory / 1024).toFixed(1)} MB
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Test Case Results */}
-                        {testResults && (
-                          <div className="rounded-xl border-2 border-gray-200 overflow-hidden">
-                            <div className="bg-gray-800 px-4 py-2.5 flex items-center justify-between">
-                              <span className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
-                                <FiCheckCircle className="w-3.5 h-3.5" /> Test Results
-                              </span>
-                              <span className={`text-sm font-bold ${testResults.summary.failed === 0 ? 'text-green-400' : 'text-red-400'
-                                }`}>
-                                {testResults.summary.passed}/{testResults.summary.total} Passed
-                              </span>
-                            </div>
-
-                            {/* Summary badges */}
-                            {testResults.summary.hiddenTotal > 0 && (
-                              <div className="bg-gray-800 px-4 pb-2.5 flex items-center gap-3">
-                                <span className="text-[10px] font-bold text-blue-400 bg-blue-900/40 px-2 py-0.5 rounded">
-                                  👁 Visible: {testResults.summary.visiblePassed}/{testResults.summary.visibleTotal}
-                                </span>
-                                <span className="text-[10px] font-bold text-purple-400 bg-purple-900/40 px-2 py-0.5 rounded">
-                                  🔒 Hidden: {testResults.summary.hiddenPassed}/{testResults.summary.hiddenTotal}
-                                </span>
+                                <pre className="p-3 text-xs font-mono text-gray-300 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                                  {codeOutput.compile_output && <div className="text-red-400 mb-2">{codeOutput.compile_output}</div>}
+                                  {codeOutput.stderr && <div className="text-red-400 mb-2">{codeOutput.stderr}</div>}
+                                  {codeOutput.stdout || (!codeOutput.compile_output && !codeOutput.stderr && '(no output)')}
+                                </pre>
                               </div>
                             )}
 
-                            <div className="divide-y divide-gray-700">
-                              {testResults.results.map((tr, idx) => (
-                                <div key={idx} className={`p-4 ${tr.passed ? 'bg-green-950/30' : 'bg-red-950/30'
-                                  }`}>
-                                  <div className="flex items-center justify-between mb-2">
-                                    <span className="text-xs font-bold text-gray-300 flex items-center gap-1.5">
-                                      {tr.isHidden ? (
-                                        <>
-                                          <span className="text-purple-400">🔒</span> Hidden Test Case {idx + 1 - (testResults.summary.visibleTotal || 0)}
-                                        </>
-                                      ) : (
-                                        <>
-                                          <span className="text-blue-400">👁</span> Test Case {idx + 1}
-                                        </>
-                                      )}
-                                    </span>
-                                    {tr.passed ? (
-                                      <span className="flex items-center gap-1 text-xs font-bold text-green-400">
-                                        <FiCheckCircle className="w-3.5 h-3.5" /> Passed
-                                      </span>
-                                    ) : (
-                                      <span className="flex items-center gap-1 text-xs font-bold text-red-400">
-                                        <FiXCircle className="w-3.5 h-3.5" /> Failed
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  {/* Visible test cases: show full input/expected/actual */}
-                                  {!tr.isHidden && (
-                                    <>
-                                      <div className="grid grid-cols-3 gap-3 text-xs font-mono">
-                                        <div>
-                                          <span className="text-[10px] font-bold text-gray-500 uppercase">Input</span>
-                                          <pre className="text-gray-300 mt-1 whitespace-pre-wrap bg-black/30 p-2 rounded">{tr.input || '(none)'}</pre>
-                                        </div>
-                                        <div>
-                                          <span className="text-[10px] font-bold text-gray-500 uppercase">Expected</span>
-                                          <pre className="text-gray-300 mt-1 whitespace-pre-wrap bg-black/30 p-2 rounded">{tr.expectedOutput}</pre>
-                                        </div>
-                                        <div>
-                                          <span className="text-[10px] font-bold text-gray-500 uppercase">Actual</span>
-                                          <pre className={`mt-1 whitespace-pre-wrap bg-black/30 p-2 rounded ${tr.passed ? 'text-green-300' : 'text-red-300'
-                                            }`}>{tr.actualOutput || tr.error || '(no output)'}</pre>
-                                        </div>
-                                      </div>
-                                      {(tr.compile_output || tr.stderr) && (
-                                        <pre className="text-xs text-red-400 font-mono mt-2 whitespace-pre-wrap">{tr.compile_output || tr.stderr}</pre>
-                                      )}
-                                    </>
-                                  )}
-
-                                  {/* Hidden test cases: show only pass/fail + error if any */}
-                                  {tr.isHidden && (
-                                    <div className="text-xs text-gray-400 italic">
-                                      {tr.passed
-                                        ? 'Your code produced the correct output for this hidden test case.'
-                                        : tr.compile_output
-                                          ? 'Compilation error — check your code syntax.'
-                                          : tr.error
-                                            ? 'Execution error — your code encountered an issue.'
-                                            : 'Your code did not produce the expected output for this hidden test case.'
-                                      }
+                            {/* Test Results (Simplified) */}
+                            {testResults && (
+                              <div className="grid grid-cols-1 gap-2">
+                                {testResults.results.filter(tr => !tr.isHidden).map((tr, idx) => (
+                                  <div key={idx} className={`p-2 rounded-md border text-xs flex justify-between items-center ${tr.passed ? 'bg-green-50 border-green-100 text-green-700' : 'bg-red-50 border-red-100 text-red-700'}`}>
+                                    <div className="flex items-center gap-2">
+                                      {tr.passed ? <FiCheckCircle /> : <FiXCircle />}
+                                      <span className="font-semibold">Test Case {idx + 1}</span>
                                     </div>
-                                  )}
-
-                                  {tr.time && (
-                                    <span className="text-[10px] text-gray-500 mt-1 inline-block">
-                                      ⏱ {tr.time}s | 💾 {tr.memory ? (tr.memory / 1024).toFixed(1) + ' MB' : 'N/A'}
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
+                                    {!tr.passed && (
+                                      <details className="cursor-pointer ml-auto">
+                                        <summary className="text-[10px] underline">View Details</summary>
+                                        <div className="mt-2 text-[10px] font-mono bg-white p-2 rounded border space-y-1">
+                                          <div><span className="text-gray-400">Input:</span> {tr.input}</div>
+                                          <div><span className="text-gray-400">Expected:</span> {tr.expectedOutput}</div>
+                                          <div><span className="text-gray-400">Actual:</span> {tr.actualOutput || tr.stderr || 'N/A'}</div>
+                                        </div>
+                                      </details>
+                                    )}
+                                    {tr.passed && <span className="text-[10px] opacity-70">Accepted</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -815,6 +709,68 @@ const TakeExam = () => {
           </div>
         </div>
       </div>
+      {/* Results Modal */}
+      <Modal
+        isOpen={showResultsModal}
+        onClose={() => navigate('/student/results')}
+        title="Exam Results"
+        showCloseButton={false}
+      >
+        <div className="text-center space-y-6 py-4">
+          <div className="flex justify-center">
+            {submissionResult?.isPassed ? (
+              <div className="bg-green-100 p-4 rounded-full">
+                <FiCheckCircle className="w-16 h-16 text-green-600" />
+              </div>
+            ) : (
+              <div className="bg-blue-100 p-4 rounded-full">
+                <FiFileText className="w-16 h-16 text-blue-600" />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {submissionResult?.status === 'pending-evaluation'
+                ? 'Exam Submitted!'
+                : submissionResult?.isPassed ? 'Congratulations!' : 'Exam Completed'}
+            </h2>
+            <p className="text-gray-500 mt-2">
+              {submissionResult?.status === 'pending-evaluation'
+                ? 'Your exam has been submitted. Descriptive questions will be evaluated by the faculty.'
+                : 'You have successfully completed the examination.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 bg-gray-50 p-6 rounded-2xl border border-gray-100">
+            <div className="text-center">
+              <span className="block text-sm text-gray-500 font-medium">Score</span>
+              <span className="text-3xl font-black text-gray-900">
+                {submissionResult?.score} <span className="text-sm font-normal text-gray-400">/ {exam.totalMarks}</span>
+              </span>
+            </div>
+            <div className="text-center border-l border-gray-200">
+              <span className="block text-sm text-gray-500 font-medium">Status</span>
+              <div className="mt-1">
+                {submissionResult?.status === 'pending-evaluation' ? (
+                  <Badge variant="warning">Pending Eval</Badge>
+                ) : submissionResult?.isPassed ? (
+                  <Badge variant="success">Passed</Badge>
+                ) : (
+                  <Badge variant="danger">Failed</Badge>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <Button
+            className="w-full h-12 text-lg font-bold shadow-lg"
+            onClick={() => navigate('/student/results')}
+          >
+            View All Results
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 };

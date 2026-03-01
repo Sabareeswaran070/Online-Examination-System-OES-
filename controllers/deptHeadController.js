@@ -3,7 +3,9 @@ const Subject = require('../models/Subject');
 const User = require('../models/User');
 const Exam = require('../models/Exam');
 const Result = require('../models/Result');
+const Question = require('../models/Question');
 const logger = require('../config/logger');
+const aiService = require('../services/aiService');
 
 // @desc    Get department head dashboard
 // @route   GET /api/depthead/dashboard
@@ -550,5 +552,86 @@ exports.deleteSubject = async (req, res, next) => {
   } catch (error) {
     logger.error('Delete subject error:', error);
     next(error);
+  }
+};
+
+// @desc    Generate AI questions (MCQ, Descriptive, TrueFalse, Coding)
+// @route   POST /api/depthead/questions/generate-ai
+// @access  Private/DeptHead
+exports.generateAIQuestions = async (req, res, next) => {
+  try {
+    const { topic, type = 'MCQ', difficulty = 'medium', count = 5, language = 'javascript', additionalInstructions = '', subjectId, examId, preview = false } = req.body;
+
+    if (!topic || !topic.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Topic/Subject is required for AI question generation',
+      });
+    }
+
+    const validTypes = ['MCQ', 'Descriptive', 'TrueFalse', 'Coding'];
+    const qType = validTypes.includes(type) ? type : 'MCQ';
+
+    const questions = await aiService.generateQuestion({
+      topic: topic.trim(),
+      type: qType,
+      difficulty,
+      count: Math.min(Math.max(Number(count) || 5, 1), 20),
+      language,
+      additionalInstructions: additionalInstructions || '',
+    });
+
+    // If preview mode, return without saving
+    if (preview) {
+      return res.status(200).json({
+        success: true,
+        message: 'Preview generated successfully',
+        data: count === 1 || questions.length === 1 ? questions[0] : questions,
+      });
+    }
+
+    // Save all generated questions to DB
+    const savedQuestions = [];
+    for (const q of questions) {
+      const questionData = {
+        ...q,
+        facultyId: req.user._id,
+        subject: subjectId || undefined,
+        status: 'approved',
+        isActive: true,
+      };
+      const saved = await Question.create(questionData);
+      savedQuestions.push(saved);
+    }
+
+    // If examId is provided, add all questions to exam
+    if (examId) {
+      // Dept head can add to any exam in their department
+      const exam = await Exam.findOne({ _id: examId, departmentId: req.user.departmentId });
+      if (exam) {
+        savedQuestions.forEach((sq, index) => {
+          exam.questions.push({
+            questionId: sq._id,
+            order: (exam.questions?.length || 0) + index + 1,
+          });
+        });
+        await exam.save();
+      }
+    }
+
+    logger.info(`AI generated ${savedQuestions.length} ${qType} questions by dept head ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: `${savedQuestions.length} ${qType} questions generated and saved`,
+      count: savedQuestions.length,
+      data: savedQuestions,
+    });
+  } catch (error) {
+    logger.error('Dept Head AI generation error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to generate questions. Please try again.',
+    });
   }
 };

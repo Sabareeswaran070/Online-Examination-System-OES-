@@ -18,6 +18,7 @@ const {
   getDepartmentSubjects,
   createSubject,
   deleteSubject,
+  generateAIQuestions,
 } = require('../controllers/collegeAdminController');
 const { protect } = require('../middleware/auth');
 const { authorize, auditLog } = require('../middleware/rbac');
@@ -82,6 +83,13 @@ router.delete(
   validate,
   auditLog('delete', 'Subject'),
   deleteSubject
+);
+
+// AI Question Generation
+router.post(
+  '/questions/generate-ai',
+  auditLog('ai-generate', 'Question'),
+  generateAIQuestions
 );
 
 router.put(

@@ -42,28 +42,28 @@ const Results = () => {
     {
       header: 'Score',
       render: (row) => (
-        <span className="font-medium">
-          {row.score} / {row.examId?.totalMarks}
+        <span className="font-medium text-gray-500">
+          {row.isPublished ? `${row.score} / ${row.examId?.totalMarks}` : 'N/A'}
         </span>
       ),
     },
     {
       header: 'Percentage',
       render: (row) => (
-        <span className={`font-bold ${getGradeColor(row.percentage)}`}>
-          {formatPercentage(row.percentage)}
+        <span className={`font-bold ${row.isPublished ? getGradeColor(row.percentage) : 'text-gray-400'}`}>
+          {row.isPublished ? formatPercentage(row.percentage) : 'Pending'}
         </span>
       ),
     },
     {
       header: 'Grade',
-      render: (row) => <span className="font-medium">{getGrade(row.percentage)}</span>,
+      render: (row) => <span className="font-medium">{row.isPublished ? getGrade(row.percentage) : 'N/A'}</span>,
     },
     {
       header: 'Status',
       render: (row) => (
-        <Badge variant={row.isPassed ? 'success' : 'danger'}>
-          {row.isPassed ? 'Passed' : 'Failed'}
+        <Badge variant={!row.isPublished ? 'warning' : (row.isPassed ? 'success' : 'danger')}>
+          {!row.isPublished ? 'Evaluating/Pending Publication' : (row.isPassed ? 'Passed' : 'Failed')}
         </Badge>
       ),
     },
@@ -94,10 +94,16 @@ const Results = () => {
         </Card>
       ) : (
         <Card>
-          <Table 
-            columns={columns} 
-            data={results} 
-            onRowClick={(row) => navigate(`/student/results/${row._id}`)}
+          <Table
+            columns={columns}
+            data={results}
+            onRowClick={(row) => {
+              if (!row.isPublished) {
+                toast.error('Results for this exam have not been published yet');
+                return;
+              }
+              navigate(`/student/results/${row._id}`);
+            }}
           />
         </Card>
       )}

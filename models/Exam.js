@@ -89,6 +89,10 @@ const examSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    negativeMarks: {
+      type: Number,
+      default: 0,
+    },
     proctoring: {
       enabled: {
         type: Boolean,
@@ -123,6 +127,19 @@ const examSchema = new mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'College',
+      },
+    ],
+    resultsPublished: {
+      type: Boolean,
+      default: false,
+    },
+    resultsPublishedAt: {
+      type: Date,
+    },
+    authorizedEvaluators: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
       },
     ],
   },
