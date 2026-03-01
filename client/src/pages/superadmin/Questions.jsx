@@ -12,7 +12,7 @@ import Loader from '@/components/common/Loader.jsx';
 import Badge from '@/components/common/Badge.jsx';
 import CodingQuestionModal from '@/components/superadmin/CodingQuestionModal.jsx';
 import AIGenerateModal from '@/components/superadmin/AIGenerateModal.jsx';
-import { superAdminService } from '@/services';
+import { superAdminService, facultyService } from '@/services';
 import toast from 'react-hot-toast';
 
 const AdminQuestions = () => {
@@ -77,6 +77,7 @@ const AdminQuestions = () => {
         page: 1,
         limit: 20
     });
+    const [selectedQuestions, setSelectedQuestions] = useState([]);
 
     const [totalQuestions, setTotalQuestions] = useState(0);
     const [totalQuestionPages, setTotalQuestionPages] = useState(1);
@@ -645,6 +646,20 @@ const AdminQuestions = () => {
         }
     };
 
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`Are you sure you want to delete ${selectedQuestions.length} selected questions? This action cannot be undone.`)) return;
+        try {
+            setLoading(true);
+            const res = await facultyService.bulkDeleteQuestions(selectedQuestions);
+            toast.success(res.message || 'Selected questions deleted successfully');
+            setSelectedQuestions([]);
+            fetchQuestions();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete selected questions');
+            setLoading(false);
+        }
+    };
+
     const handleStatusUpdate = async (id, status) => {
         try {
             setLoading(true);
@@ -1102,12 +1117,42 @@ const AdminQuestions = () => {
                             />
                         </div>
                     </div>
+
+                    {selectedQuestions.length > 0 && (
+                        <div className="bg-emerald-50 p-4 mx-4 rounded-xl border border-emerald-100 flex items-center justify-between animate-fade-in text-emerald-900 font-bold text-sm mb-4 mt-2">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg">
+                                    {selectedQuestions.length}
+                                </div>
+                                <div>
+                                    <p>Questions Selected</p>
+                                    <p className="text-emerald-700 text-xs font-normal">Bulk actions available for selected items</p>
+                                </div>
+                            </div>
+                            <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={handleBulkDelete}
+                                className="shadow-md hover:scale-105 transition-all"
+                            >
+                                <FiTrash2 className="w-4 h-4 mr-2" />
+                                Delete Selected
+                            </Button>
+                        </div>
+                    )}
+
                     {loading && questions.length === 0 ? (
                         <div className="py-20 flex justify-center"><Loader /></div>
                     ) : questions.length > 0 ? (
                         <>
                             <div className={loading ? 'opacity-50 pointer-events-none' : ''}>
-                                <Table columns={columns} data={questions} />
+                                <Table
+                                    columns={columns}
+                                    data={questions}
+                                    selectable={true}
+                                    selectedRows={selectedQuestions}
+                                    onSelectChange={setSelectedQuestions}
+                                />
                             </div>
 
                             <div className="mt-6 flex flex-col md:flex-row justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-100 gap-4">

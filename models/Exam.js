@@ -124,9 +124,9 @@ const examSchema = new mongoose.Schema(
         default: 'warn',
       },
       enforcedBy: {
-        enforceFullscreen: { type: String, enum: ['system', 'college', 'dept', 'faculty'], default: 'faculty' },
-        blockNotifications: { type: String, enum: ['system', 'college', 'dept', 'faculty'], default: 'faculty' },
-        tabSwitchingAllowed: { type: String, enum: ['system', 'college', 'dept', 'faculty'], default: 'faculty' },
+        enforceFullscreen: { type: String, enum: ['system', 'superadmin', 'college', 'dept', 'faculty'], default: 'faculty' },
+        blockNotifications: { type: String, enum: ['system', 'superadmin', 'college', 'dept', 'faculty'], default: 'faculty' },
+        tabSwitchingAllowed: { type: String, enum: ['system', 'superadmin', 'college', 'dept', 'faculty'], default: 'faculty' },
       }
     },
     allowedStudents: [

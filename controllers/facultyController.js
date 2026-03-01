@@ -432,18 +432,11 @@ exports.deleteExam = async (req, res, next) => {
     const isCollegeAdmin = req.user.role === 'admin' && exam.collegeId?.toString() === req.user.collegeId?.toString();
     const isDeptHead = req.user.role === 'depthead' && exam.departmentId?.toString() === req.user.departmentId?.toString();
 
+    // Authorized roles: Owner, Super Admin, College Admin (for their college), Dept Head (for their dept)
     if (!isOwner && !isSuper && !isCollegeAdmin && !isDeptHead) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to delete this exam',
-      });
-    }
-
-    // Restrict deletion for ongoing or completed exams (unless superadmin)
-    if (!isSuper && (exam.status === 'ongoing' || exam.status === 'completed')) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot delete ongoing or completed exam',
       });
     }
 
@@ -1557,6 +1550,80 @@ exports.handleUnlockRequest = async (req, res, next) => {
     });
   } catch (error) {
     logger.error('Handle unlock request error:', error);
+    next(error);
+  }
+};
+
+// @desc    Bulk delete exams
+// @route   POST /api/faculty/exams/bulk-delete
+// @access  Private/Faculty
+exports.bulkDeleteExams = async (req, res, next) => {
+  try {
+    const { examIds } = req.body;
+
+    if (!examIds || !Array.isArray(examIds) || examIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide an array of exam IDs',
+      });
+    }
+
+    const exams = await Exam.find({ _id: { $in: examIds } });
+
+    let deletedCount = 0;
+    for (const exam of exams) {
+      const isOwner = exam.facultyId.toString() === req.user._id.toString();
+      const isSuper = req.user.role === 'superadmin';
+      const isCollegeAdmin = req.user.role === 'admin' && exam.collegeId?.toString() === req.user.collegeId?.toString();
+      const isDeptHead = req.user.role === 'depthead' && exam.departmentId?.toString() === req.user.departmentId?.toString();
+
+      if (isOwner || isSuper || isCollegeAdmin || isDeptHead) {
+        await exam.deleteOne();
+        deletedCount++;
+      }
+    }
+
+    logger.info(`Bulk deleted ${deletedCount} exams by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully deleted ${deletedCount} exams`,
+    });
+  } catch (error) {
+    logger.error('Bulk delete exams error:', error);
+    next(error);
+  }
+};
+
+// @desc    Bulk delete questions
+// @route   POST /api/faculty/questions/bulk-delete
+// @access  Private/Faculty
+exports.bulkDeleteQuestions = async (req, res, next) => {
+  try {
+    const { questionIds } = req.body;
+
+    if (!questionIds || !Array.isArray(questionIds) || questionIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide an array of question IDs',
+      });
+    }
+
+    let query = { _id: { $in: questionIds } };
+    if (!isSuperAdmin(req.user)) {
+      query.facultyId = req.user._id;
+    }
+
+    const result = await Question.deleteMany(query);
+
+    logger.info(`Bulk deleted ${result.deletedCount} questions by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully deleted ${result.deletedCount} questions`,
+    });
+  } catch (error) {
+    logger.error('Bulk delete questions error:', error);
     next(error);
   }
 };

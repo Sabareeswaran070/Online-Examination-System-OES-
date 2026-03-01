@@ -47,6 +47,12 @@ const SuperAdminExams = () => {
         collegeId: '',
         departmentId: '',
         contributingColleges: [],
+        proctoring: {
+            enabled: false,
+            tabSwitchLimit: 0,
+            fullscreenLimit: 0,
+            actionOnLimit: 'warn' // 'warn', 'lock', 'submit'
+        }
     });
 
     // Pagination & Search & Filter state
@@ -58,6 +64,7 @@ const SuperAdminExams = () => {
     const [filterStatus, setFilterStatus] = useState('');
     const [filterCollege, setFilterCollege] = useState('');
     const [filterDepartment, setFilterDepartment] = useState('');
+    const [selectedExams, setSelectedExams] = useState([]);
 
     useEffect(() => {
         fetchInitialData();
@@ -143,8 +150,21 @@ const SuperAdminExams = () => {
     };
 
     const handleChange = (e) => {
-        const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-        setFormData({ ...formData, [e.target.name]: value });
+        const { name, value, type, checked } = e.target;
+        const val = type === 'checkbox' ? checked : value;
+
+        if (name.includes('.')) {
+            const [parent, child] = name.split('.');
+            setFormData(prev => ({
+                ...prev,
+                [parent]: {
+                    ...prev[parent],
+                    [child]: val
+                }
+            }));
+        } else {
+            setFormData({ ...formData, [name]: val });
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -197,6 +217,12 @@ const SuperAdminExams = () => {
             collegeId: exam.collegeId?._id || exam.collegeId || '',
             departmentId: exam.departmentId?._id || exam.departmentId || '',
             contributingColleges: exam.contributingColleges?.map(c => c._id || c) || [],
+            proctoring: {
+                enabled: exam.proctoring?.enabled || false,
+                tabSwitchLimit: exam.proctoring?.tabSwitchLimit || 0,
+                fullscreenLimit: exam.proctoring?.fullscreenLimit || 0,
+                actionOnLimit: exam.proctoring?.actionOnLimit || 'warn'
+            }
         });
         setShowModal(true);
     };
@@ -209,6 +235,20 @@ const SuperAdminExams = () => {
             fetchExams();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to delete exam');
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`Are you sure you want to delete ${selectedExams.length} selected exams? This action cannot be undone.`)) return;
+        try {
+            setLoading(true);
+            await facultyService.bulkDeleteExams(selectedExams);
+            toast.success('Selected exams deleted successfully');
+            setSelectedExams([]);
+            fetchExams();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete selected exams');
+            setLoading(false);
         }
     };
 
@@ -241,6 +281,12 @@ const SuperAdminExams = () => {
             collegeId: '',
             departmentId: '',
             contributingColleges: [],
+            proctoring: {
+                enabled: false,
+                tabSwitchLimit: 0,
+                fullscreenLimit: 0,
+                actionOnLimit: 'warn'
+            }
         });
         setEditingExam(null);
         setModalDepartments([]);
@@ -301,18 +347,6 @@ const SuperAdminExams = () => {
         } finally {
             setAssigning(false);
         }
-    };
-
-    const getStatusBadge = (status) => {
-        const statusMap = {
-            draft: { variant: 'secondary', label: 'Draft' },
-            scheduled: { variant: 'warning', label: 'Scheduled' },
-            ongoing: { variant: 'info', label: 'Ongoing' },
-            completed: { variant: 'success', label: 'Completed' },
-            cancelled: { variant: 'danger', label: 'Cancelled' },
-        };
-        const config = statusMap[status] || statusMap.draft;
-        return <Badge variant={config.variant}>{config.label}</Badge>;
     };
 
     const columns = [
@@ -465,6 +499,29 @@ const SuperAdminExams = () => {
                 </div>
             </div>
 
+            {selectedExams.length > 0 && (
+                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center justify-between animate-fade-in text-blue-900 font-bold text-sm mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg">
+                            {selectedExams.length}
+                        </div>
+                        <div>
+                            <p>Exams Selected</p>
+                            <p className="text-blue-700 text-xs font-normal">Bulk actions available for selected items</p>
+                        </div>
+                    </div>
+                    <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={handleBulkDelete}
+                        className="shadow-md hover:scale-105 transition-all"
+                    >
+                        <FiTrash2 className="w-4 h-4 mr-2" />
+                        Delete Selected
+                    </Button>
+                </div>
+            )}
+
             <Card className="overflow-hidden border-none shadow-sm">
                 {loading && exams.length === 0 ? (
                     <div className="text-center py-20">
@@ -473,7 +530,13 @@ const SuperAdminExams = () => {
                 ) : exams.length > 0 ? (
                     <>
                         <div className={`overflow-x-auto ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
-                            <Table columns={columns} data={exams} />
+                            <Table
+                                columns={columns}
+                                data={exams}
+                                selectable={true}
+                                selectedRows={selectedExams}
+                                onSelectChange={setSelectedExams}
+                            />
                         </div>
 
                         {totalExams > 0 && (
@@ -655,49 +718,142 @@ const SuperAdminExams = () => {
                         rows={2}
                     />
 
-                    <div className="space-y-2 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                name="negativeMarkingEnabled"
-                                checked={formData.negativeMarkingEnabled}
-                                onChange={handleChange}
-                                className="w-4 h-4 text-primary-600 rounded"
-                            />
-                            <span className="text-sm text-gray-700 font-bold">Allow Negative Marking</span>
-                        </label>
+                    <div className="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <div className="flex flex-wrap gap-6">
+                            <label className="flex items-center gap-2 cursor-pointer group">
+                                <input
+                                    type="checkbox"
+                                    name="negativeMarkingEnabled"
+                                    checked={formData.negativeMarkingEnabled}
+                                    onChange={handleChange}
+                                    className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                                />
+                                <span className="text-sm text-gray-700 font-bold group-hover:text-primary-700 transition-colors">Allow Negative Marking</span>
+                            </label>
 
-                        {formData.negativeMarkingEnabled && (
-                            <Input
-                                label="Penalty per Wrong Answer"
-                                name="negativeMarks"
-                                type="number"
-                                step="0.25"
-                                min="0"
-                                value={formData.negativeMarks}
-                                onChange={handleChange}
-                                placeholder="0.25, 0.5, etc."
-                            />
-                        )}
-
-                        <div className="flex flex-wrap gap-4 pt-1">
-                            <label className="flex items-center gap-2 cursor-pointer">
+                            <label className="flex items-center gap-2 cursor-pointer group">
                                 <input
                                     type="checkbox"
                                     name="isRandomized"
                                     checked={formData.isRandomized}
                                     onChange={handleChange}
-                                    className="w-4 h-4 text-primary-600 rounded"
+                                    className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
                                 />
-                                <span className="text-sm text-gray-700 font-bold">Shuffle Questions</span>
+                                <span className="text-sm text-gray-700 font-bold group-hover:text-primary-700 transition-colors">Shuffle Questions</span>
                             </label>
-
-                            {/* Results now always require manual publication as per new security requirement */}
-                            <div className="flex-1 p-3 bg-blue-50 rounded-lg border border-blue-100 flex items-center gap-2">
-                                <FiCheckCircle className="text-blue-600 w-4 h-4" />
-                                <span className="text-[10px] text-blue-800 font-medium">Results will require manual publication after the exam ends.</span>
-                            </div>
                         </div>
+
+                        {formData.negativeMarkingEnabled && (
+                            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                                <Input
+                                    label="Penalty per Wrong Answer"
+                                    name="negativeMarks"
+                                    type="number"
+                                    step="0.25"
+                                    min="0"
+                                    value={formData.negativeMarks}
+                                    onChange={handleChange}
+                                    placeholder="0.25, 0.5, etc."
+                                />
+                            </div>
+                        )}
+
+                        <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-100 flex items-center gap-2">
+                            <FiCheckCircle className="text-blue-600 w-4 h-4" />
+                            <span className="text-[10px] text-blue-800 font-medium tracking-tight">Results will require manual publication after the exam ends for security.</span>
+                        </div>
+                    </div>
+
+                    {/* Proctoring Settings */}
+                    <div className="space-y-4 bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100/50 shadow-sm transition-all hover:shadow-md">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <div className="p-2.5 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-100">
+                                    <FiCheckCircle className="w-4 h-4" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-black text-indigo-900 uppercase tracking-tight">Proctoring Controls</h4>
+                                    <p className="text-[10px] text-indigo-600 font-bold tracking-widest pb-1 opacity-80">AI INTEGRITY MONITORING</p>
+                                </div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="proctoring.enabled"
+                                    checked={formData.proctoring.enabled}
+                                    onChange={handleChange}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+
+                        {formData.proctoring.enabled && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2 animate-in fade-in zoom-in-95 duration-300">
+                                <div className="space-y-4">
+                                    <div className="bg-white/80 p-4 rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
+                                        <Input
+                                            label="Tab Switch Limit"
+                                            name="proctoring.tabSwitchLimit"
+                                            type="number"
+                                            min="0"
+                                            value={formData.proctoring.tabSwitchLimit}
+                                            onChange={handleChange}
+                                            placeholder="e.g. 3"
+                                        />
+                                        <div className="flex items-center gap-1.5 mt-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div>
+                                            <p className="text-[10px] text-gray-500 font-medium">Auto-action triggers after this limit</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white/80 p-4 rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
+                                        <Input
+                                            label="Fullscreen Exit Limit"
+                                            name="proctoring.fullscreenLimit"
+                                            type="number"
+                                            min="0"
+                                            value={formData.proctoring.fullscreenLimit}
+                                            onChange={handleChange}
+                                            placeholder="e.g. 2"
+                                        />
+                                        <div className="flex items-center gap-1.5 mt-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div>
+                                            <p className="text-[10px] text-gray-500 font-medium">Violation count before enforcement</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white/80 p-5 rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Action on Limit Reach</label>
+                                    <div className="space-y-3">
+                                        {[
+                                            { id: 'warn', label: 'Warn Only', desc: 'Notify student upon violation', color: 'indigo' },
+                                            { id: 'lock', label: 'Lock Exam', desc: 'Secure session; requires Admin manual unlock', color: 'red' },
+                                            { id: 'submit', label: 'Auto-Submit', desc: 'Finalize and submit session progress', color: 'amber' }
+                                        ].map(action => (
+                                            <label
+                                                key={action.id}
+                                                className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${formData.proctoring.actionOnLimit === action.id ? 'border-indigo-600 bg-indigo-50/50 shadow-sm' : 'border-transparent bg-gray-50/50 hover:bg-white'}`}
+                                            >
+                                                <input
+                                                    type="radio"
+                                                    name="proctoring.actionOnLimit"
+                                                    value={action.id}
+                                                    checked={formData.proctoring.actionOnLimit === action.id}
+                                                    onChange={handleChange}
+                                                    className="mt-1 text-indigo-600 focus:ring-indigo-500"
+                                                />
+                                                <div>
+                                                    <p className="text-xs font-black text-gray-900 leading-none">{action.label}</p>
+                                                    <p className="text-[10px] text-gray-500 font-medium mt-1.5 leading-relaxed">{action.desc}</p>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="space-y-3">
@@ -737,11 +893,11 @@ const SuperAdminExams = () => {
                             {editingExam ? 'Update' : 'Create'} Global Exam
                         </Button>
                     </div>
-                </form>
-            </Modal>
+                </form >
+            </Modal >
 
             {/* Assign to Colleges Modal */}
-            <Modal
+            < Modal
                 isOpen={showAssignModal}
                 onClose={() => setShowAssignModal(false)}
                 title={`Assign Exam to Colleges`}
@@ -821,8 +977,8 @@ const SuperAdminExams = () => {
                         </Button>
                     </div>
                 </div>
-            </Modal>
-        </div>
+            </Modal >
+        </div >
     );
 };
 

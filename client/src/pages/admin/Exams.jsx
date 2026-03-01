@@ -56,6 +56,7 @@ const Exams = () => {
     const [pageSize, setPageSize] = useState(10);
     const [searchTerm, setSearchTerm] = useState('');
     const [totalExams, setTotalExams] = useState(0);
+    const [selectedExams, setSelectedExams] = useState([]);
 
     useEffect(() => {
         fetchExams();
@@ -91,6 +92,20 @@ const Exams = () => {
             toast.error('Failed to load exams');
             console.error(error);
         } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`Are you sure you want to delete ${selectedExams.length} selected exams? This action cannot be undone.`)) return;
+        try {
+            setLoading(true);
+            await facultyService.bulkDeleteExams(selectedExams);
+            toast.success('Selected exams deleted successfully');
+            setSelectedExams([]);
+            fetchExams();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete selected exams');
             setLoading(false);
         }
     };
@@ -280,30 +295,28 @@ const Exams = () => {
                     >
                         <FiEye className="w-4 h-4" />
                     </Button>
+                    <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => handleEdit(row)}
+                    >
+                        <FiEdit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => handleDelete(row._id)}
+                    >
+                        <FiTrash2 className="w-4 h-4" />
+                    </Button>
                     {(row.status === 'draft' || row.status === 'scheduled') && (
-                        <>
-                            <Button
-                                size="sm"
-                                variant="primary"
-                                onClick={() => handleEdit(row)}
-                            >
-                                <FiEdit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                                size="sm"
-                                variant="danger"
-                                onClick={() => handleDelete(row._id)}
-                            >
-                                <FiTrash2 className="w-4 h-4" />
-                            </Button>
-                            <Button
-                                size="sm"
-                                variant="success"
-                                onClick={() => handlePublish(row._id)}
-                            >
-                                <FiUpload className="w-4 h-4" />
-                            </Button>
-                        </>
+                        <Button
+                            size="sm"
+                            variant="success"
+                            onClick={() => handlePublish(row._id)}
+                        >
+                            <FiUpload className="w-4 h-4" />
+                        </Button>
                     )}
                 </div>
             ),
@@ -353,6 +366,29 @@ const Exams = () => {
                 </select>
             </div>
 
+            {selectedExams.length > 0 && (
+                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center justify-between animate-fade-in text-blue-900 font-bold text-sm mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg">
+                            {selectedExams.length}
+                        </div>
+                        <div>
+                            <p>Exams Selected</p>
+                            <p className="text-blue-700 text-xs font-normal">Bulk actions available for selected items</p>
+                        </div>
+                    </div>
+                    <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={handleBulkDelete}
+                        className="shadow-md hover:scale-105 transition-all"
+                    >
+                        <FiTrash2 className="w-4 h-4 mr-2" />
+                        Delete Selected
+                    </Button>
+                </div>
+            )}
+
             <Card className="overflow-hidden border-none shadow-sm">
                 {loading && exams.length === 0 ? (
                     <div className="text-center py-20">
@@ -360,7 +396,13 @@ const Exams = () => {
                     </div>
                 ) : (
                     <div className={`overflow-x-auto ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
-                        <Table columns={columns} data={exams} />
+                        <Table
+                            columns={columns}
+                            data={exams}
+                            selectable={true}
+                            selectedRows={selectedExams}
+                            onSelectChange={setSelectedExams}
+                        />
                     </div>
                 )}
             </Card>

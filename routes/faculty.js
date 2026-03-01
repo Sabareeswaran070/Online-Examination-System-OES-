@@ -26,6 +26,8 @@ const {
   generateAIQuestions,
   getProctoringDefaults,
   handleUnlockRequest,
+  bulkDeleteExams,
+  bulkDeleteQuestions,
 } = require('../controllers/facultyController');
 const { protect } = require('../middleware/auth');
 const { authorize, auditLog } = require('../middleware/rbac');
@@ -56,6 +58,8 @@ router
     auditLog('create', 'Exam'),
     createExam
   );
+
+router.post('/exams/bulk-delete', auditLog('bulkDelete', 'Exam'), bulkDeleteExams);
 
 router
   .route('/exams/:id')
@@ -149,6 +153,8 @@ router
     auditLog('create', 'Question'),
     createQuestion
   );
+
+router.post('/questions/bulk-delete', auditLog('bulkDelete', 'Question'), bulkDeleteQuestions);
 
 router
   .route('/questions/:id')

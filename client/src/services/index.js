@@ -501,6 +501,14 @@ export const facultyService = {
     const response = await api.post(`/faculty/results/${resultId}/unlock`, { status });
     return response.data;
   },
+  bulkDeleteExams: async (examIds) => {
+    const response = await api.post('/faculty/exams/bulk-delete', { examIds });
+    return response.data;
+  },
+  bulkDeleteQuestions: async (questionIds) => {
+    const response = await api.post('/faculty/questions/bulk-delete', { questionIds });
+    return response.data;
+  },
 };
 
 // Student Services
