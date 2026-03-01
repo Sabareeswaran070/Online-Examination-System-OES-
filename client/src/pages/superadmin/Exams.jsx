@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiPlus, FiEdit, FiTrash2, FiEye, FiUpload, FiFileText, FiSearch, FiFilter, FiShare2, FiCheckCircle } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiEye, FiUpload, FiFileText, FiSearch, FiFilter, FiShare2, FiCheckCircle, FiLock, FiCode, FiAlertTriangle } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Table from '@/components/common/Table.jsx';
@@ -221,8 +221,12 @@ const SuperAdminExams = () => {
             contributingColleges: exam.contributingColleges?.map(c => c._id || c) || [],
             proctoring: {
                 enabled: exam.proctoring?.enabled || false,
-                tabSwitchLimit: exam.proctoring?.tabSwitchLimit || 0,
-                fullscreenLimit: exam.proctoring?.fullscreenLimit || 0,
+                enforceFullscreen: exam.proctoring?.enforceFullscreen || false,
+                tabSwitchingAllowed: exam.proctoring?.tabSwitchingAllowed !== false,
+                blockNotifications: exam.proctoring?.blockNotifications || false,
+                maxTabSwitches: exam.proctoring?.maxTabSwitches || 0,
+                maxFullscreenExits: exam.proctoring?.maxFullscreenExits || 0,
+                maxCopyPaste: exam.proctoring?.maxCopyPaste || 0,
                 actionOnLimit: exam.proctoring?.actionOnLimit || 'warn'
             }
         });
@@ -284,9 +288,13 @@ const SuperAdminExams = () => {
             departmentId: '',
             contributingColleges: [],
             proctoring: {
-                enabled: false,
-                tabSwitchLimit: 0,
-                fullscreenLimit: 0,
+                enabled: true,
+                enforceFullscreen: true,
+                tabSwitchingAllowed: true,
+                blockNotifications: true,
+                maxTabSwitches: 3,
+                maxFullscreenExits: 3,
+                maxCopyPaste: 0,
                 actionOnLimit: 'warn'
             }
         });
@@ -791,83 +799,105 @@ const SuperAdminExams = () => {
                         </div>
 
                         {formData.proctoring.enabled && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2 animate-in fade-in zoom-in-95 duration-300">
-                                <div className="space-y-4">
-                                    <div className="bg-white/80 p-4 rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
-                                        <Input
-                                            label="Tab Switch Limit"
-                                            name="proctoring.maxTabSwitches"
-                                            type="number"
-                                            min="0"
-                                            value={formData.proctoring.maxTabSwitches}
-                                            onChange={handleChange}
-                                            placeholder="e.g. 3"
-                                        />
-                                        <div className="flex items-center gap-1.5 mt-2">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div>
-                                            <p className="text-[10px] text-gray-500 font-medium">Auto-action triggers after this limit</p>
+                            <div className="space-y-6 pt-2 animate-in fade-in zoom-in-95 duration-300">
+                                {/* Feature Toggles */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${formData.proctoring.enforceFullscreen ? 'border-blue-600 bg-blue-50/50' : 'border-gray-100 bg-gray-50/30'}`}
+                                        onClick={() => setFormData(prev => ({ ...prev, proctoring: { ...prev.proctoring, enforceFullscreen: !prev.proctoring.enforceFullscreen } }))}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <FiLock className={formData.proctoring.enforceFullscreen ? 'text-blue-600' : 'text-gray-400'} />
+                                            <div className={`w-10 h-5 rounded-full relative transition-colors ${formData.proctoring.enforceFullscreen ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                                                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${formData.proctoring.enforceFullscreen ? 'left-6' : 'left-1'}`}></div>
+                                            </div>
                                         </div>
+                                        <p className="text-xs font-black text-gray-900 uppercase">Enforce Fullscreen</p>
+                                        <p className="text-[10px] text-gray-500 font-medium mt-1">Prevents exiting exam window</p>
                                     </div>
 
-                                    <div className="bg-white/80 p-4 rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
-                                        <Input
-                                            label="Fullscreen Exit Limit"
-                                            name="proctoring.maxFullscreenExits"
-                                            type="number"
-                                            min="0"
-                                            value={formData.proctoring.maxFullscreenExits}
-                                            onChange={handleChange}
-                                            placeholder="e.g. 2"
-                                        />
-                                        <div className="flex items-center gap-1.5 mt-2">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div>
-                                            <p className="text-[10px] text-gray-500 font-medium">Violation count before enforcement</p>
+                                    <div className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${!formData.proctoring.tabSwitchingAllowed ? 'border-amber-600 bg-amber-50/50' : 'border-gray-100 bg-gray-50/30'}`}
+                                        onClick={() => setFormData(prev => ({ ...prev, proctoring: { ...prev.proctoring, tabSwitchingAllowed: !prev.proctoring.tabSwitchingAllowed } }))}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <FiCode className={!formData.proctoring.tabSwitchingAllowed ? 'text-amber-600' : 'text-gray-400'} />
+                                            <div className={`w-10 h-5 rounded-full relative transition-colors ${!formData.proctoring.tabSwitchingAllowed ? 'bg-amber-600' : 'bg-gray-300'}`}>
+                                                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${!formData.proctoring.tabSwitchingAllowed ? 'left-6' : 'left-1'}`}></div>
+                                            </div>
                                         </div>
+                                        <p className="text-xs font-black text-gray-900 uppercase">Block Tab Switching</p>
+                                        <p className="text-[10px] text-gray-500 font-medium mt-1">Logs violations on blur</p>
                                     </div>
 
-                                    <div className="bg-white/80 p-4 rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
-                                        <Input
-                                            label="Max Copy-Paste"
-                                            name="proctoring.maxCopyPaste"
-                                            type="number"
-                                            min="0"
-                                            value={formData.proctoring.maxCopyPaste || 0}
-                                            onChange={handleChange}
-                                            placeholder="e.g. 0"
-                                        />
-                                        <div className="flex items-center gap-1.5 mt-2">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div>
-                                            <p className="text-[10px] text-gray-500 font-medium">0 means no limit (log only)</p>
+                                    <div className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${formData.proctoring.blockNotifications ? 'border-purple-600 bg-purple-50/50' : 'border-gray-100 bg-gray-50/30'}`}
+                                        onClick={() => setFormData(prev => ({ ...prev, proctoring: { ...prev.proctoring, blockNotifications: !prev.proctoring.blockNotifications } }))}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <FiAlertTriangle className={formData.proctoring.blockNotifications ? 'text-purple-600' : 'text-gray-400'} />
+                                            <div className={`w-10 h-5 rounded-full relative transition-colors ${formData.proctoring.blockNotifications ? 'bg-purple-600' : 'bg-gray-300'}`}>
+                                                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${formData.proctoring.blockNotifications ? 'left-6' : 'left-1'}`}></div>
+                                            </div>
                                         </div>
+                                        <p className="text-xs font-black text-gray-900 uppercase">Block Notifications</p>
+                                        <p className="text-[10px] text-gray-500 font-medium mt-1">Deters external alerts</p>
                                     </div>
                                 </div>
 
-                                <div className="bg-white/80 p-5 rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Action on Limit Reach</label>
-                                    <div className="space-y-3">
-                                        {[
-                                            { id: 'warn', label: 'Warn Only', desc: 'Notify student upon violation', color: 'indigo' },
-                                            { id: 'lock', label: 'Lock Exam', desc: 'Secure session; requires Admin manual unlock', color: 'red' },
-                                            { id: 'auto-submit', label: 'Auto-Submit', desc: 'Finalize and submit session progress', color: 'amber' }
-                                        ].map(action => (
-                                            <label
-                                                key={action.id}
-                                                className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${formData.proctoring.actionOnLimit === action.id ? 'border-indigo-600 bg-indigo-50/50 shadow-sm' : 'border-transparent bg-gray-50/50 hover:bg-white'}`}
-                                            >
-                                                <input
-                                                    type="radio"
-                                                    name="proctoring.actionOnLimit"
-                                                    value={action.id}
-                                                    checked={formData.proctoring.actionOnLimit === action.id}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+                                    <div className="space-y-4">
+                                        <div className="bg-white/80 p-4 rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <Input
+                                                    label="Tab Limit"
+                                                    name="proctoring.maxTabSwitches"
+                                                    type="number"
+                                                    min="0"
+                                                    value={formData.proctoring.maxTabSwitches}
                                                     onChange={handleChange}
-                                                    className="mt-1 text-indigo-600 focus:ring-indigo-500"
                                                 />
-                                                <div>
-                                                    <p className="text-xs font-black text-gray-900 leading-none">{action.label}</p>
-                                                    <p className="text-[10px] text-gray-500 font-medium mt-1.5 leading-relaxed">{action.desc}</p>
-                                                </div>
-                                            </label>
-                                        ))}
+                                                <Input
+                                                    label="FS Limit"
+                                                    name="proctoring.maxFullscreenExits"
+                                                    type="number"
+                                                    min="0"
+                                                    value={formData.proctoring.maxFullscreenExits}
+                                                    onChange={handleChange}
+                                                />
+                                                <Input
+                                                    label="CP Limit"
+                                                    name="proctoring.maxCopyPaste"
+                                                    type="number"
+                                                    min="0"
+                                                    value={formData.proctoring.maxCopyPaste || 0}
+                                                    onChange={handleChange}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-white/80 p-5 rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Action on Limit Reach</label>
+                                            <div className="space-y-3">
+                                                {[
+                                                    { id: 'warn', label: 'Warn Only', desc: 'Notify student upon violation', color: 'indigo' },
+                                                    { id: 'lock', label: 'Lock Exam', desc: 'Secure session; requires Admin manual unlock', color: 'red' },
+                                                    { id: 'auto-submit', label: 'Auto-Submit', desc: 'Finalize and submit session progress', color: 'amber' }
+                                                ].map(action => (
+                                                    <label
+                                                        key={action.id}
+                                                        className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${formData.proctoring.actionOnLimit === action.id ? 'border-indigo-600 bg-indigo-50/50 shadow-sm' : 'border-transparent bg-gray-50/50 hover:bg-white'}`}
+                                                    >
+                                                        <input
+                                                            type="radio"
+                                                            name="proctoring.actionOnLimit"
+                                                            value={action.id}
+                                                            checked={formData.proctoring.actionOnLimit === action.id}
+                                                            onChange={handleChange}
+                                                            className="mt-1 text-indigo-600 focus:ring-indigo-500"
+                                                        />
+                                                        <div>
+                                                            <p className="text-xs font-black text-gray-900 leading-none">{action.label}</p>
+                                                            <p className="text-[10px] text-gray-500 font-medium mt-1.5 leading-relaxed">{action.desc}</p>
+                                                        </div>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -911,11 +941,11 @@ const SuperAdminExams = () => {
                             {editingExam ? 'Update' : 'Create'} Global Exam
                         </Button>
                     </div>
-                </form >
-            </Modal >
+                </form>
+            </Modal>
 
             {/* Assign to Colleges Modal */}
-            < Modal
+            <Modal
                 isOpen={showAssignModal}
                 onClose={() => setShowAssignModal(false)}
                 title={`Assign Exam to Colleges`}
@@ -995,8 +1025,8 @@ const SuperAdminExams = () => {
                         </Button>
                     </div>
                 </div>
-            </Modal >
-        </div >
+            </Modal>
+        </div>
     );
 };
 

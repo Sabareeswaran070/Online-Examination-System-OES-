@@ -1429,9 +1429,9 @@ const resolveProctoringSettings = async (user, requestedSettings = {}) => {
   // If Super Admin, they have full flexibility for their global exams
   if (user.role === 'superadmin') {
     return {
-      enabled: requestedSettings.enabled ?? false,
-      enforceFullscreen: requestedSettings.enforceFullscreen ?? false,
-      blockNotifications: requestedSettings.blockNotifications ?? false,
+      enabled: requestedSettings.enabled ?? true,
+      enforceFullscreen: requestedSettings.enforceFullscreen ?? true,
+      blockNotifications: requestedSettings.blockNotifications ?? true,
       tabSwitchingAllowed: requestedSettings.tabSwitchingAllowed ?? true,
       maxTabSwitches: requestedSettings.maxTabSwitches ?? 10,
       maxFullscreenExits: requestedSettings.maxFullscreenExits ?? 10,
