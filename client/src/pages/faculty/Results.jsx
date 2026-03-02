@@ -685,42 +685,42 @@ const Results = () => {
           {/* Top Fixed Header Panel */}
           <div className="bg-white border-b border-slate-200 shadow-sm z-20 flex-none relative">
             {/* Title & Close Bar */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-6 py-4 bg-slate-900 text-white gap-4">
-              <div className="flex items-center gap-4 w-full sm:w-auto">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center font-black text-xl shadow-inner border-2 border-slate-700/50 flex-shrink-0">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-3 bg-slate-900 text-white gap-3">
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center font-black text-lg shadow-inner border border-slate-700/50 flex-shrink-0">
                   {selectedResult?.studentId?.name?.charAt(0)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-xl font-bold truncate pr-4">
+                  <h2 className="text-lg font-bold truncate pr-4">
                     {selectedResult?.studentId?.name}'s Answer Sheet
                   </h2>
-                  <p className="text-slate-400 text-sm font-mono truncate">
+                  <p className="text-slate-400 text-xs font-mono truncate">
                     {selectedResult?.studentId?.regNo} • {exam?.title}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedResult(null)}
-                className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white absolute right-4 top-4 sm:static"
+                className="p-1.5 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white absolute right-3 top-3 sm:static"
               >
-                <FiXCircle className="w-7 h-7" />
+                <FiXCircle className="w-6 h-6" />
               </button>
             </div>
 
             {/* Stats Bar Container */}
             <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-slate-100 bg-white">
               {/* Score */}
-              <div className="flex items-center gap-4 px-6 py-4">
-                <div className="p-3 bg-green-50 text-green-600 rounded-xl shadow-sm border border-green-100/50">
-                  <FiAward className="w-6 h-6" />
+              <div className="flex items-center gap-3 px-5 py-2.5">
+                <div className="p-2 bg-green-50 text-green-600 rounded-lg shadow-sm border border-green-100/50">
+                  <FiAward className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
                     Total Score
                   </p>
-                  <p className="text-2xl font-black text-slate-800 leading-none">
+                  <p className="text-xl font-black text-slate-800 leading-none">
                     {selectedResult.score}{" "}
-                    <span className="text-sm font-bold text-slate-400">
+                    <span className="text-xs font-bold text-slate-400">
                       / {exam?.totalMarks}
                     </span>
                   </p>
@@ -728,28 +728,30 @@ const Results = () => {
               </div>
 
               {/* Status */}
-              <div className="flex items-center gap-4 px-6 py-4">
-                <div className="p-3 bg-purple-50 text-purple-600 rounded-xl shadow-sm border border-purple-100/50">
-                  <FiCheckCircle className="w-6 h-6" />
+              <div className="flex items-center gap-3 px-5 py-2.5">
+                <div className="p-2 bg-purple-50 text-purple-600 rounded-lg shadow-sm border border-purple-100/50">
+                  <FiCheckCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
                     Exam Status
                   </p>
-                  <div>{getStatusBadge(selectedResult.status)}</div>
+                  <div className="scale-75 origin-left -ml-2">
+                    {getStatusBadge(selectedResult.status)}
+                  </div>
                 </div>
               </div>
 
               {/* Submitted */}
-              <div className="flex items-center gap-4 px-6 py-4">
-                <div className="p-3 bg-blue-50 text-blue-600 rounded-xl shadow-sm border border-blue-100/50">
-                  <FiClock className="w-6 h-6" />
+              <div className="flex items-center gap-3 px-5 py-2.5">
+                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg shadow-sm border border-blue-100/50">
+                  <FiClock className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
                     Submitted At
                   </p>
-                  <p className="text-sm font-bold text-slate-800">
+                  <p className="text-xs font-bold text-slate-800">
                     {selectedResult.submittedAt ? (
                       formatDateTime(selectedResult.submittedAt)
                     ) : (
@@ -762,22 +764,22 @@ const Results = () => {
               </div>
 
               {/* Security */}
-              <div className="flex items-center gap-4 px-6 py-4">
+              <div className="flex items-center gap-3 px-5 py-2.5">
                 <div
-                  className={`p-3 rounded-xl shadow-sm border ${
+                  className={`p-2 rounded-lg shadow-sm border ${
                     selectedResult.tabSwitchCount > 0 ||
                     selectedResult.violations?.length > 0
                       ? "bg-red-50 text-red-600 border-red-100/50"
                       : "bg-emerald-50 text-emerald-600 border-emerald-100/50"
                   }`}
                 >
-                  <FiShield className="w-6 h-6" />
+                  <FiShield className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
                     Security Score
                   </p>
-                  <p className="text-sm font-bold">
+                  <p className="text-xs font-bold">
                     {selectedResult.tabSwitchCount > 0 ||
                     selectedResult.violations?.length > 0 ? (
                       <span className="text-red-600 flex items-center gap-1">
@@ -795,7 +797,7 @@ const Results = () => {
             </div>
 
             {/* Advanced Filters */}
-            <div className="flex items-center gap-2 px-6 py-3 bg-slate-50 border-t border-slate-200 overflow-x-auto custom-scrollbar shadow-inner">
+            <div className="flex items-center gap-2 px-5 py-2 bg-slate-50 border-t border-slate-200 overflow-x-auto custom-scrollbar shadow-inner">
               {[
                 "All",
                 QUESTION_TYPES.MCQ,
@@ -816,15 +818,15 @@ const Results = () => {
                   <button
                     key={type}
                     onClick={() => setFilterType(type)}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                       filterType === type
-                        ? "bg-slate-800 text-white shadow-md ring-2 ring-slate-800/20 ring-offset-1 ring-offset-slate-50"
+                        ? "bg-slate-800 text-white shadow-sm ring-1 ring-slate-800/20 ring-offset-1 ring-offset-slate-50"
                         : "bg-white text-slate-600 hover:bg-slate-200 border border-slate-200 hover:border-slate-300"
                     }`}
                   >
                     {type === "All" ? "All Types" : type}
                     <span
-                      className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
+                      className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${
                         filterType === type
                           ? "bg-slate-700 text-white shadow-inner"
                           : "bg-slate-100 text-slate-500 border border-slate-200/60"
