@@ -788,7 +788,7 @@ const Results = () => {
             </div>
           </div>
         }
-        size="2xl"
+        size="full"
       >
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
 

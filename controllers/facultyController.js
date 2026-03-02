@@ -1072,7 +1072,7 @@ exports.getPendingSubmissions = async (req, res, next) => {
 
     const results = await Result.find({
       examId: { $in: examIds },
-      status: 'submitted',
+      status: { $in: ['submitted', 'pending-evaluation'] },
     })
       .populate('studentId', 'name email regNo enrollmentNumber')
       .populate('examId', 'title startTime endTime facultyId')
@@ -1082,10 +1082,14 @@ exports.getPendingSubmissions = async (req, res, next) => {
       })
       .sort({ submittedAt: -1 });
 
+    const pendingResults = results.filter(result =>
+      result.answers && result.answers.some(ans => !ans.isEvaluated)
+    );
+
     res.status(200).json({
       success: true,
-      count: results.length,
-      data: results,
+      count: pendingResults.length,
+      data: pendingResults,
     });
   } catch (error) {
     logger.error('Get pending submissions error:', error);
