@@ -5,7 +5,7 @@ const Sidebar = ({ navigation, isOpen, onClose }) => {
   return (
     <aside
       className={clsx(
-        'fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 lg:shadow-md min-h-[calc(100vh-4rem)]',
+        'fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:shadow-md h-full overflow-y-auto',
         isOpen ? 'translate-x-0' : '-translate-x-full'
       )}
     >

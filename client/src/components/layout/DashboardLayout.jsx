@@ -10,9 +10,9 @@ const DashboardLayout = ({ navigation, children }) => {
   const closeSidebar = () => setIsSidebarOpen(false);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="h-screen bg-gray-50 flex flex-col">
       <Navbar onMenuClick={toggleSidebar} />
-      <div className="flex flex-1 relative overflow-hidden">
+      <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Overlay */}
         {isSidebarOpen && (
           <div
