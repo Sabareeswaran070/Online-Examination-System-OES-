@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiDownload, FiEye, FiUser, FiAward, FiCheckCircle, FiClock, FiXCircle, FiFileText, FiActivity, FiMonitor, FiAlertTriangle, FiLock, FiShield } from 'react-icons/fi';
+import { FiArrowLeft, FiDownload, FiEye, FiUser, FiAward, FiCheckCircle, FiClock, FiXCircle, FiFileText, FiActivity, FiMonitor, FiAlertTriangle, FiLock, FiShield, FiRotateCcw } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Table from '@/components/common/Table.jsx';
@@ -154,6 +154,20 @@ const Results = () => {
     }
   };
 
+  const handleReset = async (result) => {
+    if (!window.confirm(`Are you sure you want to reset the exam attempt for ${result.studentId?.name}? This will delete their current score and answers, and allow them to take the exam again.`)) {
+      return;
+    }
+
+    try {
+      await facultyService.resetExamAttempt(id, result.studentId._id);
+      toast.success('Exam attempt reset successfully');
+      fetchResults();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to reset attempt');
+    }
+  };
+
   const getStatusBadge = (status) => {
     const statusMap = {
       'in-progress': { variant: 'info', label: 'In Progress' },
@@ -214,15 +228,25 @@ const Results = () => {
     },
     {
       header: 'Actions',
-      accessor: (row) => (
-        <Button
-          size="sm"
-          variant="primary"
-          onClick={() => handleViewDetails(row)}
-        >
-          <FiEye className="w-4 h-4 mr-1" />
-          View
-        </Button>
+      render: (row) => (
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => handleViewDetails(row)}
+          >
+            <FiEye className="w-4 h-4 mr-1" />
+            View
+          </Button>
+          <Button
+            size="sm"
+            variant="danger"
+            onClick={() => handleReset(row)}
+            title="Reset Attempt"
+          >
+            <FiRotateCcw className="w-4 h-4" />
+          </Button>
+        </div>
       ),
     },
   ];

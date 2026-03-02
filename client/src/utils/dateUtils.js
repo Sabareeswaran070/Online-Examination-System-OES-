@@ -132,3 +132,17 @@ export const getTimeRemainingText = (exam) => {
     return `Ended ${formatDiff(now - end)} ago`;
   }
 };
+
+/**
+ * Convert a Date object or ISO string to a local-time ISO string
+ * suitable for <input type="datetime-local"> (YYYY-MM-DDTHH:mm)
+ */
+export const toLocalISOString = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+
+  const offset = d.getTimezoneOffset();
+  const localDate = new Date(d.getTime() - (offset * 60 * 1000));
+  return localDate.toISOString().slice(0, 16);
+};

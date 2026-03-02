@@ -509,6 +509,10 @@ export const facultyService = {
     const response = await api.post('/faculty/questions/bulk-delete', { questionIds });
     return response.data;
   },
+  resetExamAttempt: async (examId, studentId) => {
+    const response = await api.delete(`/faculty/exams/${examId}/results/${studentId}/reset`);
+    return response.data;
+  },
 };
 
 // Student Services

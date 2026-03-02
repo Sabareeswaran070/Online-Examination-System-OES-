@@ -42,7 +42,7 @@ app.use((req, res, next) => {
     'http://localhost:5173',
     'https://online-examination-system-oes-phi.vercel.app',
   ];
-  
+
   if (process.env.CORS_ORIGIN) {
     allowedOrigins.push(process.env.CORS_ORIGIN);
   }
@@ -54,7 +54,7 @@ app.use((req, res, next) => {
     // Allow anyway in production for now
     res.setHeader('Access-Control-Allow-Origin', origin || '*');
   }
-  
+
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -160,30 +160,55 @@ const createSuperAdmin = async () => {
   }
 };
 
+let server; // Declare server in a scope accessible by signal handlers
+
 // Start server after DB connection is established
 const startServer = async () => {
-  await connectDB();
+  try {
+    await connectDB();
 
-  const server = app.listen(PORT, () => {
-    logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-    console.log(`\n🚀 Server running on http://localhost:${PORT}`);
-    console.log(`📚 API Documentation: http://localhost:${PORT}/api/docs`);
-    console.log(`💚 Health Check: http://localhost:${PORT}/health\n`);
-  });
+    server = app.listen(PORT, () => {
+      logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+      console.log(`\n🚀 Server running on http://localhost:${PORT}`);
+      console.log(`📚 API Documentation: http://localhost:${PORT}/api/docs`);
+      console.log(`💚 Health Check: http://localhost:${PORT}/health\n`);
+    });
 
-  // Create super admin after DB is connected and server starts
-  await createSuperAdmin();
+    // Create super admin after DB is connected and server starts
+    await createSuperAdmin();
 
-  return server;
+    return server;
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1); // Exit if DB connection or server startup fails
+  }
 };
 
-const serverPromise = startServer();
-let server;
+// Start the server
+startServer();
 
-serverPromise.then(s => { server = s; });
+// Handle graceful shutdown
+const gracefulShutdown = () => {
+  logger.info('Received shutdown signal. Closing HTTP server...');
+  if (server) {
+    server.close(() => {
+      logger.info('HTTP server closed.');
+      mongoose.connection.close(false, () => {
+        logger.info('MongoDB connection closed.');
+        process.exit(0);
+      });
+    });
+  } else {
+    logger.info('Server not started, exiting.');
+    process.exit(0);
+  }
+};
+
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
+process.on('unhandledRejection', (err) => {
   logger.error('Unhandled Rejection:', err);
   if (server) server.close(() => process.exit(1));
   else process.exit(1);
@@ -194,19 +219,6 @@ process.on('uncaughtException', (err) => {
   logger.error('Uncaught Exception:', err);
   if (server) server.close(() => process.exit(1));
   else process.exit(1);
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM signal received: closing HTTP server');
-  if (server) {
-    server.close(() => {
-      logger.info('HTTP server closed');
-      process.exit(0);
-    });
-  } else {
-    process.exit(0);
-  }
 });
 
 module.exports = app;

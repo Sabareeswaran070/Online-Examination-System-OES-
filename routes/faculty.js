@@ -28,6 +28,7 @@ const {
   handleUnlockRequest,
   bulkDeleteExams,
   bulkDeleteQuestions,
+  resetExamAttempt,
 } = require('../controllers/facultyController');
 const { protect } = require('../middleware/auth');
 const { authorize, auditLog } = require('../middleware/rbac');
@@ -141,6 +142,15 @@ router.post(
   validate,
   auditLog('publishResults', 'Exam'),
   publishResults
+);
+
+router.delete(
+  '/exams/:id/results/:studentId/reset',
+  validateObjectId('id'),
+  validateObjectId('studentId'),
+  validate,
+  auditLog('resetAttempt', 'Result'),
+  resetExamAttempt
 );
 
 // Question routes

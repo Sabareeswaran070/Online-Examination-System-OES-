@@ -1555,6 +1555,71 @@ exports.handleUnlockRequest = async (req, res, next) => {
   }
 };
 
+// @desc    Reset student exam attempt
+// @route   DELETE /api/faculty/exams/:id/results/:studentId/reset
+// @access  Private/Faculty
+exports.resetExamAttempt = async (req, res, next) => {
+  try {
+    const { id, studentId } = req.params;
+
+    const exam = await Exam.findById(id);
+    if (!exam) {
+      return res.status(404).json({
+        success: false,
+        message: 'Exam not found',
+      });
+    }
+
+    // Authorization check
+    const isOwner = exam.facultyId.toString() === req.user._id.toString();
+    const isSuper = req.user.role === 'superadmin';
+    const isCollegeAdmin = req.user.role === 'admin' && exam.collegeId?.toString() === req.user.collegeId?.toString();
+    const isDeptHead = req.user.role === 'depthead' && exam.departmentId?.toString() === req.user.departmentId?.toString();
+
+    if (!isOwner && !isSuper && !isCollegeAdmin && !isDeptHead) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to reset attempts for this exam',
+      });
+    }
+
+    const result = await Result.findOneAndDelete({
+      examId: id,
+      studentId: studentId,
+    });
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: 'No attempt found for this student',
+      });
+    }
+
+    // Update exam statistics
+    const allResults = await Result.find({
+      examId: id,
+      status: { $in: ['submitted', 'evaluated', 'pending-evaluation'] },
+    });
+
+    exam.totalAttempts = allResults.length;
+    exam.averageScore = allResults.length > 0
+      ? allResults.reduce((sum, r) => sum + r.score, 0) / allResults.length
+      : 0;
+
+    await exam.save();
+
+    logger.info(`Exam attempt reset for student ${studentId} in exam ${id} by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Exam attempt reset successfully',
+    });
+  } catch (error) {
+    logger.error('Reset exam attempt error:', error);
+    next(error);
+  }
+};
+
 // @desc    Bulk delete exams
 // @route   POST /api/faculty/exams/bulk-delete
 // @access  Private/Faculty

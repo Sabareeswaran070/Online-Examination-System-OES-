@@ -49,6 +49,7 @@ const TakeExam = () => {
   const [requestingUnlock, setRequestingUnlock] = useState(false);
   const [unlockRequestStatus, setUnlockRequestStatus] = useState('none'); // 'none', 'pending', 'approved', 'rejected'
   const [showInstructions, setShowInstructions] = useState(true);
+  const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [hasStartedTimer, setHasStartedTimer] = useState(false);
 
 
@@ -65,7 +66,7 @@ const TakeExam = () => {
     } else if (timeLeft === 0 && exam && hasStartedTimer) {
       handleSubmit(true); // Auto-submit
     }
-  }, [timeLeft]);
+  }, [timeLeft, hasStartedTimer]);
 
   // Auto-save answers every 30 seconds
   useEffect(() => {
@@ -91,13 +92,15 @@ const TakeExam = () => {
     if (isLocked || !exam?.proctoring?.enabled) return;
 
     const handleVisibilityChange = () => {
-      if (document.hidden && exam?.proctoring?.tabSwitchingAllowed === false) {
+      const isTabSwitchRestricted = exam?.proctoring?.tabSwitchingAllowed === false || (exam?.proctoring?.maxTabSwitches > 0);
+      if (document.hidden && isTabSwitchRestricted) {
         handleViolation('tab_switch', 'Tab switch detected');
       }
     };
 
     const handleBlur = () => {
-      if (exam?.proctoring?.tabSwitchingAllowed === false) {
+      const isTabSwitchRestricted = exam?.proctoring?.tabSwitchingAllowed === false || (exam?.proctoring?.maxTabSwitches > 0);
+      if (isTabSwitchRestricted) {
         handleViolation('tab_switch', 'Window focus lost');
       }
     };
@@ -330,10 +333,15 @@ const TakeExam = () => {
   const [submissionResult, setSubmissionResult] = useState(null);
 
   const handleSubmit = async (autoSubmit = false) => {
-    if (!autoSubmit && !window.confirm('Are you sure you want to submit the exam?')) {
+    if (!autoSubmit) {
+      setShowConfirmSubmit(true);
       return;
     }
+    performSubmit(true);
+  };
 
+  const performSubmit = async (autoSubmit = false) => {
+    setShowConfirmSubmit(false);
     setSubmitting(true);
 
     try {
@@ -1193,6 +1201,53 @@ const TakeExam = () => {
           >
             I Understand, Start Exam
           </Button>
+        </div>
+      </Modal>
+
+      {/* Submit Confirmation Modal */}
+      <Modal
+        isOpen={showConfirmSubmit}
+        onClose={() => setShowConfirmSubmit(false)}
+        title="Confirm Submission"
+      >
+        <div className="text-center space-y-6 py-4">
+          <div className="p-4 bg-primary-100 rounded-full w-20 h-20 mx-auto flex items-center justify-center">
+            <FiCheckCircle className="w-12 h-12 text-primary-600" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-gray-900">Ready to Submit?</h3>
+            <p className="text-gray-600 mt-2">
+              Are you sure you want to submit your exam? Once submitted, you won't be able to change your answers.
+            </p>
+          </div>
+
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <p className="text-sm font-semibold text-gray-700">
+              Questions Answered: {Object.keys(answers).length} of {exam.questions.length}
+            </p>
+            {Object.keys(answers).length < exam.questions.length && (
+              <p className="text-xs text-amber-600 mt-1 font-bold italic">
+                Wait! You still have {exam.questions.length - Object.keys(answers).length} unanswered questions.
+              </p>
+            )}
+          </div>
+
+          <div className="flex gap-4">
+            <Button
+              variant="outline"
+              className="flex-1 h-12"
+              onClick={() => setShowConfirmSubmit(false)}
+            >
+              Go Back
+            </Button>
+            <Button
+              className="flex-1 h-12 shadow-lg"
+              onClick={() => performSubmit(false)}
+              loading={submitting}
+            >
+              Submit Now
+            </Button>
+          </div>
         </div>
       </Modal>
     </div >

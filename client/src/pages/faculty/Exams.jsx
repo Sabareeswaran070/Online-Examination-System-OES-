@@ -12,7 +12,7 @@ import Loader from '@/components/common/Loader.jsx';
 import Badge from '@/components/common/Badge.jsx';
 import { facultyService } from '@/services';
 import { useAuth } from '@/context/AuthContext';
-import { formatDateTime, getExamLiveStatus, getTimeRemainingText } from '@/utils/dateUtils';
+import { formatDateTime, getExamLiveStatus, getTimeRemainingText, toLocalISOString } from '@/utils/dateUtils';
 import toast from 'react-hot-toast';
 
 const Exams = () => {
@@ -151,6 +151,8 @@ const Exams = () => {
         negativeMarkingEnabled: formData.negativeMarkingEnabled,
         isRandomized: formData.isRandomized,
         showResultsImmediately: formData.showResultsImmediately,
+        startTime: new Date(formData.startTime).toISOString(),
+        endTime: new Date(formData.endTime).toISOString(),
       };
 
       // Clean up optional ObjectId fields
@@ -185,8 +187,8 @@ const Exams = () => {
       title: exam.title,
       subject: exam.subject?._id || '',
       description: exam.description || '',
-      startTime: exam.startTime ? new Date(exam.startTime).toISOString().slice(0, 16) : '',
-      endTime: exam.endTime ? new Date(exam.endTime).toISOString().slice(0, 16) : '',
+      startTime: toLocalISOString(exam.startTime),
+      endTime: toLocalISOString(exam.endTime),
       duration: exam.duration || '',
       totalMarks: exam.totalMarks || '',
       passingMarks: exam.passingMarks || '',

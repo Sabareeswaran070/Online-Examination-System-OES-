@@ -323,7 +323,9 @@ exports.startExam = async (req, res, next) => {
       // Calculate remaining time
       const elapsedSeconds = Math.floor((Date.now() - existingResult.startedAt) / 1000);
       const totalSeconds = exam.duration * 60;
-      const remainingTime = Math.max(0, totalSeconds - elapsedSeconds);
+      const timeLeftInDuration = Math.max(0, totalSeconds - elapsedSeconds);
+      const timeLeftUntilExamEnd = Math.max(0, Math.floor((new Date(exam.endTime) - Date.now()) / 1000));
+      const remainingTime = Math.min(timeLeftInDuration, timeLeftUntilExamEnd);
 
       // Return ongoing exam
       return res.status(200).json({
@@ -380,7 +382,9 @@ exports.startExam = async (req, res, next) => {
           // Return existing in-progress exam
           const elapsedSeconds = Math.floor((Date.now() - existingResult.startedAt) / 1000);
           const totalSeconds = exam.duration * 60;
-          const remainingTime = Math.max(0, totalSeconds - elapsedSeconds);
+          const timeLeftInDuration = Math.max(0, totalSeconds - elapsedSeconds);
+          const timeLeftUntilExamEnd = Math.max(0, Math.floor((new Date(exam.endTime) - Date.now()) / 1000));
+          const remainingTime = Math.min(timeLeftInDuration, timeLeftUntilExamEnd);
 
           return res.status(200).json({
             success: true,
@@ -443,7 +447,10 @@ exports.startExam = async (req, res, next) => {
           questions,
         },
         result,
-        remainingTime: exam.duration * 60,
+        remainingTime: Math.min(
+          exam.duration * 60,
+          Math.max(0, Math.floor((new Date(exam.endTime) - Date.now()) / 1000))
+        ),
       },
     });
   } catch (error) {
@@ -497,6 +504,7 @@ exports.submitExam = async (req, res, next) => {
         saved = true;
       } catch (error) {
         if (error.name === 'VersionError') {
+          // Re-fetch the latest document to get the correct __v and merged data (violations)
           const latestResult = await Result.findById(result._id);
           if (!latestResult) throw error;
 
@@ -507,9 +515,11 @@ exports.submitExam = async (req, res, next) => {
           latestResult.autoSubmitted = result.autoSubmitted;
           latestResult.totalTimeTaken = result.totalTimeTaken;
           latestResult.status = result.status;
+          latestResult.remarks = result.remarks;
 
           result = latestResult;
           retries++;
+          logger.warn(`VersionError encountered during exam submission for result ${result._id}. Retrying... (${retries}/3)`);
         } else {
           throw error;
         }
@@ -1092,6 +1102,33 @@ exports.logViolation = async (req, res, next) => {
           else if (isCopyPasteLimitReached) cause = `Copy-paste violations reached: ${copyPastes}`;
 
           result.remarks = `Auto-${action === 'lock' ? 'locked' : 'submitted'} due to proctoring violations (${cause})`;
+
+          if (action === 'auto-submit') {
+            // Re-fetch full exam with populated questions for evaluation
+            const fullExam = await Exam.findById(examId).populate('questions.questionId');
+
+            // Run evaluation using current saved answers
+            const evaluationResult = await evaluationService.evaluateExamSubmission(fullExam, result, result.answers);
+
+            result.answers = evaluationResult.answers;
+            result.score = evaluationResult.score;
+            result.status = evaluationResult.hasDescriptive ? 'pending-evaluation' : 'submitted';
+
+            const timeTaken = (result.submittedAt - result.startedAt) / 60000; // in minutes
+            result.totalTimeTaken = Math.round(timeTaken);
+
+            // Update exam statistics
+            fullExam.totalAttempts += 1;
+            const allResults = await Result.find({
+              examId: examId,
+              status: { $in: ['submitted', 'evaluated', 'pending-evaluation'] },
+            });
+            const avgScore = allResults.length > 0
+              ? allResults.reduce((sum, r) => sum + r.score, 0) / allResults.length
+              : 0;
+            fullExam.averageScore = avgScore;
+            await fullExam.save();
+          }
 
           await result.save();
 

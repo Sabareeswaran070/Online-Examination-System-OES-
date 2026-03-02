@@ -45,8 +45,9 @@ exports.evaluateExamSubmission = async (exam, result, submittedAnswers) => {
     let hasDescriptive = false;
 
     const processedAnswers = [];
+    const answersToProcess = submittedAnswers || result.answers || [];
 
-    for (const submittedAnswer of submittedAnswers) {
+    for (const submittedAnswer of answersToProcess) {
         const question = await Question.findById(submittedAnswer.questionId);
         if (!question) continue;
 
