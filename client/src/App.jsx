@@ -74,6 +74,7 @@ const navigationConfig = {
     { path: '/super-admin/analytics', label: 'Analytics', icon: FiBarChart },
     { path: '/super-admin/competitions', label: 'Competitions', icon: FiAward },
     { path: '/super-admin/questions', label: 'Question Bank', icon: FiBook },
+    { path: '/super-admin/evaluations', label: 'Evaluations', icon: FiCheckCircle },
     { path: '/super-admin/audit-logs', label: 'Audit Logs', icon: FiFileText },
   ],
   [USER_ROLES.ADMIN]: [
@@ -83,6 +84,7 @@ const navigationConfig = {
     { path: '/admin/faculty', label: 'Faculty', icon: FiUsers },
     { path: '/admin/exams', label: 'Exams', icon: FiFileText },
     { path: '/admin/competitions', label: 'Competitions', icon: FiAward },
+    { path: '/admin/evaluations', label: 'Evaluations', icon: FiCheckCircle },
     { path: '/admin/analytics', label: 'Analytics', icon: FiBarChart },
     { path: '/admin/leaderboard', label: 'Leaderboard', icon: FiAward },
   ],
@@ -92,6 +94,7 @@ const navigationConfig = {
     { path: '/dept-head/faculty', label: 'Faculty', icon: FiUsers },
     { path: '/dept-head/students', label: 'Students', icon: FiUsers },
     { path: '/dept-head/exams', label: 'Exams', icon: FiFileText },
+    { path: '/dept-head/evaluations', label: 'Evaluations', icon: FiCheckCircle },
     { path: '/dept-head/analytics', label: 'Analytics', icon: FiBarChart },
   ],
   [USER_ROLES.FACULTY]: [
@@ -151,6 +154,7 @@ const SuperAdminRoutes = () => {
         <Route path="exams/:id" element={<FacultyExamDetails />} />
         <Route path="exams/:id/results" element={<FacultyResults />} />
         <Route path="analytics" element={<SuperAdminAnalytics />} />
+        <Route path="evaluations" element={<FacultySubmissions />} />
         <Route path="competitions" element={<AdminCompetitions />} />
         <Route path="questions" element={<AdminQuestions />} />
         <Route path="audit-logs" element={<AuditLogs />} />
@@ -170,6 +174,7 @@ const AdminRoutes = () => {
         <Route path="exams" element={<AdminExams />} />
         <Route path="exams/:id" element={<FacultyExamDetails />} />
         <Route path="exams/:id/results" element={<FacultyResults />} />
+        <Route path="evaluations" element={<FacultySubmissions />} />
         <Route path="competitions" element={<CollegeCompetitions />} />
         <Route path="analytics" element={<AdminAnalytics />} />
         <Route path="leaderboard" element={<Leaderboard />} />
@@ -189,6 +194,7 @@ const DeptHeadRoutes = () => {
         <Route path="exams" element={<DeptHeadExams />} />
         <Route path="exams/:id" element={<FacultyExamDetails />} />
         <Route path="exams/:id/results" element={<FacultyResults />} />
+        <Route path="evaluations" element={<FacultySubmissions />} />
         <Route path="analytics" element={<div>Analytics Page (Coming Soon)</div>} />
       </Routes>
     </DashboardLayout>

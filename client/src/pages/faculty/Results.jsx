@@ -514,29 +514,41 @@ const Results = () => {
           size="xl"
         >
           <div className="space-y-4">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-lg border border-blue-200">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <FiUser className="w-4 h-4 text-blue-600" />
-                  <span className="text-gray-700">Student: </span>
-                  <span className="font-semibold text-gray-900">{selectedResult.studentId?.name}</span>
+            {/* Premium Header Card */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col md:flex-row items-stretch">
+              <div className="bg-gradient-to-br from-indigo-500 to-primary-600 p-6 flex flex-col items-center justify-center text-white md:w-1/3 text-center border-b md:border-b-0 md:border-r border-indigo-400">
+                <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center font-black text-3xl shadow-inner backdrop-blur-sm mb-3 ring-4 ring-white/30">
+                  {selectedResult?.studentId?.name?.charAt(0)}
                 </div>
-                <div className="flex items-center gap-2">
-                  <FiAward className="w-4 h-4 text-green-600" />
-                  <span className="text-gray-700">Score: </span>
-                  <span className="font-semibold text-gray-900">{selectedResult.score} / {exam?.totalMarks}</span>
+                <h3 className="text-xl font-bold leading-tight">{selectedResult?.studentId?.name}</h3>
+                <p className="text-indigo-100 font-mono text-sm mt-1">{selectedResult?.studentId?.regNo || selectedResult?.studentId?.enrollmentNumber}</p>
+              </div>
+              <div className="p-6 md:w-2/3 grid grid-cols-2 gap-y-6 gap-x-4 bg-gray-50/50">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5"><FiAward className="text-green-500" /> Total Score</p>
+                  <p className="text-2xl font-black text-gray-900 flex items-baseline gap-1">
+                    {selectedResult.score} <span className="text-sm font-medium text-gray-500">/ {exam?.totalMarks}</span>
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <FiCheckCircle className="w-4 h-4 text-purple-600" />
-                  <span className="text-gray-700">Status: </span>
-                  {getStatusBadge(selectedResult.status)}
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5"><FiCheckCircle className="text-purple-500" /> Exam Status</p>
+                  <div className="mt-1">{getStatusBadge(selectedResult.status)}</div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <FiClock className="w-4 h-4 text-orange-600" />
-                  <span className="text-gray-700">Submitted: </span>
-                  <span className="font-semibold text-gray-900">
-                    {selectedResult.submittedAt ? formatDateTime(selectedResult.submittedAt) : 'N/A'}
-                  </span>
+                <div className="space-y-1 mt-auto">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5"><FiClock className="text-orange-500" /> Submitted At</p>
+                  <p className="text-sm font-bold text-gray-800">
+                    {selectedResult.submittedAt ? formatDateTime(selectedResult.submittedAt) : <span className="text-gray-400 italic font-normal">Not Submitted</span>}
+                  </p>
+                </div>
+                <div className="space-y-1 mt-auto">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5"><FiMonitor className="text-blue-500" /> Security Events</p>
+                  <div className="flex gap-2 mt-1 relative z-10">
+                    {selectedResult.tabSwitchCount > 0 ? (
+                      <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold">Tabs: {selectedResult.tabSwitchCount}</span>
+                    ) : (
+                      <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold transition-all">Secure</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -664,31 +676,37 @@ const Results = () => {
                       </h3>
                     </div>
                     {sectionAnswers.map((answer) => (
-                      <Card key={answer._id} className="hover:shadow-md transition-shadow border-l-4 border-l-primary-500">
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-start gap-3">
-                            <div className="flex items-start gap-2 flex-1">
-                              <span className="inline-flex items-center justify-center w-7 h-7 bg-primary-100 text-primary-700 rounded-full text-sm font-semibold flex-shrink-0">
-                                {answer.originalIndex + 1}
-                              </span>
-                              <p className="font-medium text-gray-900 flex-1">
-                                {answer.questionId?.questionText}
-                              </p>
-                            </div>
-                            <Badge variant={answer.isEvaluated ? 'success' : 'warning'} className="flex-shrink-0">
-                              {answer.isEvaluated ? 'Evaluated' : 'Pending'}
-                            </Badge>
+                      <Card key={answer._id} className="hover:shadow-lg transition-all border border-gray-200 rounded-2xl overflow-hidden group">
+                        <div className="bg-gray-50/80 px-4 py-3 border-b border-gray-100 flex justify-between items-center group-hover:bg-primary-50/30 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <span className="inline-flex items-center justify-center w-8 h-8 bg-white border border-gray-200 text-gray-700 rounded-full text-sm font-black shadow-sm group-hover:bg-primary-600 group-hover:text-white group-hover:border-primary-600 outline outline-2 outline-offset-2 outline-transparent group-hover:outline-primary-200 transition-all">
+                              {answer.originalIndex + 1}
+                            </span>
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><FiFileText /> Question</span>
                           </div>
+                          <Badge variant={answer.isEvaluated ? 'success' : 'warning'} className="shadow-sm font-bold">
+                            {answer.isEvaluated ? 'Evaluated' : 'Pending'}
+                          </Badge>
+                        </div>
 
-                          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200">
-                            <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide mb-1">Student Answer</p>
-                            <div className="text-gray-900 break-words">
+                        <div className="p-5 space-y-4">
+                          <p className="font-semibold text-gray-900 leading-relaxed text-[15px]">
+                            {answer.questionId?.questionText}
+                          </p>
+
+                          <div className="bg-blue-50/80 p-4 rounded-xl border border-blue-300 shadow-sm mt-3">
+                            <p className="text-[11px] font-black text-blue-800 uppercase tracking-widest mb-2 flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-blue-500"></span> Student Answer
+                            </p>
+                            <div className="text-gray-900 font-medium break-words text-sm bg-white p-3 rounded-lg border border-blue-100 shadow-inner">
                               {answer.questionId?.type === 'Coding' ? (
-                                <span className="text-sm text-gray-500 italic">Click Evaluate to view code</span>
+                                <span className="flex items-center gap-2 text-indigo-700 font-semibold bg-indigo-50 px-3 py-1.5 rounded-md w-fit border border-indigo-200">
+                                  <FiMonitor className="w-4 h-4" /> Click Evaluate to view code
+                                </span>
                               ) : answer.questionId?.type === 'MCQ' || answer.questionId?.type === 'TrueFalse' ? (
-                                answer.selectedAnswer || 'Not answered'
+                                answer.selectedAnswer || <span className="text-gray-400 italic font-normal">Not answered</span>
                               ) : (
-                                answer.textAnswer || 'Not answered'
+                                answer.textAnswer || <span className="text-gray-400 italic font-normal">Not answered</span>
                               )}
                             </div>
                           </div>
@@ -702,31 +720,43 @@ const Results = () => {
                             </div>
                           )}
 
-                          <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                            <div className="flex items-center gap-2">
-                              <FiAward className="w-4 h-4 text-primary-600" />
-                              <span className="text-sm text-gray-700">Marks: </span>
-                              <span className="font-bold text-gray-900">
-                                {answer.marksAwarded || 0} / {answer.questionId?.marks}
-                              </span>
+                          {answer.feedback && (
+                            <div className="bg-amber-50/80 p-4 rounded-xl border border-amber-300 mt-3 shadow-sm">
+                              <p className="text-[11px] font-black text-amber-800 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-amber-500"></span> Evaluator Feedback
+                              </p>
+                              <div className="text-gray-900 bg-white p-3 rounded-lg border border-amber-100 text-sm shadow-inner">
+                                {answer.feedback}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex justify-between items-center bg-gray-50 -mx-5 -mb-5 px-5 py-4 mt-6 border-t border-gray-100">
+                            <div className="flex items-center gap-3">
+                              <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm flex items-center gap-2">
+                                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Awarded:</span>
+                                <span className="font-black text-lg text-primary-600">
+                                  {answer.marksAwarded || 0} <span className="text-xs text-gray-400 font-medium">/ {answer.questionId?.marks}</span>
+                                </span>
+                              </div>
+                              {answer.isEvaluated && answer.evaluatedBy && (
+                                <Badge variant="info" className="text-[9px] py-1 border-blue-200 px-3 rounded-full flex items-center gap-1.5 shadow-sm bg-white font-bold text-blue-800">
+                                  <FiUser className="w-3 h-3" /> Graded by {answer.evaluatedBy.name}
+                                  {answer.evaluatedBy._id === exam?.facultyId?._id && <span className="bg-blue-100 text-blue-600 px-1 rounded ml-1 uppercase text-[7px] tracking-wider">Owner</span>}
+                                </Badge>
+                              )}
                             </div>
                             {answer.questionId?.type !== 'MCQ' && (
                               <Button
                                 size="sm"
                                 variant={answer.isEvaluated ? 'secondary' : 'primary'}
                                 onClick={() => handleEvaluate(answer)}
+                                className="font-bold shadow-sm"
                               >
                                 {answer.isEvaluated ? 'Edit Grade' : 'Evaluate'}
                               </Button>
                             )}
                           </div>
-
-                          {answer.feedback && (
-                            <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-3 rounded-lg border border-amber-200">
-                              <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-1">Feedback</p>
-                              <p className="text-gray-900">{answer.feedback}</p>
-                            </div>
-                          )}
                         </div>
                       </Card>
                     ))}
@@ -739,101 +769,202 @@ const Results = () => {
       )
       }
 
-      {/* Evaluation Modal */}
+      {/* Evaluation Modal Full Redesign */}
       <Modal
         isOpen={showEvaluateModal}
         onClose={() => setShowEvaluateModal(false)}
-        title="Evaluate Answer"
+        title={
+          <div className="flex items-center gap-3 w-full border-b border-gray-100 pb-2">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md ring-2 ring-white">
+              {selectedResult?.studentId?.name?.charAt(0)}
+            </div>
+            <div className="flex-1">
+              <h4 className="font-bold text-gray-900 text-lg leading-none">{selectedResult?.studentId?.name}</h4>
+              <p className="text-xs text-gray-500 font-mono tracking-wider mt-1 flex items-center gap-2">
+                {selectedResult?.studentId?.regNo || selectedResult?.studentId?.enrollmentNumber}
+                <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                <span className="text-primary-600">{exam?.title}</span>
+              </p>
+            </div>
+          </div>
+        }
+        size="2xl"
       >
-        <div className="space-y-5">
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-            <p className="text-sm font-semibold text-purple-800 mb-2">Question:</p>
-            <p className="text-gray-900">{selectedAnswer?.questionId?.questionText}</p>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
+
+          {/* Left Column: Question & Student Answer */}
+          <div className="lg:col-span-7 space-y-6">
+
+            {/* Question Card */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden group hover:shadow-md transition-all">
+              <div className="bg-gray-50/80 px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-purple-100 text-purple-700 flex items-center justify-center text-sm">❓</div>
+                  <h5 className="font-bold text-gray-800 uppercase tracking-widest text-xs">Question Detail</h5>
+                </div>
+                <Badge variant="outline" className="text-[10px] font-bold text-gray-500 border-gray-300">{selectedAnswer?.questionId?.marks} Marks Base</Badge>
+              </div>
+              <div className="p-5">
+                <p className="text-gray-800 text-sm leading-relaxed font-medium">
+                  {selectedAnswer?.questionId?.questionText}
+                </p>
+              </div>
+            </div>
+
+            {/* Student Answer Card */}
+            <div className="bg-white rounded-2xl border border-blue-200 shadow-lg shadow-blue-50/50 overflow-hidden relative">
+              <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-400 to-blue-600"></div>
+              <div className="bg-gradient-to-r from-blue-50/50 to-white px-5 py-3 border-b border-blue-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-blue-100 text-blue-700 flex items-center justify-center text-sm shadow-inner">🧑‍🎓</div>
+                  <h5 className="font-black text-blue-900 uppercase tracking-widest text-xs">Student Submission</h5>
+                </div>
+                {selectedAnswer?.isEvaluated && selectedAnswer?.evaluatedBy && (
+                  <Badge variant="info" className="text-[9px] py-1 bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1 shadow-sm font-bold">
+                    <FiCheckCircle className="w-3 h-3" /> Graded by {selectedAnswer.evaluatedBy.name}
+                  </Badge>
+                )}
+              </div>
+
+              <div className="p-4">
+                {selectedAnswer?.questionId?.type === 'Coding' ? (
+                  <div className="rounded-xl overflow-hidden border border-gray-800 bg-gray-900 shadow-2xl">
+                    <div className="bg-gray-950 px-4 py-2.5 flex items-center justify-between border-b border-gray-800">
+                      <div className="flex gap-1.5">
+                        <div className="w-3 h-3 rounded-full bg-[#ff5f56]"></div>
+                        <div className="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
+                        <div className="w-3 h-3 rounded-full bg-[#27c93f]"></div>
+                      </div>
+                      <span className="text-[10px] text-gray-400 font-mono flex items-center gap-2 uppercase tracking-widest">
+                        <FiMonitor className="w-3.5 h-3.5 text-blue-400" /> main.js
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <pre className="p-5 text-green-400 font-mono text-sm overflow-x-auto whitespace-pre-wrap max-h-[500px] custom-scrollbar leading-relaxed">
+                        {selectedAnswer?.codeAnswer || <span className="text-gray-600 italic">// No implementation provided by student</span>}
+                      </pre>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-blue-50/30 p-5 rounded-xl border border-blue-100 min-h-[150px] text-gray-800 whitespace-pre-wrap shadow-inner leading-relaxed text-sm font-medium">
+                    {selectedAnswer?.textAnswer || selectedAnswer?.selectedAnswer || (
+                      <div className="flex flex-col items-center justify-center h-full text-center space-y-2 opacity-60">
+                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                          <FiAlertTriangle className="w-5 h-5 text-gray-400" />
+                        </div>
+                        <span className="text-gray-500 font-bold uppercase tracking-widest text-xs">No Answer Submitted</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
           </div>
 
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-            <p className="text-sm font-semibold text-blue-800 mb-2">Student Answer:</p>
-            {selectedAnswer?.questionId?.type === 'Coding' ? (
-              <div className="rounded-xl overflow-hidden border border-blue-300 shadow-sm mt-2">
-                <div className="bg-gray-800 px-3 py-1.5 flex items-center justify-between">
-                  <span className="text-xs text-gray-300 font-mono">Submitted Code</span>
+          {/* Right Column: Reference & Grading Panel */}
+          <div className="lg:col-span-5 space-y-6">
+
+            {/* Reference Solution Card */}
+            {selectedAnswer?.questionId?.type === 'Coding' && selectedAnswer?.questionId?.codeSnippet && (
+              <div className="bg-white rounded-2xl border border-indigo-200 shadow-md overflow-hidden ring-1 ring-black/5">
+                <div className="bg-indigo-50 px-4 py-3 border-b border-indigo-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FiShield className="text-indigo-600 w-4 h-4" />
+                    <h5 className="font-bold text-indigo-900 uppercase tracking-widest text-[11px]">Reference Solution</h5>
+                  </div>
+                  <Badge variant="warning" className="text-[8px] tracking-widest uppercase bg-amber-100 text-amber-800">Facultys Only</Badge>
                 </div>
-                <pre className="p-3 bg-gray-900 text-green-300 font-mono text-sm overflow-x-auto whitespace-pre-wrap max-h-64">
-                  {selectedAnswer?.codeAnswer || '// No code submitted'}
-                </pre>
+                <div className="rounded-b-xl overflow-hidden bg-gray-900 border-none">
+                  <pre className="p-4 text-[#a5b4fc] font-mono text-[13px] overflow-x-auto whitespace-pre-wrap max-h-64 custom-scrollbar">
+                    {selectedAnswer.questionId.codeSnippet}
+                  </pre>
+                </div>
               </div>
-            ) : (
-              <p className="text-gray-900 whitespace-pre-wrap">{selectedAnswer?.textAnswer || selectedAnswer?.selectedAnswer || 'Not answered'}</p>
             )}
-          </div>
 
-          {selectedAnswer?.questionId?.type === 'Coding' && selectedAnswer?.questionId?.codeSnippet && (
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-semibold text-purple-800">Reference Solution (Admin Only):</p>
-              </div>
-              <div className="rounded-xl overflow-hidden border border-purple-300 shadow-sm">
-                <div className="bg-purple-900 px-3 py-1.5 flex items-center justify-between">
-                  <span className="text-xs text-purple-200 font-mono flex items-center gap-1.5">
-                    <FiCheckCircle className="w-3.5 h-3.5" /> Optimal Implementation
-                  </span>
+            {/* Grading Panel Card */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden flex flex-col sticky top-4">
+              <div className="bg-gray-900 px-5 py-3 border-b border-gray-800 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-primary-500/20 text-primary-400 flex items-center justify-center">
+                    <span className="text-sm">⚖️</span>
+                  </div>
+                  <h5 className="font-bold text-white uppercase tracking-widest text-xs">Grading Panel</h5>
                 </div>
-                <pre className="p-3 bg-gray-900 text-purple-300 font-mono text-sm overflow-x-auto whitespace-pre-wrap max-h-64">
-                  {selectedAnswer.questionId.codeSnippet}
-                </pre>
+                {selectedAnswer?.isEvaluated && <Badge variant="success" className="bg-green-500 text-white border-none text-[9px]">Already Graded</Badge>}
+              </div>
+
+              <div className="p-5 space-y-5 bg-gray-50">
+                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden group focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500 transition-all">
+                  <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2 flex justify-between items-center">
+                    <span>Award Marks</span>
+                    <span className="text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md">Max: {selectedAnswer?.questionId?.marks}</span>
+                  </label>
+                  <div className="flex items-center h-12">
+                    <span className="h-full bg-gray-100 border border-gray-200 border-r-0 px-4 flex items-center text-gray-500 font-bold rounded-l-lg">Pts</span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      max={selectedAnswer?.questionId?.marks}
+                      value={evaluationData.marksAwarded}
+                      onChange={(e) => setEvaluationData({ ...evaluationData, marksAwarded: e.target.value })}
+                      className="w-full h-full border border-gray-200 rounded-r-lg px-4 font-black text-2xl text-gray-900 outline-none w-full"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm focus-within:ring-2 focus-within:ring-primary-500 transition-all">
+                  <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                    <FiFileText className="w-3.5 h-3.5" /> Feedback / Comments
+                  </label>
+                  <textarea
+                    value={evaluationData.feedback}
+                    onChange={(e) => setEvaluationData({ ...evaluationData, feedback: e.target.value })}
+                    placeholder="Provide constructive feedback..."
+                    rows={4}
+                    className="w-full resize-none border-none focus:ring-0 p-0 text-sm text-gray-800 placeholder-gray-300 custom-scrollbar"
+                  />
+                </div>
+              </div>
+
+              {/* Actions Footer */}
+              <div className="bg-white px-5 py-4 border-t border-gray-200 flex flex-col gap-3">
+                {selectedAnswer?.questionId?.type === 'Coding' && (
+                  <Button
+                    variant="outline"
+                    onClick={handleAIEvaluate}
+                    disabled={loadingAI}
+                    className="w-full flex items-center justify-center gap-2 border-primary-200 text-primary-700 hover:bg-primary-50 rounded-xl py-3 font-bold"
+                  >
+                    {loadingAI ? (
+                      <FiActivity className="animate-spin w-5 h-5" />
+                    ) : (
+                      <>
+                        <span className="text-xl">✨</span> Auto-Grade with AI
+                      </>
+                    )}
+                  </Button>
+                )}
+
+                <div className="flex gap-3">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowEvaluateModal(false)}
+                    className="flex-1 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 border-none"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSubmitEvaluation}
+                    className="flex-[2] rounded-xl shadow-xl shadow-primary-500/20 py-3 font-black tracking-wide bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 flex justify-center w-full"
+                  >
+                    {selectedAnswer?.isEvaluated ? 'Update Grade' : 'Submit Grade'}
+                  </Button>
+                </div>
               </div>
             </div>
-          )}
 
-          <Input
-            label={`Marks Awarded (Max: ${selectedAnswer?.questionId?.marks})`}
-            type="number"
-            step="0.5"
-            max={selectedAnswer?.questionId?.marks}
-            value={evaluationData.marksAwarded}
-            onChange={(e) => setEvaluationData({ ...evaluationData, marksAwarded: e.target.value })}
-            required
-          />
-
-          <Textarea
-            label="Feedback (Optional)"
-            value={evaluationData.feedback}
-            onChange={(e) => setEvaluationData({ ...evaluationData, feedback: e.target.value })}
-            placeholder="Provide detailed feedback to help the student understand..."
-            rows={3}
-          />
-
-          <div className="flex justify-between items-center bg-gray-50 -mx-6 -mb-6 px-6 py-4 mt-6 border-t border-gray-200 rounded-b-xl">
-            <div>
-              {selectedAnswer?.questionId?.type === 'Coding' && (
-                <Button
-                  variant="secondary"
-                  onClick={handleAIEvaluate}
-                  disabled={loadingAI}
-                  className="flex items-center gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
-                >
-                  {loadingAI ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                      AI Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      <FiAward className="w-4 h-4" />
-                      AI Evaluate
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-            <div className="flex gap-3">
-              <Button variant="secondary" onClick={() => setShowEvaluateModal(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmitEvaluation}>
-                Submit Evaluation
-              </Button>
-            </div>
           </div>
         </div>
       </Modal>

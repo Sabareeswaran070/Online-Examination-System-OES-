@@ -88,19 +88,89 @@ exports.getDashboard = async (req, res, next) => {
       },
     ]);
 
-    const upcomingExams = await Exam.find({
+    // Updated query to enforce role-based access control
+    const upcomingExamsQuery = {
       status: { $in: ['scheduled', 'ongoing'] },
       endTime: { $gte: new Date() },
       isPublished: true,
       $or: [
-        { allowedStudents: req.user._id },
-        { allowedStudents: { $size: 0 } },
+        // Role-based restrictions:
+        // 1. Super Admin Level: Only students from that specific college
+        {
+          collegeId: req.user.collegeId,
+          departmentId: { $exists: false },
+          'creatorRole': 'superadmin' // We'll need to check the creator's role
+        },
+        // 2. College Admin Level: Only students from their college
+        {
+          collegeId: req.user.collegeId,
+          departmentId: { $exists: false },
+          'creatorRole': 'admin'
+        },
+        // 3. Dept Head Level: Only students from specific department
+        {
+          collegeId: req.user.collegeId,
+          departmentId: req.user.departmentId,
+          'creatorRole': 'depthead'
+        },
+        // 4. Faculty Level: Only students explicitly assigned (allowedStudents)
+        {
+          'creatorRole': 'faculty',
+          allowedStudents: req.user._id
+        },
+        // Legacy/Generic allowedStudents check
+        { allowedStudents: req.user._id }
       ],
-    })
+    };
+
+    // Note: Since 'creatorRole' is not in the schema, we'll need to use aggregation 
+    // or populate and filter. Given the schema, let's use aggregation for performance.
+
+    const upcomingExamsAggregation = await Exam.aggregate([
+      {
+        $match: {
+          status: { $in: ['scheduled', 'ongoing'] },
+          endTime: { $gte: new Date() },
+          isPublished: true
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'facultyId',
+          foreignField: '_id',
+          as: 'creator'
+        }
+      },
+      { $unwind: '$creator' },
+      {
+        $match: {
+          $or: [
+            // Super Admin Level: college must match
+            { 'creator.role': 'superadmin', collegeId: req.user.collegeId },
+            // College Admin Level: college must match
+            { 'creator.role': 'admin', collegeId: req.user.collegeId },
+            // Dept Head Level: dept must match
+            { 'creator.role': 'depthead', departmentId: req.user.departmentId },
+            // Faculty Level: student must be in allowedStudents
+            { 'creator.role': 'faculty', allowedStudents: req.user._id },
+            // Global exams (no collegeId/departmentId) created by Super Admin are still accessible
+            { 'creator.role': 'superadmin', collegeId: { $exists: false } },
+            // Fallback for explicitly allowed students
+            { allowedStudents: req.user._id }
+          ]
+        }
+      },
+      { $sort: { startTime: 1 } },
+      { $limit: 5 }
+    ]);
+
+    // Convert back to Mongoose objects if needed, or just use as is
+    const upcomingExamsIds = upcomingExamsAggregation.map(e => e._id);
+    const upcomingExams = await Exam.find({ _id: { $in: upcomingExamsIds } })
       .populate('subject', 'name')
       .populate('facultyId', 'name')
-      .sort({ startTime: 1 })
-      .limit(5);
+      .sort({ startTime: 1 });
 
     // Sync stale statuses
     for (const exam of upcomingExams) {
@@ -160,19 +230,39 @@ exports.getAvailableExams = async (req, res, next) => {
   try {
     const { status } = req.query;
 
-    const query = {
-      isPublished: true,
-      $or: [
-        { allowedStudents: req.user._id },
-        { allowedStudents: { $size: 0 } },
-      ],
-    };
+    const examsAggregation = await Exam.aggregate([
+      {
+        $match: {
+          isPublished: true,
+          ...(status ? { status } : {})
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'facultyId',
+          foreignField: '_id',
+          as: 'creator'
+        }
+      },
+      { $unwind: '$creator' },
+      {
+        $match: {
+          $or: [
+            { 'creator.role': 'superadmin', collegeId: req.user.collegeId },
+            { 'creator.role': 'admin', collegeId: req.user.collegeId },
+            { 'creator.role': 'depthead', departmentId: req.user.departmentId },
+            { 'creator.role': 'faculty', allowedStudents: req.user._id },
+            { 'creator.role': 'superadmin', collegeId: { $exists: false } },
+            { allowedStudents: req.user._id }
+          ]
+        }
+      },
+      { $sort: { startTime: 1 } }
+    ]);
 
-    if (status) {
-      query.status = status;
-    }
-
-    const exams = await Exam.find(query)
+    const examIds = examsAggregation.map(e => e._id);
+    const exams = await Exam.find({ _id: { $in: examIds } })
       .populate('subject', 'name subjectCode')
       .populate('facultyId', 'name')
       .sort({ startTime: 1 });
@@ -229,11 +319,29 @@ exports.getExamDetails = async (req, res, next) => {
       });
     }
 
-    // Check if student is allowed to take this exam
-    if (
-      exam.allowedStudents.length > 0 &&
-      !exam.allowedStudents.includes(req.user._id)
-    ) {
+    // Role-based access check
+    const creator = await User.findById(exam.facultyId);
+    let isAllowed = false;
+
+    if (exam.allowedStudents.includes(req.user._id)) {
+      isAllowed = true;
+    } else if (creator) {
+      if (creator.role === 'superadmin') {
+        // Super Admin Level: Must be from the same college (if global, anyone)
+        isAllowed = !exam.collegeId || exam.collegeId.toString() === req.user.collegeId?.toString();
+      } else if (creator.role === 'admin') {
+        // College Admin Level: Must be from the same college
+        isAllowed = exam.collegeId?.toString() === req.user.collegeId?.toString();
+      } else if (creator.role === 'depthead') {
+        // Dept Head Level: Must be from the same department
+        isAllowed = exam.departmentId?.toString() === req.user.departmentId?.toString();
+      } else if (creator.role === 'faculty') {
+        // Faculty Level: Only if student is specifically allowed
+        isAllowed = exam.allowedStudents.includes(req.user._id);
+      }
+    }
+
+    if (!isAllowed) {
       return res.status(403).json({
         success: false,
         message: 'You are not allowed to take this exam',

@@ -158,11 +158,15 @@ exports.createExam = async (req, res, next) => {
 
     // Role-based scope enforcement
     if (req.user.role === 'admin') {
+      // College Admin Level: Tied to college, potentially multiple departments
       examData.collegeId = req.user.collegeId;
+      // departmentId can be specified in req.body or left empty for college-wide
     } else if (req.user.role === 'depthead') {
+      // Dept Head Level: Tied to specific department
       examData.collegeId = req.user.collegeId;
       examData.departmentId = req.user.departmentId;
     } else if (req.user.role === 'faculty') {
+      // Faculty Level: Tied to faculty and their department
       examData.collegeId = req.user.collegeId;
       examData.departmentId = req.user.departmentId;
     }
@@ -948,13 +952,21 @@ exports.deleteQuestion = async (req, res, next) => {
 // @access  Private/Faculty
 exports.getExamResults = async (req, res, next) => {
   try {
-    const findQuery = {
-      _id: req.params.id,
-      $or: [
+    let findQuery = { _id: req.params.id };
+
+    if (req.user.role === 'faculty') {
+      findQuery.$or = [
         { facultyId: req.user._id },
         { authorizedEvaluators: req.user._id },
-      ],
-    };
+      ];
+    } else if (req.user.role === 'depthead') {
+      findQuery.departmentId = req.user.departmentId;
+    } else if (req.user.role === 'admin') {
+      findQuery.collegeId = req.user.collegeId;
+    } else if (req.user.role === 'superadmin') {
+      // Superadmin can see all, but if they have a collegeId, maybe restrict to that?
+      // Usually Superadmin sees everything.
+    }
 
     const exam = await Exam.findOne(findQuery);
 
@@ -968,6 +980,7 @@ exports.getExamResults = async (req, res, next) => {
     const results = await Result.find({ examId: req.params.id })
       .populate('studentId', 'name email regNo enrollmentNumber')
       .populate('answers.questionId')
+      .populate('answers.evaluatedBy', 'name')
       .sort({ score: -1 });
 
     // Calculate ranks
@@ -1039,12 +1052,20 @@ exports.publishResults = async (req, res, next) => {
 // @access  Private/Faculty
 exports.getPendingSubmissions = async (req, res, next) => {
   try {
-    const examQuery = {
-      $or: [
+    let examQuery = {};
+
+    if (req.user.role === 'faculty') {
+      examQuery.$or = [
         { facultyId: req.user._id },
         { authorizedEvaluators: req.user._id },
-      ],
-    };
+      ];
+    } else if (req.user.role === 'depthead') {
+      examQuery.departmentId = req.user.departmentId;
+    } else if (req.user.role === 'admin') {
+      examQuery.collegeId = req.user.collegeId;
+    } else if (req.user.role === 'superadmin') {
+      // Superadmin sees all
+    }
 
     const exams = await Exam.find(examQuery).select('_id title');
     const examIds = exams.map(e => e._id);
@@ -1054,7 +1075,11 @@ exports.getPendingSubmissions = async (req, res, next) => {
       status: 'submitted',
     })
       .populate('studentId', 'name email regNo enrollmentNumber')
-      .populate('examId', 'title startTime endTime')
+      .populate('examId', 'title startTime endTime facultyId')
+      .populate({
+        path: 'examId',
+        populate: { path: 'facultyId', select: 'name' }
+      })
       .sort({ submittedAt: -1 });
 
     res.status(200).json({

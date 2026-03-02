@@ -7,13 +7,27 @@ import Table from '@/components/common/Table';
 import Loader from '@/components/common/Loader';
 import Badge from '@/components/common/Badge';
 import { facultyService } from '@/services';
+import { useAuth } from '@/context/AuthContext';
 import { formatDateTime } from '@/utils/dateUtils';
+import { USER_ROLES } from '@/config/constants';
 import toast from 'react-hot-toast';
 
 const Submissions = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [submissions, setSubmissions] = useState([]);
+
+    const getBasePath = () => {
+        switch (user?.role) {
+            case USER_ROLES.SUPER_ADMIN: return '/super-admin';
+            case USER_ROLES.ADMIN: return '/admin';
+            case USER_ROLES.DEPT_HEAD: return '/dept-head';
+            case USER_ROLES.FACULTY: return '/faculty';
+            default: return '/faculty';
+        }
+    };
+    const basePath = getBasePath();
 
     useEffect(() => {
         fetchPendingSubmissions();
@@ -33,7 +47,7 @@ const Submissions = () => {
     };
 
     const handleViewResults = (examId) => {
-        navigate(`/faculty/exams/${examId}/results`);
+        navigate(`${basePath}/exams/${examId}/results`);
     };
 
     const columns = [
@@ -42,7 +56,7 @@ const Submissions = () => {
             accessor: (row) => (
                 <div className="flex flex-col">
                     <span className="font-semibold text-gray-900">{row.examId?.title}</span>
-                    <span className="text-xs text-gray-500">Scheduled: {formatDateTime(row.examId?.startTime)}</span>
+                    <span className="text-xs text-gray-500 italic">By: {row.examId?.facultyId?.name || 'Unknown'}</span>
                 </div>
             ),
         },
