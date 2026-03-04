@@ -356,23 +356,6 @@ const CollegeHierarchyModal = ({ isOpen, onClose, college, onUpdate }) => {
                                                             <FiX size={14} />
                                                         </button>
                                                     </div>
-
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => handleAddQuestion(sub, 'manual')}
-                                                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 bg-white text-primary-600 border border-primary-100 rounded-lg text-[10px] font-bold hover:bg-primary-600 hover:text-white transition-all shadow-sm"
-                                                            title="Add Question Manually"
-                                                        >
-                                                            <FiHelpCircle size={12} /> Questions
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleAddQuestion(sub, 'AI')}
-                                                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 bg-gradient-to-r from-violet-500 to-indigo-500 text-white rounded-lg text-[10px] font-bold hover:from-violet-600 hover:to-indigo-600 transition-all shadow-sm"
-                                                            title="Generate Questions with AI"
-                                                        >
-                                                            <FiCpu size={12} /> AI Generate
-                                                        </button>
-                                                    </div>
                                                 </div>
                                             ))}
                                             {(!dept.subjects || dept.subjects.length === 0) && (

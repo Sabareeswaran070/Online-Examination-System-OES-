@@ -105,9 +105,13 @@ exports.getSubjects = async (req, res, next) => {
     } else if (req.user.role === 'admin') {
       query.collegeId = req.user.collegeId;
       if (req.query.departmentId) query.departmentId = req.query.departmentId;
-    } else {
-      // Dept Head and Faculty restricted to their department
+    } else if (req.user.role === 'depthead') {
+      // Dept Head restricted to their department
       query.departmentId = req.user.departmentId;
+    } else {
+      // Faculty restricted to thier department AND assigned subjects
+      query.departmentId = req.user.departmentId;
+      query['assignedFaculty.facultyId'] = req.user._id;
     }
 
     const subjects = await Subject.find(query).sort({ name: 1 });
@@ -202,6 +206,19 @@ exports.createExam = async (req, res, next) => {
             success: false,
             message: `Authorization failed. This subject belongs to a different department.`,
           });
+        }
+
+        // Additional check for Faculty: Must be assigned to this subject
+        if (req.user.role === 'faculty') {
+          const isAssigned = subject.assignedFaculty.some(
+            (f) => f.facultyId.toString() === req.user._id.toString()
+          );
+          if (!isAssigned) {
+            return res.status(403).json({
+              success: false,
+              message: `Authorization failed. You are not assigned to this subject.`,
+            });
+          }
         }
       }
 

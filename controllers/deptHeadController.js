@@ -17,9 +17,14 @@ exports.getDashboard = async (req, res, next) => {
       .populate('subjects');
 
     if (!department) {
-      return res.status(404).json({
-        success: false,
-        message: 'Department not found',
+      return res.status(200).json({
+        success: true,
+        data: {
+          department: null,
+          message: 'No department assigned. Please contact your administrator.',
+          statistics: { totalStudents: 0, totalFaculty: 0, totalSubjects: 0, totalExams: 0 },
+          upcomingExams: []
+        },
       });
     }
 
@@ -223,9 +228,13 @@ exports.createSubject = async (req, res, next) => {
 // @access  Private/DeptHead
 exports.getSubjects = async (req, res, next) => {
   try {
-    const subjects = await Subject.find({
-      departmentId: req.user.departmentId,
-    }).populate('assignedFaculty.facultyId', 'name email');
+    const query = {
+      departmentId: req.user.departmentId
+    };
+
+    const subjects = await Subject.find(query)
+      .populate('departmentId', 'name')
+      .populate('assignedFaculty.facultyId', 'name email');
 
     res.status(200).json({
       success: true,
@@ -300,7 +309,7 @@ exports.assignSubjectToFaculty = async (req, res, next) => {
     if (!faculty) {
       return res.status(404).json({
         success: false,
-        message: 'Faculty not found in this department',
+        message: 'Faculty not found',
       });
     }
 
@@ -324,7 +333,7 @@ exports.assignSubjectToFaculty = async (req, res, next) => {
     await subject.save();
 
     logger.info(
-      `Subject ${subject.name} assigned to faculty ${faculty.name} by ${req.user.email}`
+      `Faculty ${faculty.email} assigned to subject ${subject.name} by ${req.user.email}`
     );
 
     res.status(200).json({
@@ -332,7 +341,47 @@ exports.assignSubjectToFaculty = async (req, res, next) => {
       data: subject,
     });
   } catch (error) {
-    logger.error('Assign subject to faculty error:', error);
+    logger.error('Assign subject faculty error:', error);
+    next(error);
+  }
+};
+
+// @desc    Unassign faculty from subject
+// @route   POST /api/depthead/subjects/unassign
+// @access  Private/DeptHead
+exports.unassignFacultyFromSubject = async (req, res, next) => {
+  try {
+    const { subjectId, facultyId } = req.body;
+
+    const subject = await Subject.findOne({
+      _id: subjectId,
+      departmentId: req.user.departmentId,
+    });
+
+    if (!subject) {
+      return res.status(404).json({
+        success: false,
+        message: 'Subject not found',
+      });
+    }
+
+    // Remove faculty from assignedFaculty array
+    subject.assignedFaculty = subject.assignedFaculty.filter(
+      (f) => f.facultyId.toString() !== facultyId
+    );
+
+    await subject.save();
+
+    logger.info(
+      `Faculty ${facultyId} unassigned from subject ${subject.name} by ${req.user.email}`
+    );
+
+    res.status(200).json({
+      success: true,
+      data: subject,
+    });
+  } catch (error) {
+    logger.error('Unassign subject faculty error:', error);
     next(error);
   }
 };
@@ -436,6 +485,7 @@ exports.getStudents = async (req, res, next) => {
 
     const students = await User.find(query)
       .select('-password')
+      .populate('departmentId', 'name')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -462,9 +512,10 @@ exports.getFaculty = async (req, res, next) => {
   try {
     const faculty = await User.find({
       departmentId: req.user.departmentId,
-      role: 'faculty',
+      role: { $in: ['faculty', 'depthead'] },
     })
       .select('-password')
+      .populate('departmentId', 'name')
       .sort({ name: 1 });
 
     res.status(200).json({
@@ -555,6 +606,144 @@ exports.deleteSubject = async (req, res, next) => {
   }
 };
 
+// @desc    Create user (Faculty or Student) for department
+// @route   POST /api/depthead/users
+// @access  Private/DeptHead
+exports.createUser = async (req, res, next) => {
+  try {
+    const { name, email, password, role, phone, regNo } = req.body;
+
+    // Check if user exists
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({
+        success: false,
+        message: 'User already exists',
+      });
+    }
+
+    // Role validation - Dept Head can only create faculty or students
+    if (!['faculty', 'student'].includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role assignment',
+      });
+    }
+
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role,
+      phone,
+      regNo,
+      departmentId: req.user.departmentId,
+      collegeId: req.user.collegeId,
+      status: 'active'
+    });
+
+    logger.info(`${role.charAt(0).toUpperCase() + role.slice(1)} created by Dept Head ${req.user.email}: ${email}`);
+
+    res.status(201).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    logger.error('Create department user error:', error);
+    next(error);
+  }
+};
+
+// @desc    Update user for department
+// @route   PUT /api/depthead/users/:id
+// @access  Private/DeptHead
+exports.updateUser = async (req, res, next) => {
+  try {
+    const { name, email, phone, regNo, status, password } = req.body;
+
+    const user = await User.findOne({
+      _id: req.params.id,
+      departmentId: req.user.departmentId
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found in this department',
+      });
+    }
+
+    // Cannot update to superadmin or admin
+    if (req.body.role && !['faculty', 'student', 'depthead'].includes(req.body.role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role update',
+      });
+    }
+
+    user.name = name || user.name;
+    user.email = email || user.email;
+    user.phone = phone || user.phone;
+    user.regNo = regNo || user.regNo;
+    user.status = status || user.status;
+
+    if (password) {
+      user.password = password;
+    }
+
+    await user.save();
+
+    logger.info(`User ${user.email} updated by Dept Head ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    logger.error('Update department user error:', error);
+    next(error);
+  }
+};
+
+// @desc    Delete user from department
+// @route   DELETE /api/depthead/users/:id
+// @access  Private/DeptHead
+exports.deleteUser = async (req, res, next) => {
+  try {
+    const user = await User.findOne({
+      _id: req.params.id,
+      departmentId: req.user.departmentId
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found in this department',
+      });
+    }
+
+    // Security: Dept Head cannot delete themselves or other Dept Heads or higher roles
+    if (user.role === 'depthead' || user.role === 'admin' || user.role === 'superadmin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to delete this user role'
+      });
+    }
+
+    await user.deleteOne();
+
+    logger.info(`User ${user.email} deleted by Dept Head ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'User deleted successfully',
+    });
+  } catch (error) {
+    logger.error('Delete department user error:', error);
+    next(error);
+  }
+};
+
 // @desc    Generate AI questions (MCQ, Descriptive, TrueFalse, Coding)
 // @route   POST /api/depthead/questions/generate-ai
 // @access  Private/DeptHead
@@ -619,7 +808,7 @@ exports.generateAIQuestions = async (req, res, next) => {
       }
     }
 
-    logger.info(`AI generated ${savedQuestions.length} ${qType} questions by dept head ${req.user.email}`);
+    logger.info(`AI generated ${savedQuestions.length} ${qType} questions by Dept Head ${req.user.email}`);
 
     res.status(200).json({
       success: true,
@@ -629,9 +818,77 @@ exports.generateAIQuestions = async (req, res, next) => {
     });
   } catch (error) {
     logger.error('Dept Head AI generation error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to generate questions. Please try again.',
+    next(error);
+  }
+};
+
+// @desc    Get ongoing exams for department
+// @route   GET /api/depthead/proctoring/ongoing
+// @access  Private/DeptHead
+exports.getOngoingExams = async (req, res, next) => {
+  try {
+    const exams = await Exam.find({
+      departmentId: req.user.departmentId,
+      status: 'ongoing'
+    })
+      .populate('subject', 'name')
+      .populate('facultyId', 'name')
+      .sort({ startTime: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: exams.length,
+      data: exams
     });
+  } catch (error) {
+    logger.error('Get ongoing exams error:', error);
+    next(error);
+  }
+};
+
+// @desc    Get department proctoring settings
+// @route   GET /api/depthead/proctoring/settings
+// @access  Private/DeptHead
+exports.getProctoringSettings = async (req, res, next) => {
+  try {
+    const department = await Department.findById(req.user.departmentId);
+    if (!department) {
+      return res.status(404).json({ success: false, message: 'Department not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: department.defaultProctoringSettings || {}
+    });
+  } catch (error) {
+    logger.error('Get proctoring settings error:', error);
+    next(error);
+  }
+};
+
+// @desc    Update department proctoring settings
+// @route   PUT /api/depthead/proctoring/settings
+// @access  Private/DeptHead
+exports.updateProctoringSettings = async (req, res, next) => {
+  try {
+    const department = await Department.findByIdAndUpdate(
+      req.user.departmentId,
+      { defaultProctoringSettings: req.body },
+      { new: true, runValidators: true }
+    );
+
+    if (!department) {
+      return res.status(404).json({ success: false, message: 'Department not found' });
+    }
+
+    logger.info(`Proctoring settings updated for department ${department.name} by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      data: department.defaultProctoringSettings
+    });
+  } catch (error) {
+    logger.error('Update proctoring settings error:', error);
+    next(error);
   }
 };

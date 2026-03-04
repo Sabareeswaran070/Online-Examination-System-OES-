@@ -418,7 +418,7 @@ const ExamDetails = () => {
           )}
           <Button onClick={() => navigate(`${basePath}/exams/${id}/results`)}>
             <FiUsers className="w-5 h-5 mr-2" />
-            View Results
+            Evaluate
           </Button>
         </div>
       </div>

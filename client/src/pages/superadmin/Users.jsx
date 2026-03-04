@@ -35,8 +35,11 @@ const Users = () => {
     password: '',
     role: 'student',
     collegeId: '',
+    departmentId: '',
     regNo: '',
   });
+  const [departments, setDepartments] = useState([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [resetPasswordData, setResetPasswordData] = useState({
     newPassword: '',
@@ -45,10 +48,19 @@ const Users = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [selectedRows, setSelectedRows] = useState([]);
 
   useEffect(() => {
     fetchInitialData();
   }, []);
+
+  useEffect(() => {
+    if (formData.collegeId) {
+      fetchDepartments(formData.collegeId);
+    } else {
+      setDepartments([]);
+    }
+  }, [formData.collegeId]);
 
   useEffect(() => {
     setCurrentPage(1); // Reset to first page on search/filter change
@@ -64,6 +76,19 @@ const Users = () => {
       setColleges(collegesRes.data || []);
     } catch (error) {
       console.error('Fetch initial data error:', error);
+    }
+  };
+
+  const fetchDepartments = async (collegeId) => {
+    setLoadingDepartments(true);
+    try {
+      const response = await superAdminService.getDepartmentsByCollege(collegeId);
+      setDepartments(response.data || []);
+    } catch (error) {
+      console.error('Fetch departments error:', error);
+      toast.error('Failed to load departments');
+    } finally {
+      setLoadingDepartments(false);
     }
   };
 
@@ -96,6 +121,7 @@ const Users = () => {
         const updateData = { ...formData };
         if (!updateData.password) delete updateData.password;
         if (!updateData.collegeId) delete updateData.collegeId;
+        if (!updateData.departmentId) delete updateData.departmentId;
         if (!updateData.regNo) delete updateData.regNo;
 
         await superAdminService.updateUser(selectedUser._id, updateData);
@@ -103,6 +129,7 @@ const Users = () => {
       } else {
         const createData = { ...formData };
         if (!createData.collegeId) delete createData.collegeId;
+        if (!createData.departmentId) delete createData.departmentId;
         if (!createData.regNo) delete createData.regNo;
 
         await superAdminService.createUser(createData);
@@ -172,6 +199,7 @@ const Users = () => {
       password: '',
       role: 'student',
       collegeId: '',
+      departmentId: '',
       regNo: '',
     });
     setIsEditing(false);
@@ -187,6 +215,7 @@ const Users = () => {
       password: '', // Don't show password
       role: user.role,
       collegeId: user.collegeId?._id || user.collegeId || '',
+      departmentId: user.departmentId?._id || user.departmentId || '',
       regNo: user.regNo || '',
     });
     setShowModal(true);
@@ -201,6 +230,25 @@ const Users = () => {
       } catch (error) {
         console.error('Delete user error:', error);
         toast.error(error.response?.data?.message || 'Failed to delete user');
+      }
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedRows.length === 0) return;
+
+    if (window.confirm(`Are you sure you want to delete ${selectedRows.length} users? This action cannot be undone.`)) {
+      setLoading(true);
+      try {
+        await superAdminService.bulkDeleteUsers(selectedRows);
+        toast.success(`${selectedRows.length} users deleted successfully`);
+        setSelectedRows([]);
+        fetchUsers();
+      } catch (error) {
+        console.error('Bulk delete error:', error);
+        toast.error(error.response?.data?.message || 'Failed to delete users');
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -234,7 +282,6 @@ const Users = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Optional: basic file type validation
     const fileExt = file.name.split('.').pop().toLowerCase();
     if (!['csv', 'xlsx', 'xls'].includes(fileExt)) {
       toast.error('Please upload a CSV or Excel file');
@@ -246,14 +293,34 @@ const Users = () => {
       const response = await superAdminService.bulkUploadUsers(file);
       setBulkResults(response);
       setShowResultsModal(true);
-      fetchUsers();
-      toast.success('Bulk upload processed successfully');
+      toast.success('File validated. Please review for import.');
     } catch (error) {
       console.error('Bulk upload error:', error);
       toast.error(error.response?.data?.message || 'Bulk upload failed');
     } finally {
       setLoading(false);
-      e.target.value = ''; // Clear input for next upload
+      e.target.value = '';
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!bulkResults?.validUsers || bulkResults.validUsers.length === 0) {
+      toast.error('No valid users to import');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await superAdminService.bulkConfirmUpload(bulkResults.validUsers);
+      toast.success(`${bulkResults.validUsers.length} users imported successfully`);
+      setShowResultsModal(false);
+      setBulkResults(null);
+      fetchUsers();
+    } catch (error) {
+      console.error('Confirm import error:', error);
+      toast.error(error.response?.data?.message || 'Import failed');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -282,6 +349,14 @@ const Users = () => {
       render: (row) => (
         <div className="text-sm text-gray-600">
           {row.collegeId?.collegeName || '-'}
+        </div>
+      )
+    },
+    {
+      header: 'Department',
+      render: (row) => (
+        <div className="text-sm text-gray-600">
+          {row.departmentId?.name || '-'}
         </div>
       )
     },
@@ -374,6 +449,16 @@ const Users = () => {
               Import
             </Button>
           </div>
+          {selectedRows.length > 0 && (
+            <Button
+              variant="danger"
+              onClick={handleBulkDelete}
+              className="flex-1 sm:flex-none"
+            >
+              <FiTrash2 className="mr-2" />
+              Delete ({selectedRows.length})
+            </Button>
+          )}
           <Button onClick={() => setShowModal(true)} className="flex-1 sm:flex-none">
             <FiPlus className="mr-2" />
             Create User
@@ -407,7 +492,14 @@ const Users = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <Table columns={columns} data={users} emptyMessage="No users found" />
+          <Table
+            columns={columns}
+            data={users}
+            emptyMessage="No users found"
+            selectable={true}
+            selectedRows={selectedRows}
+            onSelectChange={setSelectedRows}
+          />
         </div>
 
         {/* Pagination and Row Limit Selection */}
@@ -541,15 +633,36 @@ const Users = () => {
             </div>
           </div>
 
-          {formData.role === 'student' && (
-            <Input
-              label="Reg No (Registration Number)"
-              name="regNo"
-              value={formData.regNo}
-              onChange={(e) => setFormData({ ...formData, regNo: e.target.value })}
-              placeholder="REG2024001"
-            />
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Department {['depthead', 'faculty'].includes(formData.role) && <span className="text-red-500">*</span>}
+              </label>
+              <select
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                value={formData.departmentId}
+                onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
+                required={['depthead', 'faculty'].includes(formData.role)}
+                disabled={!formData.collegeId || loadingDepartments}
+              >
+                <option value="">{loadingDepartments ? 'Loading...' : 'Select Department'}</option>
+                {departments.map((dept) => (
+                  <option key={dept._id} value={dept._id}>
+                    {dept.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {formData.role === 'student' && (
+              <Input
+                label="Reg No (Registration Number)"
+                name="regNo"
+                value={formData.regNo}
+                onChange={(e) => setFormData({ ...formData, regNo: e.target.value })}
+                placeholder="REG2024001"
+              />
+            )}
+          </div>
 
           <div className="flex justify-end space-x-3 mt-6">
             <Button
@@ -570,41 +683,49 @@ const Users = () => {
       <Modal
         isOpen={showResultsModal}
         onClose={() => setShowResultsModal(false)}
-        title="Bulk Upload Results"
+        title="Review User Import"
+        size="lg"
       >
         {bulkResults && (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="grid grid-cols-3 gap-4">
-              <div className="bg-blue-50 p-3 rounded-lg text-center">
-                <p className="text-xs text-blue-600 font-medium uppercase">Total</p>
-                <p className="text-2xl font-bold text-blue-800">{bulkResults.summary?.total || 0}</p>
+              <div className="bg-blue-50 p-4 rounded-xl text-center border border-blue-100">
+                <p className="text-xs text-blue-600 font-bold uppercase tracking-wider">Total in File</p>
+                <p className="text-3xl font-black text-blue-900">{bulkResults.summary?.total || 0}</p>
               </div>
-              <div className="bg-green-50 p-3 rounded-lg text-center">
-                <p className="text-xs text-green-600 font-medium uppercase">Success</p>
-                <p className="text-2xl font-bold text-green-800">{bulkResults.summary?.created || 0}</p>
+              <div className="bg-green-50 p-4 rounded-xl text-center border border-green-100 shadow-sm">
+                <p className="text-xs text-green-600 font-bold uppercase tracking-wider">Ready for Import</p>
+                <p className="text-3xl font-black text-green-900">{bulkResults.summary?.valid || 0}</p>
               </div>
-              <div className="bg-red-50 p-3 rounded-lg text-center">
-                <p className="text-xs text-red-600 font-medium uppercase">Failed</p>
-                <p className="text-2xl font-bold text-red-800">{bulkResults.summary?.failed || 0}</p>
+              <div className="bg-red-50 p-4 rounded-xl text-center border border-red-100">
+                <p className="text-xs text-red-600 font-bold uppercase tracking-wider">Has Errors</p>
+                <p className="text-3xl font-black text-red-900">{bulkResults.summary?.invalid || 0}</p>
               </div>
             </div>
 
-            {bulkResults.errors && bulkResults.errors.length > 0 && (
-              <div className="mt-4">
-                <h4 className="text-sm font-semibold text-gray-900 mb-2">Error Details</h4>
-                <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg">
+            {bulkResults.validUsers?.length > 0 && (
+              <div>
+                <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                  Valid Users Preview
+                </h4>
+                <div className="max-h-60 overflow-y-auto border border-gray-100 rounded-xl bg-gray-50/30 shadow-inner">
                   <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gray-100/50 sticky top-0">
                       <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">User/Email</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
+                        <th className="px-4 py-2 text-left text-[10px] font-bold text-gray-500 uppercase">Name</th>
+                        <th className="px-4 py-2 text-left text-[10px] font-bold text-gray-500 uppercase">Email</th>
+                        <th className="px-4 py-2 text-left text-[10px] font-bold text-gray-500 uppercase">College</th>
+                        <th className="px-4 py-2 text-left text-[10px] font-bold text-gray-500 uppercase">Role</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {bulkResults.errors.map((error, index) => (
-                        <tr key={index}>
-                          <td className="px-4 py-2 text-sm text-gray-900 border-r">{error.user}</td>
-                          <td className="px-4 py-2 text-sm text-red-600">{error.reason}</td>
+                    <tbody className="divide-y divide-gray-100">
+                      {bulkResults.validUsers.map((user, idx) => (
+                        <tr key={idx} className="hover:bg-white transition-colors">
+                          <td className="px-4 py-2 text-xs font-medium text-gray-900">{user.name}</td>
+                          <td className="px-4 py-2 text-xs text-gray-600">{user.email}</td>
+                          <td className="px-4 py-2 text-xs text-gray-600">{user.collegeNameDisplay || user.collegeId || user.college}</td>
+                          <td className="px-4 py-2 text-xs font-bold text-primary-600 uppercase italic">{user.role}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -613,10 +734,42 @@ const Users = () => {
               </div>
             )}
 
-            <div className="flex justify-end mt-6">
-              <Button onClick={() => setShowResultsModal(false)}>
-                Close
+            {bulkResults.invalidUsers?.length > 0 && (
+              <div>
+                <h4 className="text-sm font-bold text-red-700 mb-3 flex items-center">
+                  <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+                  Invalid Users (Skip)
+                </h4>
+                <div className="max-h-48 overflow-y-auto border border-red-100 rounded-xl bg-red-50/30">
+                  <table className="min-w-full divide-y divide-red-200">
+                    <thead className="bg-red-100/50 sticky top-0">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-[10px] font-bold text-red-600 uppercase">User</th>
+                        <th className="px-4 py-2 text-left text-[10px] font-bold text-red-600 uppercase">Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-red-100">
+                      {bulkResults.invalidUsers.map((error, index) => (
+                        <tr key={index} className="hover:bg-white/50 transition-colors">
+                          <td className="px-4 py-2 text-xs text-gray-900 border-r border-red-50">{error.email || error.name}</td>
+                          <td className="px-4 py-2 text-xs text-red-600 font-medium italic">{error.reason}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+              <Button variant="secondary" onClick={() => setShowResultsModal(false)}>
+                Cancel
               </Button>
+              {bulkResults.validUsers?.length > 0 && (
+                <Button onClick={handleConfirmImport} disabled={submitting}>
+                  {submitting ? 'Importing...' : `Import ${bulkResults.validUsers.length} Valid Users`}
+                </Button>
+              )}
             </div>
           </div>
         )}

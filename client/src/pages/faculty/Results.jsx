@@ -16,6 +16,7 @@ import {
   FiLock,
   FiShield,
   FiRotateCcw,
+  FiTerminal,
 } from "react-icons/fi";
 import Card from "@/components/common/Card.jsx";
 import Button from "@/components/common/Button.jsx";
@@ -285,7 +286,7 @@ const Results = () => {
             onClick={() => handleViewDetails(row)}
           >
             <FiEye className="w-4 h-4 mr-1" />
-            View
+            Evaluate
           </Button>
           <Button
             size="sm"
@@ -365,9 +366,9 @@ const Results = () => {
                 <p className="text-3xl font-bold text-green-900 mt-2">
                   {results.length > 0
                     ? (
-                        results.reduce((sum, r) => sum + r.score, 0) /
-                        results.length
-                      ).toFixed(1)
+                      results.reduce((sum, r) => sum + r.score, 0) /
+                      results.length
+                    ).toFixed(1)
                     : 0}
                 </p>
               </div>
@@ -400,12 +401,12 @@ const Results = () => {
                 <p className="text-3xl font-bold text-purple-900 mt-2">
                   {results.length > 0
                     ? (
-                        (results.filter(
-                          (r) => r.score >= (exam?.passingMarks || 0),
-                        ).length /
-                          results.length) *
-                        100
-                      ).toFixed(0)
+                      (results.filter(
+                        (r) => r.score >= (exam?.passingMarks || 0),
+                      ).length /
+                        results.length) *
+                      100
+                    ).toFixed(0)
                     : 0}
                   %
                 </p>
@@ -563,72 +564,72 @@ const Results = () => {
                   {results.some(
                     (r) => r.unlockRequest?.status === "pending",
                   ) && (
-                    <Card
-                      title="Pending Unlock Requests"
-                      className="bg-amber-50 border-amber-200"
-                    >
-                      <div className="space-y-3">
-                        {results
-                          .filter((r) => r.unlockRequest?.status === "pending")
-                          .map((r) => (
-                            <div
-                              key={r._id}
-                              className="p-3 bg-white border border-amber-200 rounded-lg shadow-sm"
-                            >
-                              <div className="flex justify-between items-start mb-2">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-xs">
-                                    {r.studentId?.name?.charAt(0)}
+                      <Card
+                        title="Pending Unlock Requests"
+                        className="bg-amber-50 border-amber-200"
+                      >
+                        <div className="space-y-3">
+                          {results
+                            .filter((r) => r.unlockRequest?.status === "pending")
+                            .map((r) => (
+                              <div
+                                key={r._id}
+                                className="p-3 bg-white border border-amber-200 rounded-lg shadow-sm"
+                              >
+                                <div className="flex justify-between items-start mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-xs">
+                                      {r.studentId?.name?.charAt(0)}
+                                    </div>
+                                    <div>
+                                      <p className="text-xs font-bold text-gray-900">
+                                        {r.studentId?.name}
+                                      </p>
+                                      <p className="text-[10px] text-gray-400">
+                                        Locked due to violations
+                                      </p>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <p className="text-xs font-bold text-gray-900">
-                                      {r.studentId?.name}
-                                    </p>
-                                    <p className="text-[10px] text-gray-400">
-                                      Locked due to violations
-                                    </p>
-                                  </div>
+                                  <Button
+                                    size="xs"
+                                    variant="primary"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleViewDetails(r);
+                                    }}
+                                  >
+                                    Review
+                                  </Button>
                                 </div>
-                                <Button
-                                  size="xs"
-                                  variant="primary"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleViewDetails(r);
-                                  }}
-                                >
-                                  Review
-                                </Button>
+                                <div className="bg-amber-50 p-2 rounded text-[10px] text-amber-800 italic border border-amber-100 mb-2">
+                                  "{r.unlockRequest?.reason}"
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="xs"
+                                    className="flex-1 bg-green-600 hover:bg-green-700"
+                                    onClick={() =>
+                                      handleUnlock(r._id, "approved")
+                                    }
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="xs"
+                                    variant="danger"
+                                    className="flex-1"
+                                    onClick={() =>
+                                      handleUnlock(r._id, "rejected")
+                                    }
+                                  >
+                                    Reject
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="bg-amber-50 p-2 rounded text-[10px] text-amber-800 italic border border-amber-100 mb-2">
-                                "{r.unlockRequest?.reason}"
-                              </div>
-                              <div className="flex gap-2">
-                                <Button
-                                  size="xs"
-                                  className="flex-1 bg-green-600 hover:bg-green-700"
-                                  onClick={() =>
-                                    handleUnlock(r._id, "approved")
-                                  }
-                                >
-                                  Approve
-                                </Button>
-                                <Button
-                                  size="xs"
-                                  variant="danger"
-                                  className="flex-1"
-                                  onClick={() =>
-                                    handleUnlock(r._id, "rejected")
-                                  }
-                                >
-                                  Reject
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    </Card>
-                  )}
+                            ))}
+                        </div>
+                      </Card>
+                    )}
 
                   <Card title="Critical Alerts" className="bg-white">
                     <div className="space-y-3">
@@ -663,13 +664,13 @@ const Results = () => {
                       {results.filter(
                         (r) => r.tabSwitchCount > 0 || r.violations?.length > 0,
                       ).length === 0 && (
-                        <div className="text-center py-6">
-                          <FiShield className="w-10 h-10 text-green-100 mx-auto mb-2" />
-                          <p className="text-xs text-green-600 font-bold uppercase tracking-widest">
-                            Secure session
-                          </p>
-                        </div>
-                      )}
+                          <div className="text-center py-6">
+                            <FiShield className="w-10 h-10 text-green-100 mx-auto mb-2" />
+                            <p className="text-xs text-green-600 font-bold uppercase tracking-widest">
+                              Secure session
+                            </p>
+                          </div>
+                        )}
                     </div>
                   </Card>
                 </div>
@@ -679,8 +680,8 @@ const Results = () => {
         </>
       )}
 
-      {/* Inline Dashboard Result Details */}
-      {selectedResult && (
+      {/* Exclusive Dashboard Views */}
+      {selectedResult && !selectedAnswer && (
         <div className="flex flex-col flex-1 h-[calc(100vh-6rem)] bg-slate-50 rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in zoom-in-95 duration-300">
           {/* Top Fixed Header Panel */}
           <div className="bg-white border-b border-slate-200 shadow-sm z-20 flex-none relative">
@@ -766,12 +767,11 @@ const Results = () => {
               {/* Security */}
               <div className="flex items-center gap-3 px-5 py-2.5">
                 <div
-                  className={`p-2 rounded-lg shadow-sm border ${
-                    selectedResult.tabSwitchCount > 0 ||
+                  className={`p-2 rounded-lg shadow-sm border ${selectedResult.tabSwitchCount > 0 ||
                     selectedResult.violations?.length > 0
-                      ? "bg-red-50 text-red-600 border-red-100/50"
-                      : "bg-emerald-50 text-emerald-600 border-emerald-100/50"
-                  }`}
+                    ? "bg-red-50 text-red-600 border-red-100/50"
+                    : "bg-emerald-50 text-emerald-600 border-emerald-100/50"
+                    }`}
                 >
                   <FiShield className="w-5 h-5" />
                 </div>
@@ -781,7 +781,7 @@ const Results = () => {
                   </p>
                   <p className="text-xs font-bold">
                     {selectedResult.tabSwitchCount > 0 ||
-                    selectedResult.violations?.length > 0 ? (
+                      selectedResult.violations?.length > 0 ? (
                       <span className="text-red-600 flex items-center gap-1">
                         {selectedResult.tabSwitchCount} Tabs,{" "}
                         {selectedResult.violations?.length || 0} Exits
@@ -809,8 +809,8 @@ const Results = () => {
                   type === "All"
                     ? selectedResult.answers?.length
                     : selectedResult.answers?.filter(
-                        (a) => a.questionId?.type === type,
-                      ).length;
+                      (a) => a.questionId?.type === type,
+                    ).length;
 
                 if (type !== "All" && count === 0) return null;
 
@@ -818,19 +818,17 @@ const Results = () => {
                   <button
                     key={type}
                     onClick={() => setFilterType(type)}
-                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                      filterType === type
-                        ? "bg-slate-800 text-white shadow-sm ring-1 ring-slate-800/20 ring-offset-1 ring-offset-slate-50"
-                        : "bg-white text-slate-600 hover:bg-slate-200 border border-slate-200 hover:border-slate-300"
-                    }`}
+                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${filterType === type
+                      ? "bg-slate-800 text-white shadow-sm ring-1 ring-slate-800/20 ring-offset-1 ring-offset-slate-50"
+                      : "bg-white text-slate-600 hover:bg-slate-200 border border-slate-200 hover:border-slate-300"
+                      }`}
                   >
                     {type === "All" ? "All Types" : type}
                     <span
-                      className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${
-                        filterType === type
-                          ? "bg-slate-700 text-white shadow-inner"
-                          : "bg-slate-100 text-slate-500 border border-slate-200/60"
-                      }`}
+                      className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${filterType === type
+                        ? "bg-slate-700 text-white shadow-inner"
+                        : "bg-slate-100 text-slate-500 border border-slate-200/60"
+                        }`}
                     >
                       {count} Qs
                     </span>
@@ -848,100 +846,100 @@ const Results = () => {
               {(selectedResult.unlockRequest?.status === "pending" ||
                 selectedResult.tabSwitchCount > 0 ||
                 selectedResult.violations?.length > 0) && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Unlock Request Card */}
-                  {selectedResult.unlockRequest?.status === "pending" && (
-                    <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
-                      <div>
-                        <h4 className="flex items-center gap-2 text-sm font-black text-amber-900 uppercase tracking-tight mb-2">
-                          <FiAlertTriangle className="w-5 h-5" /> Unlock Request
-                          Pending
-                        </h4>
-                        <p className="text-amber-800 text-sm font-medium bg-white/60 p-3 rounded-lg border border-amber-100">
-                          "{selectedResult.unlockRequest.reason}"
-                        </p>
-                      </div>
-                      <div className="flex gap-3 mt-4 pt-4 border-t border-amber-200/50">
-                        <Button
-                          size="sm"
-                          className="flex-1 bg-amber-600 hover:bg-amber-700 shadow-md shadow-amber-200"
-                          onClick={() =>
-                            handleUnlock(selectedResult._id, "approved")
-                          }
-                        >
-                          <FiCheckCircle className="mr-2" /> Approve Request
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 border-amber-300 text-amber-800 hover:bg-amber-100 bg-white"
-                          onClick={() =>
-                            handleUnlock(selectedResult._id, "rejected")
-                          }
-                        >
-                          Reject
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Activity Violations Log Card */}
-                  {(selectedResult.tabSwitchCount > 0 ||
-                    selectedResult.violations?.length > 0) && (
-                    <div className="bg-white border text-red-900 border-red-200 p-5 rounded-2xl shadow-sm">
-                      <h4 className="flex items-center gap-2 text-sm font-black uppercase mb-4 tracking-tight">
-                        <span className="p-1.5 bg-red-100 rounded-md text-red-600">
-                          <FiShield className="w-4 h-4" />
-                        </span>
-                        Suspicious Activity Detected
-                      </h4>
-
-                      <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div className="bg-red-50/50 p-3 rounded-xl border border-red-100/80">
-                          <p className="text-[10px] text-red-500 uppercase font-black tracking-widest mb-1">
-                            Tab Switches
-                          </p>
-                          <p className="text-3xl font-black text-red-600 tracking-tighter">
-                            {selectedResult.tabSwitchCount || 0}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Unlock Request Card */}
+                    {selectedResult.unlockRequest?.status === "pending" && (
+                      <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
+                        <div>
+                          <h4 className="flex items-center gap-2 text-sm font-black text-amber-900 uppercase tracking-tight mb-2">
+                            <FiAlertTriangle className="w-5 h-5" /> Unlock Request
+                            Pending
+                          </h4>
+                          <p className="text-amber-800 text-sm font-medium bg-white/60 p-3 rounded-lg border border-amber-100">
+                            "{selectedResult.unlockRequest.reason}"
                           </p>
                         </div>
-                        <div className="bg-red-50/50 p-3 rounded-xl border border-red-100/80">
-                          <p className="text-[10px] text-red-500 uppercase font-black tracking-widest mb-1">
-                            Fullscreen Exits
-                          </p>
-                          <p className="text-3xl font-black text-red-600 tracking-tighter">
-                            {selectedResult.violations?.filter(
-                              (v) => v.type === "fullscreen_exit",
-                            ).length || 0}
-                          </p>
+                        <div className="flex gap-3 mt-4 pt-4 border-t border-amber-200/50">
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-amber-600 hover:bg-amber-700 shadow-md shadow-amber-200"
+                            onClick={() =>
+                              handleUnlock(selectedResult._id, "approved")
+                            }
+                          >
+                            <FiCheckCircle className="mr-2" /> Approve Request
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 border-amber-300 text-amber-800 hover:bg-amber-100 bg-white"
+                            onClick={() =>
+                              handleUnlock(selectedResult._id, "rejected")
+                            }
+                          >
+                            Reject
+                          </Button>
                         </div>
                       </div>
+                    )}
 
-                      {selectedResult.violations?.length > 0 && (
-                        <div className="max-h-28 overflow-y-auto space-y-1.5 pr-2 custom-scrollbar border-t border-red-100 pt-3">
-                          {selectedResult.violations
-                            .slice()
-                            .reverse()
-                            .map((v, i) => (
-                              <div
-                                key={i}
-                                className="flex justify-between items-center bg-red-50 hover:bg-red-100 transition-colors px-3 py-2 rounded-lg text-xs"
-                              >
-                                <span className="font-bold uppercase tracking-wide flex items-center gap-2">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                                  {v.type.replace("_", " ")}
-                                </span>
-                                <span className="font-mono text-[10px] opacity-75">
-                                  {new Date(v.timestamp).toLocaleTimeString()}
-                                </span>
-                              </div>
-                            ))}
+                    {/* Activity Violations Log Card */}
+                    {(selectedResult.tabSwitchCount > 0 ||
+                      selectedResult.violations?.length > 0) && (
+                        <div className="bg-white border text-red-900 border-red-200 p-5 rounded-2xl shadow-sm">
+                          <h4 className="flex items-center gap-2 text-sm font-black uppercase mb-4 tracking-tight">
+                            <span className="p-1.5 bg-red-100 rounded-md text-red-600">
+                              <FiShield className="w-4 h-4" />
+                            </span>
+                            Suspicious Activity Detected
+                          </h4>
+
+                          <div className="grid grid-cols-2 gap-3 mb-4">
+                            <div className="bg-red-50/50 p-3 rounded-xl border border-red-100/80">
+                              <p className="text-[10px] text-red-500 uppercase font-black tracking-widest mb-1">
+                                Tab Switches
+                              </p>
+                              <p className="text-3xl font-black text-red-600 tracking-tighter">
+                                {selectedResult.tabSwitchCount || 0}
+                              </p>
+                            </div>
+                            <div className="bg-red-50/50 p-3 rounded-xl border border-red-100/80">
+                              <p className="text-[10px] text-red-500 uppercase font-black tracking-widest mb-1">
+                                Fullscreen Exits
+                              </p>
+                              <p className="text-3xl font-black text-red-600 tracking-tighter">
+                                {selectedResult.violations?.filter(
+                                  (v) => v.type === "fullscreen_exit",
+                                ).length || 0}
+                              </p>
+                            </div>
+                          </div>
+
+                          {selectedResult.violations?.length > 0 && (
+                            <div className="max-h-28 overflow-y-auto space-y-1.5 pr-2 custom-scrollbar border-t border-red-100 pt-3">
+                              {selectedResult.violations
+                                .slice()
+                                .reverse()
+                                .map((v, i) => (
+                                  <div
+                                    key={i}
+                                    className="flex justify-between items-center bg-red-50 hover:bg-red-100 transition-colors px-3 py-2 rounded-lg text-xs"
+                                  >
+                                    <span className="font-bold uppercase tracking-wide flex items-center gap-2">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                      {v.type.replace("_", " ")}
+                                    </span>
+                                    <span className="font-mono text-[10px] opacity-75">
+                                      {new Date(v.timestamp).toLocaleTimeString()}
+                                    </span>
+                                  </div>
+                                ))}
+                            </div>
+                          )}
                         </div>
                       )}
-                    </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
 
               {/* Question Type Iteration Engine */}
               {[
@@ -1031,9 +1029,7 @@ const Results = () => {
                                     onClick={() => handleEvaluate(answer)}
                                     className="font-bold shadow-sm"
                                   >
-                                    {answer.isEvaluated
-                                      ? "Edit Grade"
-                                      : "Evaluate"}
+                                    Evaluate
                                   </Button>
                                 )}
                               </div>
@@ -1082,23 +1078,23 @@ const Results = () => {
                               {/* Correct Answer Reference (Objective only) */}
                               {(answer.questionId?.type === "MCQ" ||
                                 answer.questionId?.type === "TrueFalse") && (
-                                <div className="mt-2 bg-emerald-50/50 border border-emerald-200/60 rounded-xl p-4 flex items-start gap-3">
-                                  <div className="p-1.5 bg-emerald-100 rounded-md text-emerald-600 flex-none mt-0.5">
-                                    <FiCheckCircle className="w-4 h-4" />
+                                  <div className="mt-2 bg-emerald-50/50 border border-emerald-200/60 rounded-xl p-4 flex items-start gap-3">
+                                    <div className="p-1.5 bg-emerald-100 rounded-md text-emerald-600 flex-none mt-0.5">
+                                      <FiCheckCircle className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                      <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-1.5">
+                                        Official Answer Key
+                                      </p>
+                                      <p className="text-emerald-900 font-bold text-sm bg-white px-3 py-2 rounded-lg border border-emerald-100 shadow-sm inline-block">
+                                        {answer.questionId?.options?.find(
+                                          (opt) => opt.isCorrect,
+                                        )?.text ||
+                                          answer.questionId?.options?.[0]?.text}
+                                      </p>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-1.5">
-                                      Official Answer Key
-                                    </p>
-                                    <p className="text-emerald-900 font-bold text-sm bg-white px-3 py-2 rounded-lg border border-emerald-100 shadow-sm inline-block">
-                                      {answer.questionId?.options?.find(
-                                        (opt) => opt.isCorrect,
-                                      )?.text ||
-                                        answer.questionId?.options?.[0]?.text}
-                                    </p>
-                                  </div>
-                                </div>
-                              )}
+                                )}
 
                               {/* Faculty Feedback Bubble */}
                               {answer.feedback && (
@@ -1136,261 +1132,215 @@ const Results = () => {
         </div>
       )}
 
-      {/* Evaluation Modal Full Redesign */}
-      <Modal
-        isOpen={showEvaluateModal}
-        onClose={() => setShowEvaluateModal(false)}
-        title={
-          <div className="flex items-center gap-3 w-full border-b border-gray-100 pb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md ring-2 ring-white">
-              {selectedResult?.studentId?.name?.charAt(0)}
-            </div>
-            <div className="flex-1">
-              <h4 className="font-bold text-gray-900 text-lg leading-none">
-                {selectedResult?.studentId?.name}
-              </h4>
-              <p className="text-xs text-gray-500 font-mono tracking-wider mt-1 flex items-center gap-2">
-                {selectedResult?.studentId?.regNo ||
-                  selectedResult?.studentId?.enrollmentNumber}
-                <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                <span className="text-primary-600">{exam?.title}</span>
-              </p>
-            </div>
-          </div>
-        }
-        size="full"
-      >
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
-          {/* Left Column: Question & Student Answer */}
-          <div className="lg:col-span-7 space-y-6">
-            {/* Question Card */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden group hover:shadow-md transition-all">
-              <div className="bg-gray-50/80 px-5 py-3 border-b border-gray-200 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-purple-100 text-purple-700 flex items-center justify-center text-sm">
-                    ❓
-                  </div>
-                  <h5 className="font-bold text-gray-800 uppercase tracking-widest text-xs">
-                    Question Detail
-                  </h5>
-                </div>
-                <Badge
-                  variant="outline"
-                  className="text-[10px] font-bold text-gray-500 border-gray-300"
-                >
-                  {selectedAnswer?.questionId?.marks} Marks Base
-                </Badge>
-              </div>
-              <div className="p-5">
-                <p className="text-gray-800 text-sm leading-relaxed font-medium">
-                  {selectedAnswer?.questionId?.questionText}
+      {/* Inline Evaluation Detail View */}
+      {selectedAnswer && (
+        <div className="flex flex-col flex-1 h-[calc(100vh-6rem)] bg-slate-50 rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in slide-in-from-right-10 duration-500 z-30">
+          {/* Header */}
+          <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setSelectedAnswer(null)}
+                className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-500 hover:text-indigo-600 group"
+                title="Back to Answers"
+              >
+                <FiArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+              </button>
+              <div>
+                <h3 className="font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                  <span className="p-1.5 bg-indigo-100 rounded-lg text-indigo-600">
+                    ⚖️
+                  </span>
+                  Evaluation Mode
+                </h3>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                  Assessment for {selectedResult?.studentId?.name}
                 </p>
               </div>
             </div>
-
-            {/* Student Answer Card */}
-            <div className="bg-white rounded-2xl border border-blue-200 shadow-lg shadow-blue-50/50 overflow-hidden relative">
-              <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-400 to-blue-600"></div>
-              <div className="bg-gradient-to-r from-blue-50/50 to-white px-5 py-3 border-b border-blue-100 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-blue-100 text-blue-700 flex items-center justify-center text-sm shadow-inner">
-                    🧑‍🎓
-                  </div>
-                  <h5 className="font-black text-blue-900 uppercase tracking-widest text-xs">
-                    Student Submission
-                  </h5>
-                </div>
-                {selectedAnswer?.isEvaluated && selectedAnswer?.evaluatedBy && (
-                  <Badge
-                    variant="info"
-                    className="text-[9px] py-1 bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1 shadow-sm font-bold"
-                  >
-                    <FiCheckCircle className="w-3 h-3" /> Graded by{" "}
-                    {selectedAnswer.evaluatedBy.name}
-                  </Badge>
-                )}
-              </div>
-
-              <div className="p-4">
-                {selectedAnswer?.questionId?.type === "Coding" ? (
-                  <div className="rounded-xl overflow-hidden border border-gray-800 bg-gray-900 shadow-2xl">
-                    <div className="bg-gray-950 px-4 py-2.5 flex items-center justify-between border-b border-gray-800">
-                      <div className="flex gap-1.5">
-                        <div className="w-3 h-3 rounded-full bg-[#ff5f56]"></div>
-                        <div className="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
-                        <div className="w-3 h-3 rounded-full bg-[#27c93f]"></div>
-                      </div>
-                      <span className="text-[10px] text-gray-400 font-mono flex items-center gap-2 uppercase tracking-widest">
-                        <FiMonitor className="w-3.5 h-3.5 text-blue-400" />{" "}
-                        main.js
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <pre className="p-5 text-green-400 font-mono text-sm overflow-x-auto whitespace-pre-wrap max-h-[500px] custom-scrollbar leading-relaxed">
-                        {selectedAnswer?.codeAnswer || (
-                          <span className="text-gray-600 italic">
-                            // No implementation provided by student
-                          </span>
-                        )}
-                      </pre>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-blue-50/30 p-5 rounded-xl border border-blue-100 min-h-[150px] text-gray-800 whitespace-pre-wrap shadow-inner leading-relaxed text-sm font-medium">
-                    {selectedAnswer?.textAnswer ||
-                      selectedAnswer?.selectedAnswer || (
-                        <div className="flex flex-col items-center justify-center h-full text-center space-y-2 opacity-60">
-                          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                            <FiAlertTriangle className="w-5 h-5 text-gray-400" />
-                          </div>
-                          <span className="text-gray-500 font-bold uppercase tracking-widest text-xs">
-                            No Answer Submitted
-                          </span>
-                        </div>
-                      )}
-                  </div>
-                )}
-              </div>
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="font-black py-1.5 border-slate-200 text-slate-500">
+                {selectedAnswer?.questionId?.marks} Max Marks
+              </Badge>
+              {selectedAnswer?.isEvaluated && (
+                <Badge variant="success" className="font-black py-1.5 shadow-sm">
+                  <FiCheckCircle className="mr-1.5" /> Graded
+                </Badge>
+              )}
             </div>
           </div>
 
-          {/* Right Column: Reference & Grading Panel */}
-          <div className="lg:col-span-5 space-y-6">
-            {/* Reference Solution Card */}
-            {selectedAnswer?.questionId?.type === "Coding" &&
-              selectedAnswer?.questionId?.codeSnippet && (
-                <div className="bg-white rounded-2xl border border-indigo-200 shadow-md overflow-hidden ring-1 ring-black/5">
-                  <div className="bg-indigo-50 px-4 py-3 border-b border-indigo-100 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <FiShield className="text-indigo-600 w-4 h-4" />
-                      <h5 className="font-bold text-indigo-900 uppercase tracking-widest text-[11px]">
-                        Reference Solution
+          {/* Scrollable Content Container */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-10">
+            <div className="max-w-6xl mx-auto">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Left Column: Evidence */}
+                <div className="lg:col-span-7 space-y-8">
+                  {/* Question Prompt Card */}
+                  <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden group">
+                    <div className="bg-slate-50/50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                      <h5 className="font-black text-slate-400 uppercase tracking-widest text-[10px] flex items-center gap-2">
+                        <FiFileText className="text-indigo-500" /> Original Question
                       </h5>
                     </div>
-                    <Badge
-                      variant="warning"
-                      className="text-[8px] tracking-widest uppercase bg-amber-100 text-amber-800"
-                    >
-                      Facultys Only
-                    </Badge>
+                    <div className="p-7">
+                      <p className="text-slate-800 text-lg leading-relaxed font-semibold">
+                        {selectedAnswer?.questionId?.questionText}
+                      </p>
+                    </div>
                   </div>
-                  <div className="rounded-b-xl overflow-hidden bg-gray-900 border-none">
-                    <pre className="p-4 text-[#a5b4fc] font-mono text-[13px] overflow-x-auto whitespace-pre-wrap max-h-64 custom-scrollbar">
-                      {selectedAnswer.questionId.codeSnippet}
-                    </pre>
-                  </div>
-                </div>
-              )}
 
-            {/* Grading Panel Card */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden flex flex-col sticky top-4">
-              <div className="bg-gray-900 px-5 py-3 border-b border-gray-800 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-primary-500/20 text-primary-400 flex items-center justify-center">
-                    <span className="text-sm">⚖️</span>
-                  </div>
-                  <h5 className="font-bold text-white uppercase tracking-widest text-xs">
-                    Grading Panel
-                  </h5>
-                </div>
-                {selectedAnswer?.isEvaluated && (
-                  <Badge
-                    variant="success"
-                    className="bg-green-500 text-white border-none text-[9px]"
-                  >
-                    Already Graded
-                  </Badge>
-                )}
-              </div>
+                  {/* Student Submission Card */}
+                  <div className="bg-white rounded-3xl border-2 border-indigo-100 shadow-xl shadow-indigo-500/5 overflow-hidden relative">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-indigo-400 to-blue-600"></div>
+                    <div className="bg-slate-50/50 px-6 py-4 border-b border-indigo-50 flex items-center justify-between">
+                      <h5 className="font-black text-indigo-900 uppercase tracking-widest text-[10px] flex items-center gap-2">
+                        <FiUser className="text-indigo-600" /> Student Response
+                      </h5>
+                    </div>
 
-              <div className="p-5 space-y-5 bg-gray-50">
-                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden group focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500 transition-all">
-                  <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2 flex justify-between items-center">
-                    <span>Award Marks</span>
-                    <span className="text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md">
-                      Max: {selectedAnswer?.questionId?.marks}
-                    </span>
-                  </label>
-                  <div className="flex items-center h-12">
-                    <span className="h-full bg-gray-100 border border-gray-200 border-r-0 px-4 flex items-center text-gray-500 font-bold rounded-l-lg">
-                      Pts
-                    </span>
-                    <input
-                      type="number"
-                      step="0.5"
-                      max={selectedAnswer?.questionId?.marks}
-                      value={evaluationData.marksAwarded}
-                      onChange={(e) =>
-                        setEvaluationData({
-                          ...evaluationData,
-                          marksAwarded: e.target.value,
-                        })
-                      }
-                      className="w-full h-full border border-gray-200 rounded-r-lg px-4 font-black text-2xl text-gray-900 outline-none w-full"
-                    />
+                    <div className="p-6">
+                      {selectedAnswer?.questionId?.type === "Coding" ? (
+                        <div className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shadow-2xl">
+                          <div className="bg-[#1a1b26] px-5 py-3.5 flex items-center justify-between border-b border-slate-800">
+                            <div className="flex gap-2">
+                              <div className="w-3 h-3 rounded-full bg-[#ff5f56]"></div>
+                              <div className="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
+                              <div className="w-3 h-3 rounded-full bg-[#27c93f]"></div>
+                            </div>
+                            <span className="text-[10px] text-slate-500 font-mono flex items-center gap-2 uppercase tracking-widest font-bold">
+                              <FiMonitor className="w-3.5 h-3.5 text-blue-400" /> main.js
+                            </span>
+                          </div>
+                          <div className="relative">
+                            <pre className="p-6 text-emerald-400 font-mono text-sm overflow-x-auto whitespace-pre-wrap max-h-[500px] custom-scrollbar leading-relaxed">
+                              {selectedAnswer?.codeAnswer || (
+                                <span className="text-slate-600 italic">// No implementation provided</span>
+                              )}
+                            </pre>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-indigo-50/20 p-7 rounded-2xl border border-indigo-100/50 min-h-[180px] text-slate-800 whitespace-pre-wrap shadow-inner leading-relaxed text-lg font-medium italic">
+                          {selectedAnswer?.textAnswer || selectedAnswer?.selectedAnswer || (
+                            <div className="flex flex-col items-center justify-center h-full opacity-40">
+                              <FiAlertTriangle className="w-10 h-10 mb-2" />
+                              <span className="font-black uppercase tracking-widest text-xs">Empty Response</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm focus-within:ring-2 focus-within:ring-primary-500 transition-all">
-                  <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                    <FiFileText className="w-3.5 h-3.5" /> Feedback / Comments
-                  </label>
-                  <textarea
-                    value={evaluationData.feedback}
-                    onChange={(e) =>
-                      setEvaluationData({
-                        ...evaluationData,
-                        feedback: e.target.value,
-                      })
-                    }
-                    placeholder="Provide constructive feedback..."
-                    rows={4}
-                    className="w-full resize-none border-none focus:ring-0 p-0 text-sm text-gray-800 placeholder-gray-300 custom-scrollbar"
-                  />
-                </div>
-              </div>
+                {/* Right Column: Reference & Grading */}
+                <div className="lg:col-span-5 space-y-8">
+                  {/* Reference Solution (Privileged) */}
+                  {selectedAnswer?.questionId?.type === "Coding" && selectedAnswer?.questionId?.codeSnippet && (
+                    <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-2xl overflow-hidden group">
+                      <div className="bg-slate-950 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                        <h5 className="font-black text-indigo-400 uppercase tracking-widest text-[10px] flex items-center gap-2">
+                          <FiShield /> Faculty Guide
+                        </h5>
+                        <Badge variant="warning" className="text-[9px] tracking-tighter bg-amber-500/10 text-amber-500 border-amber-500/20">
+                          REFERENCE
+                        </Badge>
+                      </div>
+                      <div className="p-6">
+                        <pre className="text-slate-300 font-mono text-[13px] overflow-x-auto whitespace-pre-wrap max-h-64 custom-scrollbar leading-relaxed">
+                          {selectedAnswer.questionId.codeSnippet}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
 
-              {/* Actions Footer */}
-              <div className="bg-white px-5 py-4 border-t border-gray-200 flex flex-col gap-3">
-                {selectedAnswer?.questionId?.type === "Coding" && (
-                  <Button
-                    variant="outline"
-                    onClick={handleAIEvaluate}
-                    disabled={loadingAI}
-                    className="w-full flex items-center justify-center gap-2 border-primary-200 text-primary-700 hover:bg-primary-50 rounded-xl py-3 font-bold"
-                  >
-                    {loadingAI ? (
-                      <FiActivity className="animate-spin w-5 h-5" />
-                    ) : (
-                      <>
-                        <span className="text-xl">✨</span> Auto-Grade with AI
-                      </>
-                    )}
-                  </Button>
-                )}
+                  {/* Grading Panel Card */}
+                  <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden sticky top-8 animate-in zoom-in-95 duration-500">
+                    <div className="bg-slate-900 px-7 py-5 border-b border-slate-800 flex items-center justify-between">
+                      <h5 className="font-black text-white uppercase tracking-widest text-xs flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse"></span>
+                        Grading Control
+                      </h5>
+                    </div>
 
-                <div className="flex gap-3">
-                  <Button
-                    variant="secondary"
-                    onClick={() => setShowEvaluateModal(false)}
-                    className="flex-1 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 border-none"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleSubmitEvaluation}
-                    className="flex-[2] rounded-xl shadow-xl shadow-primary-500/20 py-3 font-black tracking-wide bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 flex justify-center w-full"
-                  >
-                    {selectedAnswer?.isEvaluated
-                      ? "Update Grade"
-                      : "Submit Grade"}
-                  </Button>
+                    <div className="p-7 space-y-8 bg-slate-50/50">
+                      {/* Score Input */}
+                      <div className="space-y-3">
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                          Marks Awarded (Max: {selectedAnswer?.questionId?.marks})
+                        </label>
+                        <div className="flex items-stretch h-16 shadow-lg shadow-primary-500/5">
+                          <div className="bg-white border-2 border-r-0 border-slate-200 rounded-l-2xl px-6 flex items-center text-slate-400 font-black text-lg">
+                            Pts
+                          </div>
+                          <input
+                            type="number"
+                            step="0.5"
+                            max={selectedAnswer?.questionId?.marks}
+                            value={evaluationData.marksAwarded}
+                            onChange={(e) => setEvaluationData({ ...evaluationData, marksAwarded: e.target.value })}
+                            className="w-full bg-white border-2 border-slate-200 rounded-r-2xl px-6 font-black text-3xl text-slate-900 outline-none focus:border-primary-500 transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Feedback Textarea */}
+                      <div className="space-y-3">
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                          Evaluator's Feedback
+                        </label>
+                        <div className="bg-white border-2 border-slate-200 rounded-2xl p-4 shadow-lg shadow-primary-500/5 focus-within:border-primary-500 transition-colors min-h-[150px]">
+                          <textarea
+                            value={evaluationData.feedback}
+                            onChange={(e) => setEvaluationData({ ...evaluationData, feedback: e.target.value })}
+                            placeholder="Type constructive feedback here..."
+                            className="w-full h-full resize-none border-none focus:ring-0 p-0 text-slate-700 font-medium placeholder-slate-300 custom-scrollbar text-base"
+                            rows={5}
+                          />
+                        </div>
+                      </div>
+
+                      {/* AI Integration */}
+                      {selectedAnswer?.questionId?.type === "Coding" && (
+                        <button
+                          onClick={handleAIEvaluate}
+                          disabled={loadingAI}
+                          className="w-full group relative flex items-center justify-center gap-3 py-4 bg-white border-2 border-indigo-100 rounded-2xl text-indigo-600 font-black overflow-hidden hover:bg-indigo-50 transition-all shadow-md active:scale-[0.98]"
+                        >
+                          {loadingAI ? (
+                            <FiActivity className="animate-spin w-5 h-5" />
+                          ) : (
+                            <>
+                              <span className="text-xl">✨</span>
+                              <span className="uppercase tracking-widest text-[11px]">Auto-Grade with AI</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      {/* Submission Buttons */}
+                      <div className="flex gap-4 pt-4">
+                        <button
+                          onClick={() => setSelectedAnswer(null)}
+                          className="flex-1 py-4 bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold rounded-2xl transition-all uppercase tracking-widest text-[10px]"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleSubmitEvaluation}
+                          className="flex-[2] py-4 bg-gradient-to-r from-indigo-600 to-primary-600 hover:from-indigo-700 hover:to-primary-700 text-white font-black rounded-2xl shadow-xl shadow-primary-500/30 transition-all active:scale-[0.98] uppercase tracking-widest text-xs"
+                        >
+                          Submit
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </Modal>
+      )}
     </div>
   );
 };

@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const College = require('../models/College');
 const Department = require('../models/Department');
@@ -365,26 +366,35 @@ exports.bulkUploadStudents = async (req, res, next) => {
       });
     }
 
-    const students = [];
-    const errors = [];
+    const rows = [];
 
     fs.createReadStream(req.file.path)
       .pipe(csv())
       .on('data', (row) => {
-        students.push({
-          name: row.name,
-          email: row.email,
-          password: row.password || 'Student@123',
-          role: 'student',
-          collegeId: req.user.collegeId,
-          departmentId: row.departmentId,
-          regNo: row.regNo,
-          enrollmentNumber: row.enrollmentNumber,
-          phone: row.phone,
-        });
+        rows.push(row);
       })
       .on('end', async () => {
         try {
+          const students = await Promise.all(
+            rows.map(async (row) => {
+              const password = row.password || 'Student@123';
+              const salt = await bcrypt.genSalt(10);
+              const hashedPassword = await bcrypt.hash(password, salt);
+
+              return {
+                name: row.name,
+                email: row.email,
+                password: hashedPassword,
+                role: 'student',
+                collegeId: req.user.collegeId,
+                departmentId: row.departmentId,
+                regNo: row.regNo,
+                enrollmentNumber: row.enrollmentNumber,
+                phone: row.phone,
+              };
+            })
+          );
+
           const created = await User.insertMany(students, {
             ordered: false,
           });

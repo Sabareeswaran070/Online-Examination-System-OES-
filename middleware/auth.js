@@ -25,11 +25,9 @@ exports.protect = async (req, res, next) => {
   try {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Auth Middleware - Token decoded:', decoded);
 
     // Get user from token
     req.user = await User.findById(decoded.id).select('-password');
-    console.log('Auth Middleware - User found:', req.user ? req.user._id : 'No user');
 
     if (!req.user) {
       return res.status(401).json({

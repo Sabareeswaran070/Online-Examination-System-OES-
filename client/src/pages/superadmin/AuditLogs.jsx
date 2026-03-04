@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiActivity, FiSearch, FiFilter } from 'react-icons/fi';
+import { FiActivity, FiSearch, FiFilter, FiTrash2 } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Loader from '@/components/common/Loader.jsx';
 import { superAdminService } from '@/services';
@@ -42,6 +42,27 @@ const AuditLogs = () => {
     }
   };
 
+  const handleClearLogs = async () => {
+    if (!window.confirm('Are you sure you want to clear all audit logs? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await superAdminService.clearAuditLogs();
+      toast.success('All audit logs have been cleared');
+      setLogs([]);
+      setTotalLogs(0);
+      setTotalPages(1);
+      setCurrentPage(1);
+    } catch (error) {
+      console.error('Clear logs error:', error);
+      toast.error('Failed to clear audit logs');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getActionColor = (action) => {
     const colors = {
       create: 'bg-green-100 text-green-800',
@@ -55,9 +76,18 @@ const AuditLogs = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl shadow-lg p-6 text-white">
-        <h1 className="text-3xl font-bold">Audit Logs</h1>
-        <p className="mt-2 opacity-90">Track all system activities and changes</p>
+      <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl shadow-lg p-6 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Audit Logs</h1>
+          <p className="mt-2 opacity-90">Track all system activities and changes</p>
+        </div>
+        <button
+          onClick={handleClearLogs}
+          disabled={loading || totalLogs === 0}
+          className="flex items-center gap-2 bg-white/20 hover:bg-white/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors px-4 py-2 rounded-lg font-bold backdrop-blur-sm border border-white/20"
+        >
+          <FiTrash2 /> Clear All Logs
+        </button>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 mb-6">

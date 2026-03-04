@@ -214,22 +214,19 @@ const FacultyDashboard = () => {
             stats.assignedSubjects.map((subject) => (
               <div
                 key={subject._id}
-                className="p-5 bg-gradient-to-br from-primary-50 to-white rounded-lg border border-primary-100 hover:shadow-lg transition-all group cursor-pointer"
+                className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 flex flex-col gap-3 group/sub relative hover:bg-white hover:shadow-md hover:border-primary-100 transition-all duration-200 cursor-pointer"
                 onClick={() => navigate('/faculty/questions', { state: { subject: subject._id } })}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-700 truncate" title={subject.name}>
                       {subject.name}
-                    </h3>
-                    <p className="text-sm text-gray-600 mt-1">{subject.subjectCode}</p>
-                    {subject.credits && (
-                      <span className="inline-block mt-2 px-2 py-1 bg-primary-100 text-primary-700 text-xs rounded">
-                        {subject.credits} credits
-                      </span>
-                    )}
+                    </p>
+                    <p className="text-[10px] font-mono text-slate-400 mt-0.5">
+                      {subject.subjectCode}
+                    </p>
                   </div>
-                  <FiBook className="w-8 h-8 text-primary-300 group-hover:text-primary-500 transition-colors" />
+                  <FiBook className="w-4 h-4 text-slate-300 group-hover/sub:text-primary-500 transition-colors" />
                 </div>
               </div>
             ))

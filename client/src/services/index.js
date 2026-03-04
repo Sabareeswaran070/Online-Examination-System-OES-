@@ -45,6 +45,11 @@ export const superAdminService = {
     return response.data;
   },
 
+  getDepartmentsByCollege: async (collegeId) => {
+    const response = await api.get(`/superadmin/colleges/${collegeId}/departments`);
+    return response.data;
+  },
+
   getCollegeStats: async (id) => {
     const response = await api.get(`/superadmin/colleges/${id}/stats`);
     return response.data;
@@ -94,6 +99,10 @@ export const superAdminService = {
     const response = await api.get('/superadmin/audit-logs', { params });
     return response.data;
   },
+  clearAuditLogs: async () => {
+    const response = await api.delete('/superadmin/audit-logs');
+    return response.data;
+  },
 
   getUsers: async (params) => {
     try {
@@ -123,6 +132,10 @@ export const superAdminService = {
   },
   resetUserPassword: async (id, data) => {
     const response = await api.put(`/superadmin/users/${id}/reset-password`, data);
+    return response.data;
+  },
+  bulkDeleteUsers: async (userIds) => {
+    const response = await api.post('/superadmin/users/bulk-delete', { userIds });
     return response.data;
   },
 
@@ -209,6 +222,10 @@ export const superAdminService = {
     const response = await api.post('/superadmin/users/bulk-upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+    return response.data;
+  },
+  bulkConfirmUpload: async (users) => {
+    const response = await api.post('/superadmin/users/bulk-confirm', { users });
     return response.data;
   },
   createSubject: async (collegeId, deptId, data) => {
@@ -341,8 +358,13 @@ export const deptHeadService = {
     return response.data;
   },
 
-  assignFaculty: async (subjectId, facultyId) => {
-    const response = await api.post(`/depthead/subjects/${subjectId}/assign-faculty`, { facultyId });
+  assignFaculty: async (data) => {
+    const response = await api.post('/depthead/subjects/assign', data);
+    return response.data;
+  },
+
+  unassignFaculty: async (data) => {
+    const response = await api.post('/depthead/subjects/unassign', data);
     return response.data;
   },
 
@@ -377,6 +399,36 @@ export const deptHeadService = {
   },
   generateAIQuestions: async (params) => {
     const response = await api.post('/depthead/questions/generate-ai', params);
+    return response.data;
+  },
+
+  createUser: async (data) => {
+    const response = await api.post('/depthead/users', data);
+    return response.data;
+  },
+
+  updateUser: async (id, data) => {
+    const response = await api.put(`/depthead/users/${id}`, data);
+    return response.data;
+  },
+
+  deleteUser: async (id) => {
+    const response = await api.delete(`/depthead/users/${id}`);
+    return response.data;
+  },
+
+  getOngoingExams: async () => {
+    const response = await api.get('/depthead/proctoring/ongoing');
+    return response.data;
+  },
+
+  getProctoringSettings: async () => {
+    const response = await api.get('/depthead/proctoring/settings');
+    return response.data;
+  },
+
+  updateProctoringSettings: async (data) => {
+    const response = await api.put('/depthead/proctoring/settings', data);
     return response.data;
   },
 };

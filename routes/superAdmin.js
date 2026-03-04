@@ -11,6 +11,7 @@ const {
   toggleCollegeStatus,
   getAnalytics,
   getAuditLogs,
+  clearAuditLogs,
   createUser,
   assignCollegeAdmin,
   removeCollegeAdmin,
@@ -18,6 +19,7 @@ const {
   updateUser,
   resetUserPassword,
   deleteUser,
+  bulkDeleteUsers,
   toggleUserStatus,
   getQuestions,
   createQuestion,
@@ -31,6 +33,7 @@ const {
   updateQuestionSet,
   deleteQuestionSet,
   bulkUploadUsers,
+  bulkConfirmUpload,
   createDepartmentForCollege,
   updateDepartmentForCollege,
   deleteDepartmentFromCollege,
@@ -42,6 +45,7 @@ const {
   getAllExams,
   assignExamToColleges,
   generateAIQuestions,
+  getDepartmentsByCollege,
 } = require('../controllers/superAdminController');
 const { protect } = require('../middleware/auth');
 const { authorize, auditLog } = require('../middleware/rbac');
@@ -131,12 +135,15 @@ router.get('/pincode/:pincode', lookupPincode);
 
 router.get('/analytics', getAnalytics);
 router.get('/audit-logs', getAuditLogs);
+router.delete('/audit-logs', auditLog('clear', 'AuditLog'), clearAuditLogs);
 router
   .route('/users')
   .get(getAllUsers)
   .post(auditLog('create', 'User'), createUser);
 
 router.post('/users/bulk-upload', upload.single('file'), auditLog('bulk-upload', 'User'), bulkUploadUsers);
+router.post('/users/bulk-confirm', auditLog('bulk-confirm', 'User'), bulkConfirmUpload);
+router.post('/users/bulk-delete', auditLog('bulk-delete', 'User'), bulkDeleteUsers);
 
 router
   .route('/users/:id')

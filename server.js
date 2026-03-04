@@ -135,25 +135,43 @@ const PORT = process.env.PORT || 5000;
 // Create super admin if not exists
 const createSuperAdmin = async () => {
   try {
-    const superAdminExists = await User.findOne({ role: 'superadmin' });
+    const adminEmail = process.env.SUPER_ADMIN_EMAIL;
+    const adminPassword = process.env.SUPER_ADMIN_PASSWORD;
 
-    if (!superAdminExists && process.env.SUPER_ADMIN_EMAIL && process.env.SUPER_ADMIN_PASSWORD) {
-      const superAdmin = await User.create({
-        name: 'Super Admin',
-        email: process.env.SUPER_ADMIN_EMAIL,
-        password: process.env.SUPER_ADMIN_PASSWORD,
-        role: 'superadmin',
-        status: 'active',
-      });
+    if (adminEmail && adminPassword) {
+      // Include password to check if it matches
+      let superAdmin = await User.findOne({ email: adminEmail }).select('+password');
 
-      logger.info(`Super Admin created: ${superAdmin.email}`);
-      console.log('\n===========================================');
-      console.log('🔐 SUPER ADMIN CREDENTIALS');
-      console.log('===========================================');
-      console.log(`Email: ${process.env.SUPER_ADMIN_EMAIL}`);
-      console.log(`Password: ${process.env.SUPER_ADMIN_PASSWORD}`);
-      console.log('===========================================\n');
-      console.log('⚠️  IMPORTANT: Change these credentials immediately after first login!\n');
+      if (!superAdmin) {
+        superAdmin = await User.create({
+          name: 'Super Admin',
+          email: adminEmail,
+          password: adminPassword,
+          role: 'superadmin',
+          status: 'active',
+        });
+        logger.info(`Super Admin created: ${superAdmin.email}`);
+      } else {
+        // Check if role, status or password needs updating
+        const isPasswordMatch = await superAdmin.matchPassword(adminPassword);
+
+        if (!isPasswordMatch || superAdmin.role !== 'superadmin' || superAdmin.status !== 'active') {
+          superAdmin.role = 'superadmin';
+          superAdmin.status = 'active';
+          superAdmin.password = adminPassword; // This will trigger the pre-save hash hook
+          await superAdmin.save();
+          logger.info(`Super Admin credentials/status updated: ${superAdmin.email}`);
+        } else {
+          logger.info(`Super Admin verified: ${superAdmin.email}`);
+        }
+      }
+
+      // console.log('\n===========================================');
+      // console.log('🔐 SUPER ADMIN CREDENTIALS');
+      // console.log('===========================================');
+      // console.log(`Email: ${adminEmail}`);
+      // console.log(`Password: ${adminPassword}`);
+      // console.log('===========================================\n');
     }
   } catch (error) {
     logger.error('Error creating super admin:', error);

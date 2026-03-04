@@ -35,7 +35,11 @@ import AdminExams from './pages/admin/Exams';
 
 // Dept Head Pages
 import DeptHeadDashboard from './pages/depthead/Dashboard';
+import DeptHeadSubjects from './pages/depthead/Subjects';
+import DeptHeadFaculty from './pages/depthead/Faculty';
+import DeptHeadStudents from './pages/depthead/Students';
 import DeptHeadExams from './pages/depthead/Exams';
+import DeptHeadProctoring from './pages/depthead/Proctoring';
 
 // Faculty Pages
 import FacultyDashboard from './pages/faculty/Dashboard';
@@ -58,7 +62,7 @@ import Competitions from './pages/student/Competitions';
 import GlobalLeaderboard from './pages/Leaderboard';
 
 // Icons
-import { FiHome, FiUsers, FiBarChart, FiFileText, FiBook, FiTrendingUp, FiAward, FiSettings, FiCheckCircle } from 'react-icons/fi';
+import { FiHome, FiUsers, FiBarChart, FiFileText, FiBook, FiTrendingUp, FiAward, FiSettings, FiCheckCircle, FiMonitor } from 'react-icons/fi';
 
 import { USER_ROLES } from './config/constants';
 
@@ -94,6 +98,7 @@ const navigationConfig = {
     { path: '/dept-head/faculty', label: 'Faculty', icon: FiUsers },
     { path: '/dept-head/students', label: 'Students', icon: FiUsers },
     { path: '/dept-head/exams', label: 'Exams', icon: FiFileText },
+    { path: '/dept-head/proctoring', label: 'Live Proctoring', icon: FiMonitor },
     { path: '/dept-head/evaluations', label: 'Evaluations', icon: FiCheckCircle },
     { path: '/dept-head/analytics', label: 'Analytics', icon: FiBarChart },
   ],
@@ -188,10 +193,11 @@ const DeptHeadRoutes = () => {
     <DashboardLayout navigation={navigationConfig[USER_ROLES.DEPT_HEAD]}>
       <Routes>
         <Route path="dashboard" element={<DeptHeadDashboard />} />
-        <Route path="subjects" element={<div>Subjects Page (Coming Soon)</div>} />
-        <Route path="faculty" element={<div>Faculty Page (Coming Soon)</div>} />
-        <Route path="students" element={<div>Students Page (Coming Soon)</div>} />
+        <Route path="subjects" element={<DeptHeadSubjects />} />
+        <Route path="faculty" element={<DeptHeadFaculty />} />
+        <Route path="students" element={<DeptHeadStudents />} />
         <Route path="exams" element={<DeptHeadExams />} />
+        <Route path="proctoring" element={<DeptHeadProctoring />} />
         <Route path="exams/:id" element={<FacultyExamDetails />} />
         <Route path="exams/:id/results" element={<FacultyResults />} />
         <Route path="evaluations" element={<FacultySubmissions />} />
@@ -251,8 +257,9 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
 
-            {/* Root redirect */}
+            {/* Root and Dashboard redirect */}
             <Route path="/" element={<RoleBasedRedirect />} />
+            <Route path="/dashboard" element={<RoleBasedRedirect />} />
 
             {/* Protected Routes by Role */}
             <Route

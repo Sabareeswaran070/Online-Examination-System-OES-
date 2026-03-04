@@ -264,6 +264,7 @@ const Exams = () => {
                         size="sm"
                         variant="secondary"
                         onClick={() => navigate(`/dept-head/exams/${row._id}`)}
+                        title="Evaluate"
                     >
                         <FiEye className="w-4 h-4" />
                     </Button>

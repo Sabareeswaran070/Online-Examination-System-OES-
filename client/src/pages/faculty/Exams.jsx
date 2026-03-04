@@ -313,7 +313,7 @@ const Exams = () => {
             size="sm"
             variant="secondary"
             onClick={() => navigate(`${basePath}/exams/${row._id}`)}
-            title="View Details"
+            title="Evaluate"
           >
             <FiEye className="w-4 h-4" />
           </Button>

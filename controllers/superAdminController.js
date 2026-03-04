@@ -132,6 +132,23 @@ exports.getAllColleges = async (req, res, next) => {
   }
 };
 
+// @desc    Get departments by college ID
+// @route   GET /api/superadmin/colleges/:id/departments
+// @access  Private/SuperAdmin
+exports.getDepartmentsByCollege = async (req, res, next) => {
+  try {
+    const departments = await Department.find({ collegeId: req.params.id }).sort({ name: 1 });
+    res.status(200).json({
+      success: true,
+      count: departments.length,
+      data: departments,
+    });
+  } catch (error) {
+    logger.error('Get departments by college error:', error);
+    next(error);
+  }
+};
+
 // @desc    Get single college
 // @route   GET /api/superadmin/colleges/:id
 // @access  Private/SuperAdmin
@@ -433,6 +450,25 @@ exports.getAuditLogs = async (req, res, next) => {
   }
 };
 
+// @desc    Clear all audit logs
+// @route   DELETE /api/superadmin/audit-logs
+// @access  Private/SuperAdmin
+exports.clearAuditLogs = async (req, res, next) => {
+  try {
+    await AuditLog.deleteMany({});
+
+    logger.info(`All audit logs cleared by Super Admin: ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'All audit logs cleared successfully',
+    });
+  } catch (error) {
+    logger.error('Clear audit logs error:', error);
+    next(error);
+  }
+};
+
 // @desc    Create user (any role)
 // @route   POST /api/superadmin/users
 // @access  Private/SuperAdmin
@@ -452,7 +488,7 @@ exports.createUser = async (req, res, next) => {
   }
 };
 
-// @desc    Bulk upload users from CSV or Excel
+// @desc    Validate bulk user upload and return preview
 // @route   POST /api/superadmin/users/bulk-upload
 // @access  Private/SuperAdmin
 exports.bulkUploadUsers = async (req, res, next) => {
@@ -463,18 +499,15 @@ exports.bulkUploadUsers = async (req, res, next) => {
 
     const filePath = req.file.path;
     const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
-    const users = [];
-    const errors = [];
-    let processedCount = 0;
+    let rawUsers = [];
 
     if (fileExtension === 'csv') {
       const csv = require('csv-parser');
       const fs = require('fs');
-
       await new Promise((resolve, reject) => {
         fs.createReadStream(filePath)
           .pipe(csv())
-          .on('data', (data) => users.push(data))
+          .on('data', (data) => rawUsers.push(data))
           .on('end', resolve)
           .on('error', reject);
       });
@@ -483,100 +516,170 @@ exports.bulkUploadUsers = async (req, res, next) => {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(filePath);
       const worksheet = workbook.getWorksheet(1);
-
       const headers = [];
-      worksheet.getRow(1).eachCell((cell, colNumber) => {
-        headers[colNumber] = cell.value;
-      });
-
+      worksheet.getRow(1).eachCell((cell, colNumber) => { headers[colNumber] = cell.value; });
       worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return; // Skip headers
+        if (rowNumber === 1) return;
         const rowData = {};
-        row.eachCell((cell, colNumber) => {
-          rowData[headers[colNumber]] = cell.value;
-        });
-        users.push(rowData);
+        row.eachCell((cell, colNumber) => { rowData[headers[colNumber]] = cell.value; });
+        rawUsers.push(rowData);
       });
     } else {
       return res.status(400).json({ success: false, message: 'Invalid file format. Please upload CSV or Excel.' });
     }
 
-    const results = {
-      success: [],
-      failed: [],
+    const validUsers = [];
+    const invalidUsers = [];
+    const existingEmails = await User.find({}).select('email').then(users => users.map(u => u.email.toLowerCase()));
+    const seenInFile = new Set();
+
+    // Resolve all colleges and departments for name-to-id mapping
+    const allColleges = await College.find({}).select('collegeName _id');
+    const collegeMap = {};
+    allColleges.forEach(c => {
+      collegeMap[c.collegeName.toLowerCase().trim()] = c._id;
+      collegeMap[c._id.toString()] = c._id;
+    });
+
+    const allDepartments = await Department.find({}).select('name _id collegeId');
+    const deptMap = {}; // Key: "collegeId_deptname"
+    allDepartments.forEach(d => {
+      const key = `${d.collegeId}_${d.name.toLowerCase().trim()}`;
+      deptMap[key] = d._id;
+      deptMap[d._id.toString()] = d._id;
+    });
+
+    const roleMap = {
+      'admin': 'admin',
+      'college admin': 'admin',
+      'collegeadmin': 'admin',
+      'depthead': 'depthead',
+      'dept head': 'depthead',
+      'department head': 'depthead',
+      'faculty': 'faculty',
+      'student': 'student'
     };
 
-    const defaultPassword = 'Welcome@123';
+    for (const userData of rawUsers) {
+      const { name, email, role, collegeId, college, departmentId, department, dept } = userData;
+      const targetEmail = (email || '').toString().toLowerCase().trim();
+      const rawRole = (role || '').toString().toLowerCase().trim();
+      const mappedRole = roleMap[rawRole] || rawRole;
+      const targetCollegeRaw = (collegeId || college || '').toString().toLowerCase().trim();
+      const resolvedCollegeId = collegeMap[targetCollegeRaw];
 
-    for (const userData of users) {
-      try {
-        const { name, email, role, collegeId, departmentId, password, phone, regNo, enrollmentNumber, employeeId } = userData;
+      const targetDeptRaw = (departmentId || department || dept || '').toString().toLowerCase().trim();
+      let resolvedDeptId = null;
+      if (resolvedCollegeId && targetDeptRaw) {
+        resolvedDeptId = deptMap[`${resolvedCollegeId}_${targetDeptRaw}`] || deptMap[targetDeptRaw];
+      }
 
-        if (!name || !email || !role) {
-          results.failed.push({
-            user: email || name || 'Unknown',
-            reason: 'Missing required fields (name, email, or role)',
-          });
-          continue;
-        }
+      const errors = [];
+      if (!name) errors.push('Name is required');
+      if (!targetEmail) errors.push('Email is required');
+      if (!role) errors.push('Role is required');
+      else if (!['admin', 'depthead', 'faculty', 'student'].includes(mappedRole)) {
+        errors.push(`Invalid role: ${role}. Use: Student, Faculty, Dept Head, or College Admin`);
+      }
 
-        // Check if user already exists
-        const userExists = await User.findOne({ email: email.toLowerCase() });
-        if (userExists) {
-          results.failed.push({
-            user: email,
-            reason: 'User with this email already exists',
-          });
-          continue;
-        }
+      if (!targetCollegeRaw) errors.push('College is required');
+      else if (!resolvedCollegeId) errors.push(`College "${targetCollegeRaw}" not found in system`);
 
-        const newUser = await User.create({
-          name,
-          email: email.toLowerCase(),
-          role: role.toLowerCase(),
-          collegeId: collegeId || null,
-          departmentId: departmentId || null,
-          password: password || defaultPassword,
-          phone: phone || '',
-          regNo: regNo || '',
-          enrollmentNumber: enrollmentNumber || '',
-          employeeId: employeeId || '',
-          status: 'active',
-        });
+      if (['depthead', 'faculty'].includes(mappedRole) && !resolvedDeptId) {
+        errors.push(`Department is required for ${role} users`);
+      }
 
-        results.success.push({
-          email: newUser.email,
-          id: newUser._id,
-        });
-        processedCount++;
-      } catch (error) {
-        results.failed.push({
-          user: userData.email || 'Unknown',
-          reason: error.message,
-        });
+      if (targetEmail) {
+        if (existingEmails.includes(targetEmail)) errors.push('Email already exists in system');
+        if (seenInFile.has(targetEmail)) errors.push('Duplicate email in file');
+        seenInFile.add(targetEmail);
+      }
+
+      const processedUser = {
+        ...userData,
+        name: name || 'Unknown',
+        email: targetEmail,
+        role: mappedRole,
+        collegeId: resolvedCollegeId,
+        departmentId: resolvedDeptId,
+        collegeNameDisplay: targetCollegeRaw,
+        status: 'active'
+      };
+
+      if (errors.length > 0) {
+        invalidUsers.push({ ...processedUser, reason: errors.join(', ') });
+      } else {
+        validUsers.push(processedUser);
       }
     }
 
     // Clean up file
     const fs = require('fs');
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
-
-    logger.info(`Bulk user upload completed. Success: ${results.success.length}, Failed: ${results.failed.length}`);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
     res.status(200).json({
       success: true,
-      message: `Processed ${users.length} users. ${results.success.length} created, ${results.failed.length} failed.`,
-      summary: {
-        total: users.length,
-        created: results.success.length,
-        failed: results.failed.length,
-      },
-      errors: results.failed,
+      summary: { total: rawUsers.length, valid: validUsers.length, invalid: invalidUsers.length },
+      validUsers,
+      invalidUsers
     });
   } catch (error) {
-    logger.error('Bulk upload users error:', error);
+    logger.error('Bulk upload validation error:', error);
+    next(error);
+  }
+};
+
+// @desc    Confirm and save bulk users
+// @route   POST /api/superadmin/users/bulk-confirm
+// @access  Private/SuperAdmin
+exports.bulkConfirmUpload = async (req, res, next) => {
+  try {
+    const { users } = req.body;
+
+    if (!users || !Array.isArray(users) || users.length === 0) {
+      return res.status(400).json({ success: false, message: 'No valid users to import' });
+    }
+
+    const defaultPassword = 'Welcome@123';
+    const bcrypt = require('bcryptjs');
+    const salt = await bcrypt.genSalt(10);
+    const hashedDefaultPassword = await bcrypt.hash(defaultPassword, salt);
+
+    const usersToCreate = await Promise.all(users.map(async (u) => {
+      const password = u.password || defaultPassword;
+      const userPassword = (password === defaultPassword) ? hashedDefaultPassword : await bcrypt.hash(password, salt);
+
+      return {
+        name: u.name,
+        email: u.email.toLowerCase(),
+        password: userPassword,
+        role: u.role,
+        collegeId: u.collegeId,
+        departmentId: u.departmentId || null,
+        phone: u.phone || '',
+        regNo: u.regNo || '',
+        enrollmentNumber: u.enrollmentNumber || '',
+        status: 'active'
+      };
+    }));
+
+    let created;
+    try {
+      created = await User.insertMany(usersToCreate, { ordered: false });
+    } catch (err) {
+      created = err.insertedDocs || [];
+      logger.warn(`Partial success in bulk import: ${created.length} created, some failed.`);
+    }
+
+    logger.info(`${created.length} users imported in bulk by ${req.user.email}`);
+
+    res.status(201).json({
+      success: true,
+      message: `${created.length} users imported successfully`,
+      count: created.length
+    });
+  } catch (error) {
+    logger.error('Bulk confirm import major error:', error);
     next(error);
   }
 };
@@ -847,6 +950,14 @@ exports.deleteUser = async (req, res, next) => {
       });
     }
 
+    // Protection for designated super admin
+    if (user.email === 'sdmin@gmail.com') {
+      return res.status(403).json({
+        success: false,
+        message: 'This protected super admin account cannot be deleted',
+      });
+    }
+
     await user.deleteOne();
 
     logger.info(`User deleted: ${user.email} by ${req.user.email}`);
@@ -857,6 +968,53 @@ exports.deleteUser = async (req, res, next) => {
     });
   } catch (error) {
     logger.error('Delete user error:', error);
+    next(error);
+  }
+};
+
+// @desc    Bulk delete users
+// @route   POST /api/superadmin/users/bulk-delete
+// @access  Private/SuperAdmin
+exports.bulkDeleteUsers = async (req, res, next) => {
+  try {
+    const { userIds } = req.body;
+
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide an array of user IDs to delete',
+      });
+    }
+
+    // Find all users to check for protection
+    const usersToDelete = await User.find({ _id: { $in: userIds } });
+
+    // Filter out protected users
+    const protectedEmails = ['sdmin@gmail.com'];
+    const validUserIds = usersToDelete
+      .filter(user =>
+        user._id.toString() !== req.user._id.toString() &&
+        !protectedEmails.includes(user.email)
+      )
+      .map(user => user._id);
+
+    if (validUserIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid users to delete. Protected accounts cannot be removed.',
+      });
+    }
+
+    const result = await User.deleteMany({ _id: { $in: validUserIds } });
+
+    logger.info(`${result.deletedCount} users deleted in bulk by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: `${result.deletedCount} users deleted successfully`,
+    });
+  } catch (error) {
+    logger.error('Bulk delete users error:', error);
     next(error);
   }
 };
@@ -1059,6 +1217,13 @@ exports.toggleUserStatus = async (req, res, next) => {
     }
 
     const { status } = req.body;
+
+    if (user.email === 'sdmin@gmail.com' && status !== 'active') {
+      return res.status(403).json({
+        success: false,
+        message: 'The status of this protected super admin account cannot be changed',
+      });
+    }
 
     if (!['active', 'inactive', 'suspended'].includes(status)) {
       return res.status(400).json({

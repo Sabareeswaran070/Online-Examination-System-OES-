@@ -146,18 +146,24 @@ exports.getDashboard = async (req, res, next) => {
       {
         $match: {
           $or: [
-            // Super Admin Level: college must match
-            { 'creator.role': 'superadmin', collegeId: req.user.collegeId },
-            // College Admin Level: college must match
-            { 'creator.role': 'admin', collegeId: req.user.collegeId },
-            // Dept Head Level: dept must match
-            { 'creator.role': 'depthead', departmentId: req.user.departmentId },
-            // Faculty Level: student must be in allowedStudents
-            { 'creator.role': 'faculty', allowedStudents: req.user._id },
-            // Global exams (no collegeId/departmentId) created by Super Admin are still accessible
-            { 'creator.role': 'superadmin', collegeId: { $exists: false } },
-            // Fallback for explicitly allowed students
-            { allowedStudents: req.user._id }
+            // 1. Explicitly allowed students
+            { allowedStudents: req.user._id },
+            // 2. Open exams (no specific allowedStudents)
+            {
+              $and: [
+                { $or: [{ allowedStudents: { $exists: false } }, { allowedStudents: { $size: 0 } }] },
+                {
+                  $or: [
+                    // Global exams
+                    { collegeId: { $exists: false } },
+                    // College-wide exams
+                    { collegeId: req.user.collegeId, departmentId: { $exists: false } },
+                    // Departmental exams
+                    { departmentId: req.user.departmentId }
+                  ]
+                }
+              ]
+            }
           ]
         }
       },
@@ -249,12 +255,24 @@ exports.getAvailableExams = async (req, res, next) => {
       {
         $match: {
           $or: [
-            { 'creator.role': 'superadmin', collegeId: req.user.collegeId },
-            { 'creator.role': 'admin', collegeId: req.user.collegeId },
-            { 'creator.role': 'depthead', departmentId: req.user.departmentId },
-            { 'creator.role': 'faculty', allowedStudents: req.user._id },
-            { 'creator.role': 'superadmin', collegeId: { $exists: false } },
-            { allowedStudents: req.user._id }
+            // 1. Explicitly allowed students
+            { allowedStudents: req.user._id },
+            // 2. Open exams (no specific allowedStudents)
+            {
+              $and: [
+                { $or: [{ allowedStudents: { $exists: false } }, { allowedStudents: { $size: 0 } }] },
+                {
+                  $or: [
+                    // Global exams
+                    { collegeId: { $exists: false } },
+                    // College-wide exams
+                    { collegeId: req.user.collegeId, departmentId: { $exists: false } },
+                    // Departmental exams
+                    { departmentId: req.user.departmentId }
+                  ]
+                }
+              ]
+            }
           ]
         }
       },
@@ -319,25 +337,23 @@ exports.getExamDetails = async (req, res, next) => {
       });
     }
 
-    // Role-based access check
-    const creator = await User.findById(exam.facultyId);
+    // Role-based access check simplified
     let isAllowed = false;
 
-    if (exam.allowedStudents.includes(req.user._id)) {
+    if (exam.allowedStudents && exam.allowedStudents.some(id => id.toString() === req.user._id.toString())) {
       isAllowed = true;
-    } else if (creator) {
-      if (creator.role === 'superadmin') {
-        // Super Admin Level: Must be from the same college (if global, anyone)
-        isAllowed = !exam.collegeId || exam.collegeId.toString() === req.user.collegeId?.toString();
-      } else if (creator.role === 'admin') {
-        // College Admin Level: Must be from the same college
-        isAllowed = exam.collegeId?.toString() === req.user.collegeId?.toString();
-      } else if (creator.role === 'depthead') {
-        // Dept Head Level: Must be from the same department
-        isAllowed = exam.departmentId?.toString() === req.user.departmentId?.toString();
-      } else if (creator.role === 'faculty') {
-        // Faculty Level: Only if student is specifically allowed
-        isAllowed = exam.allowedStudents.includes(req.user._id);
+    } else if (!exam.allowedStudents || exam.allowedStudents.length === 0) {
+      if (!exam.collegeId) {
+        // Global exam
+        isAllowed = true;
+      } else if (exam.collegeId.toString() === req.user.collegeId?.toString()) {
+        if (!exam.departmentId) {
+          // College-wide
+          isAllowed = true;
+        } else if (exam.departmentId.toString() === req.user.departmentId?.toString()) {
+          // Departmental
+          isAllowed = true;
+        }
       }
     }
 
@@ -395,6 +411,29 @@ exports.startExam = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: 'Exam not found',
+      });
+    }
+
+    // Role-based access check
+    let isAllowed = false;
+    if (exam.allowedStudents && exam.allowedStudents.some(id => id.toString() === req.user._id.toString())) {
+      isAllowed = true;
+    } else if (!exam.allowedStudents || exam.allowedStudents.length === 0) {
+      if (!exam.collegeId) {
+        isAllowed = true;
+      } else if (exam.collegeId.toString() === req.user.collegeId?.toString()) {
+        if (!exam.departmentId) {
+          isAllowed = true;
+        } else if (exam.departmentId.toString() === req.user.departmentId?.toString()) {
+          isAllowed = true;
+        }
+      }
+    }
+
+    if (!isAllowed) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not allowed to take this exam',
       });
     }
 

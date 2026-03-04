@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import Button from '@/components/common/Button.jsx';
@@ -13,6 +13,32 @@ const Login = () => {
     password: '',
   });
   const [loading, setLoading] = useState(false);
+  const { user, isAuthenticated } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      switch (user.role) {
+        case USER_ROLES.SUPER_ADMIN:
+          navigate('/super-admin/dashboard');
+          break;
+        case USER_ROLES.ADMIN:
+          navigate('/admin/dashboard');
+          break;
+        case USER_ROLES.DEPT_HEAD:
+          navigate('/dept-head/dashboard');
+          break;
+        case USER_ROLES.FACULTY:
+          navigate('/faculty/dashboard');
+          break;
+        case USER_ROLES.STUDENT:
+          navigate('/student/dashboard');
+          break;
+        default:
+          navigate('/dashboard');
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
