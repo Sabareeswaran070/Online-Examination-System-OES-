@@ -13,6 +13,7 @@ const {
   runCode,
   logViolation,
   requestUnlock,
+  uploadSnapshot,
 } = require('../controllers/studentController');
 const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/rbac');
@@ -85,5 +86,13 @@ router.get('/analytics', getAnalytics);
 
 // Code execution
 router.post('/run-code', runCode);
+
+// Camera snapshot upload
+router.post(
+  '/exams/:id/snapshot',
+  validateObjectId('id'),
+  validate,
+  uploadSnapshot
+);
 
 module.exports = router;

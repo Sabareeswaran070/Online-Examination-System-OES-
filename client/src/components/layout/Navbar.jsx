@@ -22,7 +22,7 @@ const Navbar = ({ onMenuClick }) => {
               <div className="h-8 w-8 md:h-10 md:w-10 bg-primary-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg md:text-xl">E</span>
               </div>
-              <span className="ml-2 md:ml-3 text-lg md:text-xl font-bold text-gray-900 truncate max-w-[120px] md:max-w-none">
+              <span className="ml-2 md:ml-3 text-lg md:text-xl font-black text-gray-900 truncate max-w-[120px] md:max-w-none font-display tracking-tight">
                 Exam System
               </span>
             </Link>
@@ -37,7 +37,7 @@ const Navbar = ({ onMenuClick }) => {
             {/* User Menu */}
             <div className="flex items-center space-x-2 md:space-x-3">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+                <p className="text-sm font-bold text-gray-900 font-display">{user?.name}</p>
                 <p className="text-xs text-gray-500">{formatRoleName(user?.role)}</p>
               </div>
               <div className="h-8 w-8 md:h-10 md:w-10 bg-primary-100 rounded-full flex items-center justify-center">

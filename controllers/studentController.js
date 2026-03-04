@@ -1344,3 +1344,35 @@ exports.requestUnlock = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Upload a webcam snapshot during exam
+// @route   POST /api/student/exams/:id/snapshot
+// @access  Private/Student
+exports.uploadSnapshot = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { dataUrl } = req.body;
+
+    if (!dataUrl || !dataUrl.startsWith('data:image/')) {
+      return res.status(400).json({ success: false, message: 'Invalid snapshot data' });
+    }
+
+    const result = await Result.findOne({ examId: id, studentId: req.user._id });
+    if (!result || result.status !== 'in-progress') {
+      return res.status(404).json({ success: false, message: 'No active exam session found' });
+    }
+
+    // Keep only most recent 20 snapshots
+    const snapshot = { dataUrl, capturedAt: new Date() };
+    result.snapshots = [...(result.snapshots || []).slice(-19), snapshot];
+    result.cameraEnabled = true;
+
+    await result.save();
+
+    res.status(200).json({ success: true, message: 'Snapshot saved' });
+  } catch (error) {
+    logger.error('Upload snapshot error:', error);
+    next(error);
+  }
+};
+

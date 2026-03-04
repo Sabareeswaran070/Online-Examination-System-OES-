@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiCode, FiPlay, FiClock, FiCpu, FiChevronDown, FiChevronUp, FiEye, FiFileText, FiTerminal, FiCheckCircle, FiXCircle, FiLoader, FiLock, FiAlertTriangle } from 'react-icons/fi';
+import { FiCode, FiPlay, FiClock, FiCpu, FiChevronDown, FiChevronUp, FiEye, FiFileText, FiTerminal, FiCheckCircle, FiXCircle, FiLoader, FiLock, FiAlertTriangle, FiCamera } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Modal from '@/components/common/Modal.jsx';
@@ -51,6 +51,12 @@ const TakeExam = () => {
   const [showInstructions, setShowInstructions] = useState(true);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [hasStartedTimer, setHasStartedTimer] = useState(false);
+
+  // Camera Monitoring States
+  const [cameraStream, setCameraStream] = useState(null);
+  const [cameraError, setCameraError] = useState(false);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
 
 
 
@@ -200,6 +206,69 @@ const TakeExam = () => {
     }
     return () => clearInterval(interval);
   }, [isLocked, unlockRequestStatus, id]);
+
+  // Camera Handling
+  useEffect(() => {
+    if (!result || !exam) return;
+
+    const startCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 320 },
+            height: { ideal: 240 },
+            frameRate: { max: 15 }
+          }
+        });
+        setCameraStream(stream);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (err) {
+        console.error('Camera access error:', err);
+        setCameraError(true);
+        toast.error('Camera access denied! Proctoring requires camera.', { duration: 5000 });
+      }
+    };
+
+    startCamera();
+
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [result, exam]);
+
+  // Periodic Snapshot Capture (Every 10 seconds)
+  useEffect(() => {
+    if (!cameraStream || isLocked || result?.status !== 'in-progress') return;
+
+    const captureInterval = setInterval(async () => {
+      if (!videoRef.current || !canvasRef.current) return;
+
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      const context = canvas.getContext('2d');
+
+      // Set canvas dimensions to match video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      // Draw current video frame to canvas
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      try {
+        // Convert to base64 JPEG (lower quality to save bandwidth)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+        await studentService.uploadSnapshot(id, dataUrl);
+      } catch (error) {
+        console.error('Failed to upload snapshot:', error);
+      }
+    }, 10000); // 10 seconds
+
+    return () => clearInterval(captureInterval);
+  }, [cameraStream, isLocked, result?.status, id]);
 
   const handleViolation = async (type, description) => {
     if (isLocked) return;
@@ -574,8 +643,8 @@ const TakeExam = () => {
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">📝</div>
             <div className="min-w-0">
-              <h1 className="text-base font-bold text-gray-900 leading-tight truncate">{exam.title}</h1>
-              <p className="text-xs text-gray-400">{exam.subject?.name}</p>
+              <h1 className="text-sm font-bold text-gray-900 leading-tight truncate">{exam.title}</h1>
+              <p className="text-[11px] text-gray-400">{exam.subject?.name}</p>
             </div>
             {exam.proctoring?.enabled && (
               <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 border border-red-100 rounded-full animate-pulse ml-2 flex-shrink-0">
@@ -590,14 +659,14 @@ const TakeExam = () => {
             <div className="w-32 h-1.5 bg-gray-100 rounded-full">
               <div className="h-full bg-primary-500 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
             </div>
-            <span className="text-sm text-gray-500 font-semibold">{answered}/{exam.questions.length}</span>
+            <span className="text-xs text-gray-500 font-semibold">{answered}/{exam.questions.length}</span>
           </div>
 
           {/* Right: Timer + violations + submit */}
           <div className="flex items-center gap-3 flex-shrink-0">
             {tabSwitchCount > 0 && <Badge variant="warning">Tabs: {tabSwitchCount}</Badge>}
             {fullscreenExitCount > 0 && <Badge variant="danger">FS Exits: {fullscreenExitCount}</Badge>}
-            <div className={`font-mono text-lg font-black px-4 py-1.5 rounded-lg border ${timeLeft < 300 ? 'text-red-600 bg-red-50 border-red-200' : 'text-primary-700 bg-primary-50 border-primary-200'}`}>
+            <div className={`font-mono text-base font-black px-3 py-1 rounded-lg border ${timeLeft < 300 ? 'text-red-600 bg-red-50 border-red-200' : 'text-primary-700 bg-primary-50 border-primary-200'}`}>
               ⏱ {formatTime(timeLeft)}
             </div>
             <Button size="sm" onClick={() => handleSubmit(false)} loading={submitting}>Submit</Button>
@@ -609,7 +678,7 @@ const TakeExam = () => {
         {/* ── Left Sidebar: Section-grouped question palette ── */}
         <div className="w-56 flex-none border-r border-gray-200 bg-white overflow-y-auto flex flex-col">
           <div className="p-3 border-b border-gray-100">
-            <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Question Palette</p>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Question Palette</p>
           </div>
           <div className="flex-1 p-3 space-y-4">
             {questionsBySection.map(({ section, qs }) => {
@@ -618,7 +687,7 @@ const TakeExam = () => {
                 <div key={section}>
                   <div className="flex items-center gap-2 mb-2">
                     <div className={`w-2 h-2 rounded-full ${sl.dot}`} />
-                    <span className="text-xs font-black text-gray-500 uppercase tracking-wider">{section}</span>
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider">{section}</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {qs.map(q => {
@@ -632,7 +701,7 @@ const TakeExam = () => {
                       else if (isAns) cls = 'bg-emerald-100 text-emerald-700 border-emerald-300';
                       return (
                         <button key={q._id} onClick={() => setCurrentQuestion(idx)}
-                          className={`relative w-9 h-9 rounded-lg border text-sm font-bold transition-all ${cls}`}>
+                          className={`relative w-8 h-8 rounded-lg border text-xs font-bold transition-all ${cls}`}>
                           {idx + 1}
                           {isFlagged && <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 rounded-full" />}
                         </button>
@@ -652,8 +721,8 @@ const TakeExam = () => {
               { cls: 'bg-gray-200', label: 'Unanswered' },
             ].map(l => (
               <div key={l.label} className="flex items-center gap-2">
-                <div className={`w-3.5 h-3.5 rounded ${l.cls}`} />
-                <span className="text-xs text-gray-500">{l.label}</span>
+                <div className={`w-3 h-3 rounded ${l.cls}`} />
+                <span className="text-[10px] text-gray-500">{l.label}</span>
               </div>
             ))}
           </div>
@@ -665,14 +734,14 @@ const TakeExam = () => {
           {/* Question header  */}
           <div className="px-6 pt-5 pb-3 border-b border-gray-100 bg-white flex items-start gap-3 flex-shrink-0">
             <div className="flex items-center gap-2 flex-1 flex-wrap">
-              <span className="bg-gray-100 text-gray-600 text-sm font-bold px-3 py-1.5 rounded-md">
+              <span className="bg-gray-100 text-gray-600 text-xs font-bold px-2.5 py-1 rounded-md">
                 Q{currentQuestion + 1} / {exam.questions.length}
               </span>
-              <span className={`text-sm font-bold px-3 py-1.5 rounded-full ${qSection.bg} ${qSection.text}`}>{question.type}</span>
-              <span className="text-sm text-gray-400 font-semibold">{question.marks} {question.marks === 1 ? 'mark' : 'marks'}</span>
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${qSection.bg} ${qSection.text}`}>{question.type}</span>
+              <span className="text-xs text-gray-400 font-semibold">{question.marks} {question.marks === 1 ? 'mark' : 'marks'}</span>
             </div>
             <button onClick={() => toggleFlag(question._id)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold border transition-colors flex-shrink-0 ${flagged[question._id]
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors flex-shrink-0 ${flagged[question._id]
                 ? 'bg-amber-50 border-amber-300 text-amber-700'
                 : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
                 }`}>
@@ -682,7 +751,7 @@ const TakeExam = () => {
 
           <div className="flex-1 overflow-y-auto p-6">
             <div className="max-w-3xl mx-auto space-y-6">
-              <h3 className="text-lg font-semibold text-gray-900 leading-relaxed">{question.questionText}</h3>
+              <h3 className="text-base font-semibold text-gray-900 leading-relaxed">{question.questionText}</h3>
 
               {/* Answer Input */}
               <div className="space-y-3">
@@ -694,12 +763,12 @@ const TakeExam = () => {
                         <label key={index}
                           className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${isSelected ? 'bg-primary-50 border-primary-400 ring-2 ring-primary-100' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                             }`}>
-                          <div className={`w-9 h-9 rounded-full border-2 flex items-center justify-center text-base font-black flex-shrink-0 ${isSelected ? 'bg-primary-600 border-primary-600 text-white' : 'border-gray-300 text-gray-400'
+                          <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-black flex-shrink-0 ${isSelected ? 'bg-primary-600 border-primary-600 text-white' : 'border-gray-300 text-gray-400'
                             }`}>{String.fromCharCode(65 + index)}</div>
                           <input type="radio" name={`question-${question._id}`} value={option.text} checked={isSelected}
                             onChange={(e) => handleAnswerChange(question._id, e.target.value)} className="hidden" />
-                          <span className={`font-medium text-base ${isSelected ? 'text-primary-900' : 'text-gray-800'}`}>{option.text}</span>
-                          {isSelected && <span className="ml-auto text-primary-600 text-xl">✓</span>}
+                          <span className={`font-medium text-sm ${isSelected ? 'text-primary-900' : 'text-gray-800'}`}>{option.text}</span>
+                          {isSelected && <span className="ml-auto text-primary-600 text-lg">✓</span>}
                         </label>
                       );
                     })}
@@ -718,10 +787,10 @@ const TakeExam = () => {
                           }`}>
                           <input type="radio" name={`question-${question._id}`} value={option} checked={isSelected}
                             onChange={(e) => handleAnswerChange(question._id, e.target.value)} className="hidden" />
-                          <span className="text-4xl">{isTrue ? '✓' : '✗'}</span>
-                          <span className={`text-2xl font-black tracking-wide ${isSelected ? (isTrue ? 'text-emerald-700' : 'text-red-700') : 'text-gray-300'
+                          <span className="text-3xl">{isTrue ? '✓' : '✗'}</span>
+                          <span className={`text-xl font-black tracking-wide ${isSelected ? (isTrue ? 'text-emerald-700' : 'text-red-700') : 'text-gray-300'
                             }`}>{option.toUpperCase()}</span>
-                          {isSelected && <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isTrue ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>Selected</span>}
+                          {isSelected && <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isTrue ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>Selected</span>}
                         </label>
                       );
                     })}
@@ -732,14 +801,14 @@ const TakeExam = () => {
                   <div>
                     <textarea value={answers[question._id] || ''}
                       onChange={(e) => handleAnswerChange(question._id, e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 min-h-[200px] resize-y font-sans text-base leading-relaxed"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 min-h-[200px] resize-y font-sans text-sm leading-relaxed"
                       rows={8} placeholder="Write your answer here…" />
                     {question.wordLimit && (
                       <div className="flex items-center gap-3 mt-2">
                         <div className="flex-1 h-1 bg-gray-100 rounded-full">
                           <div className="h-full bg-primary-400 rounded-full transition-all" style={{ width: `${Math.min(((answers[question._id]?.trim().split(/\s+/).filter(Boolean).length || 0) / question.wordLimit) * 100, 100)}%` }} />
                         </div>
-                        <span className="text-sm text-gray-500 font-semibold">
+                        <span className="text-xs text-gray-500 font-semibold">
                           {answers[question._id]?.trim().split(/\s+/).filter(Boolean).length || 0} / {question.wordLimit} words
                         </span>
                       </div>
@@ -1268,8 +1337,40 @@ const TakeExam = () => {
           </div>
         </div>
       </Modal>
-    </div >
+
+      {/* Hidden canvas for snapshots */}
+      <canvas ref={canvasRef} className="hidden" />
+
+      {/* Camera Preview PiP */}
+      {cameraStream && !isLocked && (
+        <div className="fixed bottom-24 right-6 z-50 group">
+          <div className="relative w-40 h-32 rounded-xl overflow-hidden shadow-2xl border-2 border-white ring-4 ring-primary-500/20 bg-gray-900 group-hover:scale-110 transition-transform duration-300">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover mirror"
+            />
+            <div className="absolute top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 bg-red-600 rounded text-[9px] font-bold text-white animate-pulse">
+              <span className="w-1.5 h-1.5 bg-white rounded-full" />
+              REC
+            </div>
+            <div className="absolute bottom-0 inset-x-0 p-1 bg-black/50 backdrop-blur-sm">
+              <p className="text-[10px] text-white font-medium truncate text-center flex items-center justify-center gap-1">
+                <FiCamera className="w-3 h-3" /> Live Proctoring
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
+
+// Mirror style for webcam preview
+const style = document.createElement('style');
+style.innerHTML = `.mirror { transform: scaleX(-1); }`;
+document.head.appendChild(style);
 
 export default TakeExam;

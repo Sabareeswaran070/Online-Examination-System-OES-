@@ -29,6 +29,7 @@ const {
   bulkDeleteExams,
   bulkDeleteQuestions,
   resetExamAttempt,
+  getLiveSnapshots,
 } = require('../controllers/facultyController');
 const { protect } = require('../middleware/auth');
 const { authorize, auditLog } = require('../middleware/rbac');
@@ -151,6 +152,13 @@ router.delete(
   validate,
   auditLog('resetAttempt', 'Result'),
   resetExamAttempt
+);
+
+router.get(
+  '/exams/:id/live-snapshots',
+  validateObjectId('id'),
+  validate,
+  getLiveSnapshots
 );
 
 // Question routes

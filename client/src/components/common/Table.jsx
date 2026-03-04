@@ -47,7 +47,7 @@ const Table = ({
               <th
                 key={index}
                 className={clsx(
-                  'px-6 py-3 text-left text-xs font-bold uppercase tracking-wider',
+                  'px-6 py-3 text-left text-xs font-bold uppercase tracking-wider font-display',
                   column.className
                 )}
               >

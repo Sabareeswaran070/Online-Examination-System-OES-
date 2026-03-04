@@ -103,6 +103,16 @@ const resultSchema = new mongoose.Schema(
         enum: ['none', 'pending', 'approved', 'rejected'],
         default: 'none'
       }
+    },
+    cameraEnabled: { type: Boolean, default: false },
+    snapshots: {
+      type: [
+        {
+          dataUrl: { type: String }, // base64 JPEG
+          capturedAt: { type: Date, default: Date.now },
+        }
+      ],
+      default: [],
     }
   },
   {

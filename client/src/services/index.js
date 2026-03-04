@@ -565,6 +565,10 @@ export const facultyService = {
     const response = await api.delete(`/faculty/exams/${examId}/results/${studentId}/reset`);
     return response.data;
   },
+  getLiveSnapshots: async (examId) => {
+    const response = await api.get(`/faculty/exams/${examId}/live-snapshots`);
+    return response.data;
+  },
 };
 
 // Student Services
@@ -629,6 +633,10 @@ export const studentService = {
   },
   requestUnlock: async (id, reason) => {
     const response = await api.post(`/student/exams/${id}/request-unlock`, { reason });
+    return response.data;
+  },
+  uploadSnapshot: async (id, dataUrl) => {
+    const response = await api.post(`/student/exams/${id}/snapshot`, { dataUrl });
     return response.data;
   },
 };
