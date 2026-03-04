@@ -317,6 +317,16 @@ const Exams = () => {
           >
             <FiEye className="w-4 h-4" />
           </Button>
+          {getExamLiveStatus(row).label === 'Ongoing' && (
+            <Button
+              size="sm"
+              variant="info"
+              onClick={() => navigate(`${basePath}/exams/${row._id}/monitoring`)}
+              title="Monitor Live"
+            >
+              <FiMonitor className="w-4 h-4" />
+            </Button>
+          )}
           <Button
             size="sm"
             variant="primary"

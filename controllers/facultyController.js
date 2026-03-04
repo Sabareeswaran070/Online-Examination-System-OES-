@@ -1739,3 +1739,42 @@ exports.bulkDeleteQuestions = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Get live webcam snapshots for all students in an exam
+// @route   GET /api/faculty/exams/:id/live-snapshots
+// @access  Private/Faculty
+exports.getLiveSnapshots = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Find all in-progress results for this exam
+    const results = await Result.find({ examId: id, status: 'in-progress' })
+      .populate('studentId', 'name email rollNumber')
+      .select('studentId tabSwitchCount fullscreenExitCount copyPasteCount cameraEnabled snapshots startedAt');
+
+    const liveData = results.map((r) => {
+      const latestSnapshot = r.snapshots && r.snapshots.length > 0
+        ? r.snapshots[r.snapshots.length - 1]
+        : null;
+
+      return {
+        studentId: r.studentId?._id,
+        name: r.studentId?.name || 'Unknown',
+        email: r.studentId?.email,
+        rollNumber: r.studentId?.rollNumber,
+        cameraEnabled: r.cameraEnabled,
+        tabSwitchCount: r.tabSwitchCount || 0,
+        fullscreenExitCount: r.fullscreenExitCount || 0,
+        copyPasteCount: r.copyPasteCount || 0,
+        startedAt: r.startedAt,
+        latestSnapshot,
+      };
+    });
+
+    res.status(200).json({ success: true, data: liveData });
+  } catch (error) {
+    logger.error('Get live snapshots error:', error);
+    next(error);
+  }
+};
+

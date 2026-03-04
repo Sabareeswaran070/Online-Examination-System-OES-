@@ -48,6 +48,7 @@ import FacultyExamDetails from './pages/faculty/ExamDetails';
 const FacultyQuestions = lazy(() => import('./pages/faculty/Questions'));
 const FacultyResults = lazy(() => import('./pages/faculty/Results'));
 const FacultySubmissions = lazy(() => import('./pages/faculty/Submissions'));
+const LiveMonitoring = lazy(() => import('./pages/faculty/LiveMonitoring'));
 
 // Student Pages
 import StudentDashboard from './pages/student/Dashboard';
@@ -198,6 +199,7 @@ const DeptHeadRoutes = () => {
         <Route path="students" element={<DeptHeadStudents />} />
         <Route path="exams" element={<DeptHeadExams />} />
         <Route path="proctoring" element={<DeptHeadProctoring />} />
+        <Route path="exams/:id/monitoring" element={<LiveMonitoring />} />
         <Route path="exams/:id" element={<FacultyExamDetails />} />
         <Route path="exams/:id/results" element={<FacultyResults />} />
         <Route path="evaluations" element={<FacultySubmissions />} />
@@ -215,6 +217,7 @@ const FacultyRoutes = () => {
         <Route path="exams" element={<FacultyExams />} />
         <Route path="exams/:id" element={<FacultyExamDetails />} />
         <Route path="exams/:id/results" element={<FacultyResults />} />
+        <Route path="exams/:id/monitoring" element={<LiveMonitoring />} />
         <Route path="evaluations" element={<FacultySubmissions />} />
         <Route path="questions" element={<FacultyQuestions />} />
       </Routes>

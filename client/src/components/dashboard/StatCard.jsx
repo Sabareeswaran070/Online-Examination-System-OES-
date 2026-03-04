@@ -14,7 +14,7 @@ const StatCard = ({ title, value, icon: Icon, trend, trendValue, color = 'primar
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <p className="text-sm text-gray-600 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-gray-900">{value}</p>
+          <p className="text-3xl font-black text-gray-900 font-display tracking-tight">{value}</p>
           {trend && (
             <p className={clsx(
               'text-sm mt-2',

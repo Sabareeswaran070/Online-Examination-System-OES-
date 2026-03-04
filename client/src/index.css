@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,7 +6,7 @@
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900 font-sans;
+    @apply bg-gray-50 text-gray-900 font-sans antialiased;
   }
 }
 
@@ -40,11 +40,11 @@
   }
 
   .page-title {
-    @apply text-3xl font-bold text-gray-900 mb-6;
+    @apply text-3xl font-black text-gray-900 mb-6 font-display tracking-tight;
   }
 
   .section-title {
-    @apply text-xl font-semibold text-gray-800 mb-4;
+    @apply text-xl font-bold text-gray-800 mb-4 font-display;
   }
 
   .stat-card {

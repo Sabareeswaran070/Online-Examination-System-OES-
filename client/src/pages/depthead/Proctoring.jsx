@@ -102,7 +102,7 @@ const Proctoring = () => {
                 <Button
                     size="sm"
                     variant="primary"
-                    onClick={() => navigate(`/dept-head/exams/${row._id}/results`)}
+                    onClick={() => navigate(`/dept-head/exams/${row._id}/monitoring`)}
                     className="flex items-center gap-2"
                 >
                     <FiMonitor className="w-4 h-4" />
