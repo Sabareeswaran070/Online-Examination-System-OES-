@@ -19,6 +19,15 @@ export default {
           800: '#1e40af',
           900: '#1e3a8a',
         },
+        evaluator: {
+          base: '#F8F9FB',
+          dark: '#1E2235',
+          accent: '#4F6EF7',
+        }
+      },
+      fontFamily: {
+        sans: ['"DM Sans"', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'monospace'],
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-in-out',
