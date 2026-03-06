@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { SEVERITY_COLORS } from './constants';
 import {
     FiExternalLink, FiCopy, FiClipboard, FiAlertCircle,
-    FiUsers, FiMousePointer, FiMonitor, FiClock, FiZap, FiTarget
+    FiUsers, FiMousePointer, FiMonitor, FiClock, FiZap, FiTarget, FiActivity
 } from 'react-icons/fi';
 
 const EVENT_ICONS = {

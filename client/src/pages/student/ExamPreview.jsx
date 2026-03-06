@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiClock, FiFileText, FiCheckCircle, FiAlertTriangle, FiPlay, FiArrowLeft } from 'react-icons/fi';
+import { FiClock, FiFileText, FiCheckCircle, FiAlertTriangle, FiPlay, FiArrowLeft, FiMonitor } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Badge from '@/components/common/Badge.jsx';
