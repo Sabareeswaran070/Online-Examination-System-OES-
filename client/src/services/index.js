@@ -330,6 +330,10 @@ export const collegeAdminService = {
     const response = await api.delete(`/admin/subjects/${id}`);
     return response.data;
   },
+  createQuestion: async (data) => {
+    const response = await api.post('/faculty/questions', data);
+    return response.data;
+  },
   generateAIQuestions: async (params) => {
     const response = await api.post('/admin/questions/generate-ai', params);
     return response.data;
@@ -429,6 +433,10 @@ export const deptHeadService = {
 
   updateProctoringSettings: async (data) => {
     const response = await api.put('/depthead/proctoring/settings', data);
+    return response.data;
+  },
+  createQuestion: async (data) => {
+    const response = await api.post('/faculty/questions', data);
     return response.data;
   },
 };

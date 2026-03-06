@@ -127,6 +127,10 @@ const examSchema = new mongoose.Schema(
         enum: ['warn', 'auto-submit', 'lock'],
         default: 'warn',
       },
+      cameraRequired: {
+        type: Boolean,
+        default: false,
+      },
       enforcedBy: {
         enforceFullscreen: { type: String, enum: ['system', 'superadmin', 'college', 'dept', 'faculty'], default: 'faculty' },
         blockNotifications: { type: String, enum: ['system', 'superadmin', 'college', 'dept', 'faculty'], default: 'faculty' },

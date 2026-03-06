@@ -53,7 +53,8 @@ const SuperAdminExams = () => {
             maxTabSwitches: 3,
             maxFullscreenExits: 3,
             maxCopyPaste: 0,
-            actionOnLimit: 'warn'
+            actionOnLimit: 'warn',
+            cameraRequired: false
         }
     });
 
@@ -232,7 +233,8 @@ const SuperAdminExams = () => {
                 maxTabSwitches: exam.proctoring?.maxTabSwitches || 0,
                 maxFullscreenExits: exam.proctoring?.maxFullscreenExits || 0,
                 maxCopyPaste: exam.proctoring?.maxCopyPaste || 0,
-                actionOnLimit: exam.proctoring?.actionOnLimit || 'warn'
+                actionOnLimit: exam.proctoring?.actionOnLimit || 'warn',
+                cameraRequired: exam.proctoring?.cameraRequired || false
             }
         });
         setShowModal(true);
@@ -300,7 +302,8 @@ const SuperAdminExams = () => {
                 maxTabSwitches: 3,
                 maxFullscreenExits: 3,
                 maxCopyPaste: 0,
-                actionOnLimit: 'warn'
+                actionOnLimit: 'warn',
+                cameraRequired: false
             }
         });
         setEditingExam(null);
@@ -829,6 +832,18 @@ const SuperAdminExams = () => {
                                         </div>
                                         <p className="text-xs font-black text-gray-900 uppercase">Block Tab Switching</p>
                                         <p className="text-[10px] text-gray-500 font-medium mt-1">Logs violations on blur</p>
+                                    </div>
+
+                                    <div className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${formData.proctoring.cameraRequired ? 'border-green-600 bg-green-50/50' : 'border-gray-100 bg-gray-50/30'}`}
+                                        onClick={() => setFormData(prev => ({ ...prev, proctoring: { ...prev.proctoring, cameraRequired: !prev.proctoring.cameraRequired } }))}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <FiEye className={formData.proctoring.cameraRequired ? 'text-green-600' : 'text-gray-400'} />
+                                            <div className={`w-10 h-5 rounded-full relative transition-colors ${formData.proctoring.cameraRequired ? 'bg-green-600' : 'bg-gray-300'}`}>
+                                                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${formData.proctoring.cameraRequired ? 'left-6' : 'left-1'}`}></div>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs font-black text-gray-900 uppercase">Real-time Camera</p>
+                                        <p className="text-[10px] text-gray-500 font-medium mt-1">Enforce webcam monitoring</p>
                                     </div>
 
                                     <div className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${formData.proctoring.blockNotifications ? 'border-purple-600 bg-purple-50/50' : 'border-gray-100 bg-gray-50/30'}`}

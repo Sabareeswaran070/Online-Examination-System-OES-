@@ -196,6 +196,7 @@ const Proctoring = () => {
                                         { id: 'enforceFullscreen', label: 'Enforce Fullscreen Mode', desc: 'Students must stay in fullscreen' },
                                         { id: 'blockNotifications', label: 'Block Browser Notifications', desc: 'Prevents distractions/alerts' },
                                         { id: 'tabSwitchingAllowed', label: 'Allow Tab Switching', desc: 'Allow students to visit other tabs' },
+                                        { id: 'cameraRequired', label: 'Require Real-time Camera Monitoring', desc: 'Activate student webcams for proctoring' },
                                     ].map(field => (
                                         <div key={field.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between group transition-all hover:bg-white hover:shadow-md">
                                             <div className="flex items-center gap-3">

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiCode, FiPlay, FiClock, FiCpu, FiChevronDown, FiChevronUp, FiEye, FiFileText, FiTerminal, FiCheckCircle, FiXCircle, FiLoader, FiLock, FiAlertTriangle } from 'react-icons/fi';
+import { FiCode, FiPlay, FiClock, FiCpu, FiChevronDown, FiChevronUp, FiEye, FiFileText, FiTerminal, FiCheckCircle, FiXCircle, FiLoader, FiLock, FiAlertTriangle, FiVideo } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Modal from '@/components/common/Modal.jsx';
@@ -10,6 +10,8 @@ import { studentService } from '@/services';
 import { formatDuration } from '@/utils/dateUtils';
 import { QUESTION_TYPES } from '@/config/constants';
 import toast from 'react-hot-toast';
+import LiveFeedPanel from '@/components/proctor/LiveFeedPanel';
+import { useAuth } from '@/context/AuthContext';
 
 const CODING_LANGUAGES = [
   { value: 'javascript', label: 'JavaScript', icon: '🟨' },
@@ -22,6 +24,7 @@ const CODING_LANGUAGES = [
 const TakeExam = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [exam, setExam] = useState(null);
   const [result, setResult] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -51,6 +54,7 @@ const TakeExam = () => {
   const [showInstructions, setShowInstructions] = useState(true);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [hasStartedTimer, setHasStartedTimer] = useState(false);
+  const [isCameraExpanded, setIsCameraExpanded] = useState(false);
 
 
 
@@ -1268,6 +1272,45 @@ const TakeExam = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Floating Proctor Monitoring Feed */}
+      {exam?.proctoring?.enabled && exam?.proctoring?.cameraRequired && (
+        <div className={`fixed bottom-28 right-6 z-50 transition-all duration-500 ease-in-out ${isCameraExpanded ? 'w-64' : 'w-12 h-12'}`}>
+          {/* Expanded View */}
+          <div className={`bg-white/80 backdrop-blur-md p-1 rounded-2xl border border-gray-200 shadow-2xl overflow-hidden transition-all duration-500 ${isCameraExpanded ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none absolute'}`}>
+            <div className="px-3 py-1 flex items-center justify-end">
+              <button
+                onClick={() => setIsCameraExpanded(false)}
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                title="Minimize Feed"
+              >
+                <FiChevronDown className="w-4 h-4 text-gray-400" />
+              </button>
+            </div>
+            <LiveFeedPanel
+              useRealFeed={true}
+              mediaActive={!submitting && !submissionResult && !showConfirmSubmit}
+              showOverlays={false}
+              studentName={user?.name || 'Student'}
+              status="detected"
+            />
+          </div>
+
+          {/* Minimized Icon View */}
+          {!isCameraExpanded && (
+            <button
+              onClick={() => setIsCameraExpanded(true)}
+              className="w-12 h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95 group relative animate-in zoom-in duration-300"
+              title="Expand Monitoring Feed"
+            >
+              <FiVideo className="w-5 h-5" />
+              {(!submitting && !submissionResult && !showConfirmSubmit) && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full animate-pulse" />
+              )}
+            </button>
+          )}
+        </div>
+      )}
     </div >
   );
 };

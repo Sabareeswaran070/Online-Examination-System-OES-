@@ -404,10 +404,17 @@ exports.updateExam = async (req, res, next) => {
       });
     }
 
-    if (exam.status === 'ongoing' || exam.status === 'completed') {
+    if (exam.status === 'completed') {
       return res.status(400).json({
         success: false,
-        message: 'Cannot update ongoing or completed exam',
+        message: 'Cannot update completed exam',
+      });
+    }
+
+    if (exam.status === 'ongoing' && !req.body.proctoring) {
+      return res.status(400).json({
+        success: false,
+        message: 'Only proctoring settings can be updated while exam is ongoing',
       });
     }
 
@@ -1482,6 +1489,7 @@ const resolveProctoringSettings = async (user, requestedSettings = {}) => {
       maxTabSwitches: requestedSettings.maxTabSwitches ?? 10,
       maxFullscreenExits: requestedSettings.maxFullscreenExits ?? 10,
       actionOnLimit: requestedSettings.actionOnLimit || 'warn',
+      cameraRequired: requestedSettings.cameraRequired || false,
       ...requestedSettings,
       enforcedBy: {
         enforceFullscreen: 'superadmin',
@@ -1507,6 +1515,7 @@ const resolveProctoringSettings = async (user, requestedSettings = {}) => {
     maxFullscreenExits: deptDefaults.maxFullscreenExits ?? collegeDefaults.maxFullscreenExits ?? 10,
     maxCopyPaste: deptDefaults.maxCopyPaste ?? collegeDefaults.maxCopyPaste ?? 0,
     actionOnLimit: deptDefaults.actionOnLimit || collegeDefaults.actionOnLimit || 'warn',
+    cameraRequired: requestedSettings.cameraRequired || false,
   };
 
   const resolved = { ...initialDefaults, ...requestedSettings };

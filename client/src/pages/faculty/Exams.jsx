@@ -45,6 +45,7 @@ const Exams = () => {
       maxTabSwitches: 3,
       maxFullscreenExits: 3,
       actionOnLimit: 'warn',
+      cameraRequired: false,
     }
   });
   const [proctoringDefaults, setProctoringDefaults] = useState({ college: {}, department: {} });
@@ -205,6 +206,7 @@ const Exams = () => {
         maxTabSwitches: 3,
         maxFullscreenExits: 3,
         actionOnLimit: 'warning',
+        cameraRequired: false,
       }
     });
     setShowModal(true);
@@ -255,6 +257,7 @@ const Exams = () => {
         maxTabSwitches: 3,
         maxFullscreenExits: 3,
         actionOnLimit: 'warn',
+        cameraRequired: false,
       }
     });
     setEditingExam(null);
@@ -709,6 +712,19 @@ const Exams = () => {
                         {(proctoringDefaults.college.isLocked?.tabSwitchingAllowed || proctoringDefaults.department.isLocked?.tabSwitchingAllowed) && (
                           <Badge size="xs" variant="secondary">Locked</Badge>
                         )}
+                      </label>
+
+                      {/* Camera Requirement */}
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          name="proctoring.cameraRequired"
+                          checked={formData.proctoring.cameraRequired}
+                          onChange={handleChange}
+                          className="w-4 h-4 text-primary-600 rounded"
+                        />
+                        <span className="text-sm text-gray-700 font-bold">Require Real-time Camera Monitoring</span>
+                        <Badge size="xs" variant="info">NEW</Badge>
                       </label>
                     </div>
 

@@ -48,6 +48,7 @@ import FacultyExamDetails from './pages/faculty/ExamDetails';
 const FacultyQuestions = lazy(() => import('./pages/faculty/Questions'));
 const FacultyResults = lazy(() => import('./pages/faculty/Results'));
 const FacultySubmissions = lazy(() => import('./pages/faculty/Submissions'));
+import LiveMonitoring from './pages/faculty/LiveMonitoring';
 
 // Student Pages
 import StudentDashboard from './pages/student/Dashboard';
@@ -107,6 +108,7 @@ const navigationConfig = {
     { path: '/faculty/exams', label: 'Exams', icon: FiFileText },
     { path: '/faculty/questions', label: 'Questions', icon: FiBook },
     { path: '/faculty/evaluations', label: 'Evaluations', icon: FiCheckCircle },
+    { path: '/faculty/monitoring', label: 'Live Monitoring', icon: FiMonitor },
   ],
   [USER_ROLES.STUDENT]: [
     { path: '/student/dashboard', label: 'Dashboard', icon: FiHome },
@@ -217,6 +219,7 @@ const FacultyRoutes = () => {
         <Route path="exams/:id/results" element={<FacultyResults />} />
         <Route path="evaluations" element={<FacultySubmissions />} />
         <Route path="questions" element={<FacultyQuestions />} />
+        <Route path="monitoring" element={<LiveMonitoring />} />
       </Routes>
     </DashboardLayout>
   );

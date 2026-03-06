@@ -169,6 +169,26 @@ const ExamPreview = () => {
               </div>
             </Card>
           )}
+
+          {/* Proctoring Notice */}
+          {exam.proctoring?.enabled && exam.proctoring?.cameraRequired && (
+            <Card title="Proctoring Requirements">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <FiMonitor className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="space-y-2">
+                    <p className="text-sm text-blue-800 font-bold">Real-time Camera Monitoring Required</p>
+                    <ul className="text-xs text-blue-700 list-disc pl-4 space-y-1">
+                      <li>Ensure your webcam is connected and functioning properly.</li>
+                      <li>Place yourself in a well-lit environment.</li>
+                      <li>Allow camera permissions when prompted after starting the exam.</li>
+                      <li>The camera feed will be visible in the corner during your session.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar */}

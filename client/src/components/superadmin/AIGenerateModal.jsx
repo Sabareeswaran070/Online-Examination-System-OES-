@@ -68,14 +68,14 @@ const AIGenerateModal = ({ isOpen, onClose, onGenerated, service = defaultServic
 
             if (response.success && response.data) {
                 setGeneratedQuestion(response.data);
-                toast.success('🎉 Coding question generated successfully!');
+                toast.success('Coding question generated successfully!');
             } else {
                 throw new Error(response.message || 'Generation failed');
             }
         } catch (err) {
             const msg = err.response?.data?.message || err.message || 'Failed to generate question';
             setError(msg);
-            toast.error(`❌ ${msg}`);
+            toast.error(` ${msg}`);
         } finally {
             setGenerating(false);
         }

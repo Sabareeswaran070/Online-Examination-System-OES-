@@ -48,6 +48,7 @@ const Exams = () => {
             maxFullscreenExits: 3,
             maxCopyPaste: 0,
             actionOnLimit: 'warn',
+            cameraRequired: false,
         }
     });
 
@@ -203,6 +204,7 @@ const Exams = () => {
                 maxFullscreenExits: 3,
                 maxCopyPaste: 0,
                 actionOnLimit: 'warn',
+                cameraRequired: false,
             }
         });
         setShowModal(true);
@@ -255,6 +257,7 @@ const Exams = () => {
                 maxFullscreenExits: 3,
                 maxCopyPaste: 0,
                 actionOnLimit: 'warn',
+                cameraRequired: false,
             }
         });
         setEditingExam(null);
@@ -606,6 +609,17 @@ const Exams = () => {
                                                         className="w-4 h-4 text-primary-600 rounded"
                                                     />
                                                     <span className="text-sm text-gray-700 font-bold">Allow Tab Switching</span>
+                                                </label>
+
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        name="proctoring.cameraRequired"
+                                                        checked={formData.proctoring.cameraRequired}
+                                                        onChange={handleChange}
+                                                        className="w-4 h-4 text-primary-600 rounded"
+                                                    />
+                                                    <span className="text-sm text-gray-700 font-bold">Require Real-time Camera</span>
                                                 </label>
                                             </div>
 
