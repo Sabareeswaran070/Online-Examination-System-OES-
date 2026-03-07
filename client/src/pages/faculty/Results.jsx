@@ -17,6 +17,7 @@ import {
   FiShield,
   FiRotateCcw,
   FiTerminal,
+  FiCpu,
 } from "react-icons/fi";
 import Card from "@/components/common/Card.jsx";
 import Button from "@/components/common/Button.jsx";
@@ -56,6 +57,7 @@ const Results = () => {
   const [results, setResults] = useState([]);
   const [selectedResult, setSelectedResult] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
+  const [loadingAIRows, setLoadingAIRows] = useState({});
   const [activeTab, setActiveTab] = useState("results"); // 'results' or 'monitoring'
 
   useEffect(() => {
@@ -142,6 +144,21 @@ const Results = () => {
       toast.error("Failed to process AI evaluation");
     } finally {
       setLoadingAI(false);
+    }
+  };
+
+  const handleBulkAIResult = async (resultId) => {
+    try {
+      setLoadingAIRows((prev) => ({ ...prev, [resultId]: true }));
+      const response = await facultyService.bulkEvaluateAI(resultId);
+      if (response.success) {
+        toast.success(response.message || "Bulk AI evaluation complete");
+        fetchResults(true); // Silent refresh won't work perfectly here but fetchResults(resultId) might be better
+      }
+    } catch (error) {
+      toast.error("AI evaluation failed");
+    } finally {
+      setLoadingAIRows((prev) => ({ ...prev, [resultId]: false }));
     }
   };
 
@@ -274,6 +291,16 @@ const Results = () => {
             <FiEye className="w-4 h-4 mr-1" />
             Evaluate
           </Button>
+          <button
+            onClick={() => handleBulkAIResult(row._id)}
+            disabled={loadingAIRows[row._id]}
+            className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg border border-primary-100 transition-colors disabled:opacity-50"
+            title="AI Evaluate All Questions"
+          >
+            <FiCpu
+              className={`w-4 h-4 ${loadingAIRows[row._id] ? "animate-spin" : ""}`}
+            />
+          </button>
           <Button
             size="sm"
             variant="danger"
@@ -676,6 +703,7 @@ const Results = () => {
           }}
           onUpdateEvaluation={handleUpdateEvaluation}
           onAcceptAIEvaluation={handleAcceptAIEvaluation}
+          loadingAI={loadingAI}
         />
       )}
 

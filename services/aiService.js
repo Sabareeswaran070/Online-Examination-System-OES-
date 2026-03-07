@@ -455,8 +455,79 @@ IMPORTANT:
   throw new Error('AI evaluation service is currently unavailable.');
 }
 
+/**
+ * Evaluate a student's descriptive submission using AI
+ */
+async function evaluateDescriptiveSubmission({ question, submission }) {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error('GROQ_API_KEY is not configured.');
+  }
+
+  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  const prompt = `You are an expert academic evaluator. Evaluate the following student's descriptive answer for an examination question.
+
+**Question:** 
+${question.questionText}
+
+**Ideal Answer/Keywords:**
+${question.correctAnswer || question.explanation || 'Not provided'}
+
+**Student Submission:**
+${submission.textAnswer || 'No answer submitted'}
+
+**Max Marks:** ${question.marks}
+
+Evaluate the student's answer based on:
+1. **Conceptual Understanding:** Does the student demonstrate a clear understanding of the subject matter?
+2. **Completeness:** Does the answer address all parts of the question?
+3. **Accuracy:** Are the facts and explanations provided correct?
+
+Return a JSON object with:
+{
+  "marksAwarded": <number between 0 and ${question.marks}>,
+  "feedback": "Concise but helpful feedback (2-3 sentences). Highlight what was well explained and what was missing.",
+  "reasoning": "A brief explanation of why this score was given, referencing the ideal answer if applicable."
+}
+
+IMPORTANT:
+- Be fair and objective.
+- If the answer is mostly correct but lacks specific details, award partial marks.
+- Return ONLY the JSON object.`;
+
+  const MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+
+  for (const modelName of MODELS) {
+    try {
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an AI academic evaluator. You MUST respond with ONLY a valid JSON object.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        model: modelName,
+        temperature: 0.2,
+        response_format: { type: 'json_object' },
+      });
+
+      const text = chatCompletion.choices?.[0]?.message?.content;
+      return JSON.parse(text);
+    } catch (error) {
+      logger.error(`AI Descriptive Evaluation error with ${modelName}:`, error);
+      continue;
+    }
+  }
+
+  throw new Error('AI evaluation service is currently unavailable.');
+}
+
 module.exports = {
   generateCodingQuestion,
   generateQuestion,
   evaluateCodingSubmission,
+  evaluateDescriptiveSubmission,
 };

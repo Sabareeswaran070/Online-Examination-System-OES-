@@ -13,7 +13,7 @@ const TABS = [
     { key: 'TrueFalse', label: 'True / False', icon: <FiCheckSquare size={15} /> },
 ];
 
-const EvaluatorLayout = ({ studentData, examData, onClose, onUpdateEvaluation, onAcceptAIEvaluation }) => {
+const EvaluatorLayout = ({ studentData, examData, onClose, onUpdateEvaluation, onAcceptAIEvaluation, loadingAI }) => {
     const flattenedAnswers = React.useMemo(() => {
         return studentData.answers?.map(a => {
             const q = a.questionId || {};
@@ -57,9 +57,9 @@ const EvaluatorLayout = ({ studentData, examData, onClose, onUpdateEvaluation, o
     const renderPanel = () => {
         switch (activeTab) {
             case 'MCQ': return <MCQEvaluator questions={answersByType('MCQ')} activeQuestion={selectedQuestions.MCQ} onSelectQuestion={q => handleSelect('MCQ', q)} />;
-            case 'Descriptive': return <DescriptiveEvaluator questions={answersByType('Descriptive')} activeQuestion={selectedQuestions.Descriptive} onSelectQuestion={q => handleSelect('Descriptive', q)} onUpdateScore={onUpdateEvaluation} onAcceptAI={onAcceptAIEvaluation} />;
+            case 'Descriptive': return <DescriptiveEvaluator questions={answersByType('Descriptive')} activeQuestion={selectedQuestions.Descriptive} onSelectQuestion={q => handleSelect('Descriptive', q)} onUpdateScore={onUpdateEvaluation} onAcceptAI={onAcceptAIEvaluation} loadingAI={loadingAI} />;
             case 'TrueFalse': return <TrueFalseEvaluator questions={answersByType('TrueFalse')} activeQuestion={selectedQuestions.TrueFalse} onSelectQuestion={q => handleSelect('TrueFalse', q)} />;
-            case 'Coding': { const coding = answersByType('Coding'); return <CodingEvaluator question={selectedQuestions.Coding || coding[0]} onUpdateScore={onUpdateEvaluation} />; }
+            case 'Coding': { const coding = answersByType('Coding'); return <CodingEvaluator question={selectedQuestions.Coding || coding[0]} onUpdateScore={onUpdateEvaluation} onAcceptAI={onAcceptAIEvaluation} loadingAI={loadingAI} />; }
             default: return null;
         }
     };

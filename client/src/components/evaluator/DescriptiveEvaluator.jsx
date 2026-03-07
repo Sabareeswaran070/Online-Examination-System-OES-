@@ -18,7 +18,7 @@ function highlightKeywords(text, keywords = []) {
     );
 }
 
-const DescriptiveEvaluator = ({ questions, activeQuestion, onSelectQuestion, onUpdateScore, onAcceptAI }) => {
+const DescriptiveEvaluator = ({ questions, activeQuestion, onSelectQuestion, onUpdateScore, onAcceptAI, loadingAI }) => {
     const [selected, setSelected] = useState(activeQuestion || questions[0] || null);
     const [overriding, setOverriding] = useState(false);
     const [localScores, setLocalScores] = useState({});
@@ -128,12 +128,29 @@ const DescriptiveEvaluator = ({ questions, activeQuestion, onSelectQuestion, onU
 
                         {!overriding && !isOverridden ? (
                             <div className="flex gap-3">
-                                <button onClick={() => { onAcceptAI(q._id); }}
-                                    className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors">
-                                    ✓ Accept AI Score ({q.aiScore ?? 0}/{q.maxMarks})
-                                </button>
-                                <button onClick={() => setOverriding(true)}
-                                    className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg transition-colors">
+                                {q.aiScore !== undefined && q.aiScore !== null ? (
+                                    <button
+                                        onClick={() => { onAcceptAI(q._id); }}
+                                        disabled={loadingAI}
+                                        className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                                    >
+                                        ✓ Accept AI Score ({q.aiScore}/{q.maxMarks})
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => { onAcceptAI(q._id); }}
+                                        disabled={loadingAI}
+                                        className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                                    >
+                                        <FiCpu className={loadingAI ? "animate-spin" : ""} />
+                                        {loadingAI ? 'Evaluating...' : 'Evaluate with AI'}
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => setOverriding(true)}
+                                    disabled={loadingAI}
+                                    className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                                >
                                     ✏️ Override Score
                                 </button>
                             </div>

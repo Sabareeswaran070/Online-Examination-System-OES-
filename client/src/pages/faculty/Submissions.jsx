@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiEye, FiCheckCircle, FiClock, FiFileText, FiUser, FiInfo } from 'react-icons/fi';
+import { FiEye, FiCheckCircle, FiClock, FiFileText, FiUser, FiInfo, FiCpu } from 'react-icons/fi';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 import Table from '@/components/common/Table';
@@ -11,12 +11,17 @@ import { useAuth } from '@/context/AuthContext';
 import { formatDateTime } from '@/utils/dateUtils';
 import { USER_ROLES } from '@/config/constants';
 import toast from 'react-hot-toast';
+import EvaluatorLayout from '@/components/evaluator/EvaluatorLayout';
 
 const Submissions = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [submissions, setSubmissions] = useState([]);
+    const [selectedResult, setSelectedResult] = useState(null);
+    const [exam, setExam] = useState(null);
+    const [loadingAI, setLoadingAI] = useState(false);
+    const [loadingAIRows, setLoadingAIRows] = useState({});
 
     const getBasePath = () => {
         switch (user?.role) {
@@ -48,6 +53,76 @@ const Submissions = () => {
 
     const handleViewResults = (examId) => {
         navigate(`${basePath}/exams/${examId}/results`);
+    };
+
+    const handleEvaluate = async (row) => {
+        try {
+            setLoading(true);
+            // Fetch fresh result details with populated data
+            const response = await facultyService.getExamResults(row.examId._id);
+            const found = response.data.find(r => r._id === row._id);
+            if (found) {
+                const examRes = await facultyService.getExam(row.examId._id);
+                setExam(examRes.data);
+                setSelectedResult(found);
+            }
+        } catch (error) {
+            toast.error('Failed to load evaluation details');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateEvaluation = async (answerId, marks, feedback) => {
+        try {
+            await facultyService.evaluateAnswer(selectedResult._id, answerId, { marksAwarded: marks, feedback });
+            toast.success('Evaluation updated');
+            // Refresh local state
+            const response = await facultyService.getExamResults(exam._id);
+            const updated = response.data.find(r => r._id === selectedResult._id);
+            if (updated) setSelectedResult(updated);
+            fetchPendingSubmissions(); // Also refresh the main list
+        } catch (error) {
+            toast.error('Failed to update evaluation');
+        }
+    };
+
+    const handleAcceptAIEvaluation = async (answerId) => {
+        try {
+            setLoadingAI(true);
+            const response = await facultyService.evaluateAI(selectedResult._id, answerId);
+            if (response.success) {
+                await facultyService.evaluateAnswer(selectedResult._id, answerId, {
+                    marksAwarded: response.data.marksAwarded,
+                    feedback: response.data.feedback
+                });
+                toast.success('AI evaluation accepted');
+                // Refresh local state
+                const res = await facultyService.getExamResults(exam._id);
+                const updated = res.data.find(r => r._id === selectedResult._id);
+                if (updated) setSelectedResult(updated);
+                fetchPendingSubmissions();
+            }
+        } catch (error) {
+            toast.error('AI evaluation failed');
+        } finally {
+            setLoadingAI(false);
+        }
+    };
+
+    const handleBulkAIResult = async (resultId) => {
+        try {
+            setLoadingAIRows(prev => ({ ...prev, [resultId]: true }));
+            const response = await facultyService.bulkEvaluateAI(resultId);
+            if (response.success) {
+                toast.success(response.message || 'Bulk AI evaluation complete');
+                fetchPendingSubmissions();
+            }
+        } catch (error) {
+            toast.error('AI evaluation failed');
+        } finally {
+            setLoadingAIRows(prev => ({ ...prev, [resultId]: false }));
+        }
     };
 
     const columns = [
@@ -87,15 +162,25 @@ const Submissions = () => {
         {
             header: 'Actions',
             accessor: (row) => (
-                <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => handleViewResults(row.examId?._id)}
-                    className="flex items-center gap-2"
-                >
-                    <FiEye className="w-4 h-4" />
-                    Evaluate
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleEvaluate(row)}
+                        className="flex items-center gap-2"
+                    >
+                        <FiEye className="w-4 h-4" />
+                        Evaluate Now
+                    </Button>
+                    <button
+                        onClick={() => handleBulkAIResult(row._id)}
+                        disabled={loadingAIRows[row._id]}
+                        className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg border border-primary-100 transition-colors disabled:opacity-50"
+                        title="AI Evaluate All Questions"
+                    >
+                        <FiCpu className={`w-4 h-4 ${loadingAIRows[row._id] ? 'animate-spin' : ''}`} />
+                    </button>
+                </div>
             ),
         },
     ];
@@ -162,6 +247,21 @@ const Submissions = () => {
                     </div>
                 </Card>
             </div>
+
+            {selectedResult && (
+                <EvaluatorLayout
+                    studentData={selectedResult}
+                    examData={exam}
+                    onClose={() => {
+                        setSelectedResult(null);
+                        setExam(null);
+                        fetchPendingSubmissions();
+                    }}
+                    onUpdateEvaluation={handleUpdateEvaluation}
+                    onAcceptAIEvaluation={handleAcceptAIEvaluation}
+                    loadingAI={loadingAI}
+                />
+            )}
         </div>
     );
 };

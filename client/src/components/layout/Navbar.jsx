@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { FiUser, FiLogOut, FiBell, FiMenu } from 'react-icons/fi';
-import { formatRoleName } from '../../utils/helpers';
+import { formatRoleName } from '@/utils/helpers';
 
 const Navbar = ({ onMenuClick }) => {
   const { user, logout } = useAuth();

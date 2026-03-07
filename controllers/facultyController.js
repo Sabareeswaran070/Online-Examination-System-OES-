@@ -1245,17 +1245,23 @@ exports.evaluateAI = async (req, res, next) => {
       });
     }
 
-    if (question.type !== 'Coding') {
+    let evaluation;
+    if (question.type === 'Coding') {
+      evaluation = await aiService.evaluateCodingSubmission({
+        question,
+        submission: answer,
+      });
+    } else if (question.type === 'Descriptive') {
+      evaluation = await aiService.evaluateDescriptiveSubmission({
+        question,
+        submission: answer,
+      });
+    } else {
       return res.status(400).json({
         success: false,
-        message: 'AI evaluation is only supported for coding questions',
+        message: 'AI evaluation is only supported for coding and descriptive questions',
       });
     }
-
-    const evaluation = await aiService.evaluateCodingSubmission({
-      question,
-      submission: answer,
-    });
 
     res.status(200).json({
       success: true,
@@ -1263,6 +1269,80 @@ exports.evaluateAI = async (req, res, next) => {
     });
   } catch (error) {
     logger.error('AI evaluation error:', error);
+    next(error);
+  }
+};
+
+/**
+ * @desc    Bulk evaluate all coding and descriptive answers for a result using AI
+ * @route   POST /api/faculty/evaluate/:resultId/bulk-ai
+ * @access  Private/Faculty
+ */
+exports.bulkEvaluateResultAI = async (req, res, next) => {
+  try {
+    const { resultId } = req.params;
+    const result = await Result.findById(resultId).populate('examId');
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: 'Result not found',
+      });
+    }
+
+    const exam = result.examId;
+    const isCreator = exam.facultyId.toString() === req.user._id.toString();
+    const isAuthorizedEvaluator = exam.authorizedEvaluators &&
+      exam.authorizedEvaluators.some(id => id.toString() === req.user._id.toString());
+
+    if (!isCreator && !isAuthorizedEvaluator) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to evaluate this result',
+      });
+    }
+
+    let updatedCount = 0;
+    for (const answer of result.answers) {
+      const question = await Question.findById(answer.questionId);
+      if (!question || !['Coding', 'Descriptive'].includes(question.type)) continue;
+
+      try {
+        let aiResult;
+        if (question.type === 'Coding') {
+          aiResult = await aiService.evaluateCodingSubmission({
+            question,
+            submission: answer,
+          });
+        } else if (question.type === 'Descriptive') {
+          aiResult = await aiService.evaluateDescriptiveSubmission({
+            question,
+            submission: answer,
+          });
+        }
+
+        if (aiResult) {
+          answer.aiScore = aiResult.marksAwarded;
+          answer.aiFeedback = aiResult.feedback;
+          answer.isEvaluatedByAI = true;
+          updatedCount++;
+        }
+      } catch (err) {
+        logger.error(`Bulk AI eval failed for answer ${answer._id}:`, err);
+      }
+    }
+
+    if (updatedCount > 0) {
+      await result.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully evaluated ${updatedCount} answers using AI`,
+      updatedCount,
+    });
+  } catch (error) {
+    logger.error('Bulk AI Evaluation error:', error);
     next(error);
   }
 };

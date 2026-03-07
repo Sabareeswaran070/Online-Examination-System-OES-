@@ -540,6 +540,11 @@ export const facultyService = {
     return response.data;
   },
 
+  bulkEvaluateAI: async (resultId) => {
+    const response = await api.post(`/faculty/evaluate/${resultId}/bulk-ai`);
+    return response.data;
+  },
+
   generateRandomQuestions: async (data) => {
     const { examId, ...params } = data;
     const response = await api.post(`/faculty/exams/${examId}/generate-questions`, params);

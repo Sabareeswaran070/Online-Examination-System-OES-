@@ -29,6 +29,7 @@ const {
   bulkDeleteExams,
   bulkDeleteQuestions,
   resetExamAttempt,
+  bulkEvaluateResultAI,
 } = require('../controllers/facultyController');
 const { protect } = require('../middleware/auth');
 const { authorize, auditLog } = require('../middleware/rbac');
@@ -205,6 +206,14 @@ router.post(
   validate,
   auditLog('evaluateAI', 'Result'),
   evaluateAI
+);
+
+router.post(
+  '/evaluate/:resultId/bulk-ai',
+  validateObjectId('resultId'),
+  validate,
+  auditLog('bulkEvaluateAI', 'Result'),
+  bulkEvaluateResultAI
 );
 
 router.post(
