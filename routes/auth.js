@@ -6,8 +6,10 @@ const {
   updateProfile,
   changePassword,
   logout,
+  uploadProfileImage
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
+const upload = require('../middleware/upload');
 const {
   validate,
   registerValidation,
@@ -22,5 +24,6 @@ router.get('/me', protect, getMe);
 router.put('/update-profile', protect, updateProfile);
 router.put('/change-password', protect, changePassword);
 router.post('/logout', protect, logout);
+router.post('/upload-profile-image', protect, upload.single('profileImage'), uploadProfileImage);
 
 module.exports = router;

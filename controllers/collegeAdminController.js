@@ -192,21 +192,62 @@ exports.getDepartments = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, search } = req.query;
 
-    const query = { collegeId: req.user.collegeId };
+    let matchQuery = { collegeId: req.user.collegeId };
     if (search) {
-      query.$or = [
+      matchQuery.$or = [
         { name: { $regex: search, $options: 'i' } },
         { departmentCode: { $regex: search, $options: 'i' } }
       ];
     }
 
-    const departments = await Department.find(query)
-      .populate('deptHeadId', 'name email')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+    const departments = await Department.aggregate([
+      { $match: matchQuery },
+      {
+        $lookup: {
+          from: 'users',
+          let: { deptId: '$_id' },
+          pipeline: [
+            { $match: { $expr: { $and: [{ $eq: ['$departmentId', '$$deptId'] }, { $eq: ['$role', 'student'] }] } } },
+            { $count: 'count' }
+          ],
+          as: 'studentCount'
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'deptHeadId',
+          foreignField: '_id',
+          as: 'deptHeadDetail'
+        }
+      },
+      {
+        $unwind: {
+          path: '$deptHeadDetail',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $addFields: {
+          totalStudents: { $ifNull: [{ $arrayElemAt: ['$studentCount.count', 0] }, 0] },
+          deptHeadId: '$deptHeadDetail'
+        }
+      },
+      { $sort: { createdAt: -1 } },
+      { $skip: (page - 1) * limit },
+      { $limit: limit * 1 },
+      {
+        $project: {
+          studentCount: 0,
+          deptHeadDetail: 0,
+          'deptHeadId.password': 0,
+          'deptHeadId.createdAt': 0,
+          'deptHeadId.updatedAt': 0
+        }
+      }
+    ]);
 
-    const count = await Department.countDocuments(query);
+    const count = await Department.countDocuments(matchQuery);
 
     res.status(200).json({
       success: true,

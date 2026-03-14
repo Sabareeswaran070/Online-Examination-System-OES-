@@ -16,6 +16,7 @@ const Students = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
+  const [viewingStudent, setViewingStudent] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -104,6 +105,10 @@ const Students = () => {
     setShowModal(true);
   };
 
+  const handleView = (student) => {
+    setViewingStudent(student);
+  };
+
   const handleDelete = async (id) => {
     if (window.confirm('Delete this student?')) {
       try {
@@ -133,7 +138,7 @@ const Students = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-indigo-600 to-blue-700 rounded-2xl shadow-lg p-6 text-white">
+      <div className="bg-gradient-to-r from-primary-600 to-primary-500 rounded-2xl shadow-lg p-8 text-eyDark">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold font-display">Student Management</h1>
@@ -208,7 +213,11 @@ const Students = () => {
                 <tbody className="bg-white divide-y divide-gray-100">
                   {students.length > 0 ? (
                     students.map((student) => (
-                      <tr key={student._id} className="hover:bg-gray-50/50 transition-colors group">
+                      <tr 
+                        key={student._id} 
+                        className="hover:bg-gray-50/50 transition-colors group cursor-pointer"
+                        onClick={() => handleView(student)}
+                      >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="group-hover:scale-110 transition-transform w-10 h-10 rounded-xl bg-gradient-to-br from-primary-50 to-white flex items-center justify-center mr-4 text-eyDark font-bold border border-primary-100">
@@ -392,6 +401,104 @@ const Students = () => {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Student Details Modal */}
+      <Modal
+        isOpen={!!viewingStudent}
+        onClose={() => setViewingStudent(null)}
+        title="Student Profile"
+      >
+        {viewingStudent && (
+          <div className="space-y-6 pt-2">
+            <div className="flex items-center gap-4 bg-primary-50 p-4 rounded-xl border border-primary-100">
+              <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center text-2xl text-eyDark font-bold shadow-sm border border-primary-200">
+                {viewingStudent.name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">{viewingStudent.name}</h3>
+                <p className="text-sm font-mono text-eyDark mt-1 px-2 py-0.5 bg-white rounded-md border border-primary-200 inline-block font-semibold">
+                  {viewingStudent.regNo || 'NO REG NO'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+              <div>
+                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Contact Information</h4>
+                <div className="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Email Address</p>
+                    <p className="text-sm font-semibold text-gray-900">{viewingStudent.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Phone Number</p>
+                    <p className="text-sm font-semibold text-gray-900">{viewingStudent.phone || 'Not provided'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Academic Details</h4>
+                <div className="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Department</p>
+                    <p className="text-sm font-semibold text-gray-900">{viewingStudent.departmentId?.name || 'Unassigned'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Course / Year</p>
+                    <p className="text-sm font-semibold text-gray-900">{viewingStudent.courseYear || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                 <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Exam Details</h4>
+                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center justify-center min-h-[80px]">
+                    <p className="text-sm font-medium text-gray-500">
+                       No recent exams available for this student.
+                    </p>
+                 </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center pt-4 border-t border-gray-100 mt-6 mt-8">
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    handleEdit(viewingStudent);
+                    setViewingStudent(null);
+                  }}
+                  className="border-primary-200 text-eyDark hover:bg-primary-50"
+                >
+                  Edit Student
+                </Button>
+                <Button 
+                  variant="danger" 
+                  onClick={() => {
+                    handleDelete(viewingStudent._id);
+                    setViewingStudent(null);
+                  }}
+                >
+                  Delete
+                </Button>
+              </div>
+              
+              <div className="flex gap-3">
+                 <Button variant="secondary" onClick={() => setViewingStudent(null)}>
+                   Close
+                 </Button>
+                 <Button onClick={() => {
+                     toast.info("Full profile view coming soon!");
+                     setViewingStudent(null);
+                 }}>
+                   View Full Profile
+                 </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

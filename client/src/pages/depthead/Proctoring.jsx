@@ -117,7 +117,7 @@ const Proctoring = () => {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-700 rounded-2xl shadow-lg p-8 text-white">
+            <div className="bg-gradient-to-r from-primary-600 to-primary-500 rounded-2xl shadow-lg p-8 text-eyDark">
                 <div className="flex items-center gap-4 mb-4">
                     <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
                         <FiMonitor className="w-8 h-8 text-white" />

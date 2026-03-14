@@ -11,6 +11,7 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Unauthorized from './pages/Unauthorized';
 import NotFound from './pages/NotFound';
+import Profile from './pages/Profile';
 
 // Super Admin Pages
 import SuperAdminDashboard from './pages/superadmin/Dashboard';
@@ -169,6 +170,7 @@ const SuperAdminRoutes = () => {
         <Route path="competitions" element={<AdminCompetitions />} />
         <Route path="questions" element={<AdminQuestions />} />
         <Route path="audit-logs" element={<AuditLogs />} />
+        <Route path="profile" element={<Profile />} />
       </Routes>
     </DashboardLayout>
   );
@@ -189,6 +191,7 @@ const AdminRoutes = () => {
         <Route path="competitions" element={<CollegeCompetitions />} />
         <Route path="analytics" element={<AdminAnalytics />} />
         <Route path="leaderboard" element={<Leaderboard />} />
+        <Route path="profile" element={<Profile />} />
       </Routes>
     </DashboardLayout>
   );
@@ -208,6 +211,7 @@ const DeptHeadRoutes = () => {
         <Route path="exams/:id/results" element={<FacultyResults />} />
         <Route path="evaluations" element={<FacultySubmissions />} />
         <Route path="analytics" element={<div>Analytics Page (Coming Soon)</div>} />
+        <Route path="profile" element={<Profile />} />
       </Routes>
     </DashboardLayout>
   );
@@ -227,6 +231,7 @@ const FacultyRoutes = () => {
         <Route path="monitoring/:id" element={<MonitoringDashboard />} />
         <Route path="monitoring/:id/student/:studentId" element={<StudentMonitoringDetail />} />
         <Route path="monitoring/:id/report" element={<MonitoringReport />} />
+        <Route path="profile" element={<Profile />} />
       </Routes>
     </DashboardLayout>
   );
@@ -247,6 +252,7 @@ const StudentRoutes = () => {
           <Route path="leaderboard" element={<StudentLeaderboard />} />
           <Route path="global-leaderboard" element={<GlobalLeaderboard />} />
           <Route path="analytics" element={<StudentAnalytics />} />
+          <Route path="profile" element={<Profile />} />
         </Route>
 
         {/* Exam taking route - no layout (full screen) */}

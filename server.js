@@ -112,6 +112,9 @@ app.use('/api/student', studentRoutes);
 app.use('/api/competitions', competitionRoutes);
 app.use('/api/monitoring', monitoringRoutes);
 
+// Static files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Welcome route
 app.get('/', (req, res) => {
   res.status(200).json({

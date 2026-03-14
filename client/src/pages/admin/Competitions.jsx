@@ -110,7 +110,7 @@ const CollegeCompetitions = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-700 rounded-2xl shadow-lg p-6 text-white">
+      <div className="bg-gradient-to-r from-primary-600 to-primary-500 rounded-2xl shadow-lg p-8 text-eyDark">
         <h1 className="text-3xl font-bold flex items-center gap-3">
           <FiAward className="w-8 h-8" /> Competitions
         </h1>

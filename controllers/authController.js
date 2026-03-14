@@ -188,3 +188,44 @@ exports.logout = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Upload profile image
+// @route   POST /api/auth/upload-profile-image
+// @access  Private
+exports.uploadProfileImage = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please upload an image file',
+      });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Path to save in DB
+    const imagePath = `/uploads/profiles/${req.file.filename}`;
+    user.profileImage = imagePath;
+    await user.save();
+
+    logger.info(`Profile image updated: ${user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile image updated successfully',
+      data: {
+        profileImage: imagePath
+      }
+    });
+
+  } catch (error) {
+    logger.error('Upload profile image error:', error);
+    next(error);
+  }
+};

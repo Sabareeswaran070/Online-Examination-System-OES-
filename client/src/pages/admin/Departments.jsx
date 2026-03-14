@@ -244,7 +244,7 @@ const Departments = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-eyDark to-gray-900 rounded-2xl shadow-lg p-6 text-white">
+      <div className="bg-gradient-to-r from-primary-600 to-primary-500 rounded-2xl shadow-lg p-8 text-eyDark">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold">Departments</h1>
