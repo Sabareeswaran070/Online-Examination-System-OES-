@@ -12,7 +12,7 @@ const EvaluatorHeader = ({ studentName, examTitle, submittedAt }) => {
             <div className="px-6 py-3 flex items-center justify-between gap-4">
                 {/* Left: Branding */}
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center text-white text-sm font-bold">
+                    <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center text-eyDark text-sm font-bold">
                         📋
                     </div>
                     <div>
@@ -35,7 +35,7 @@ const EvaluatorHeader = ({ studentName, examTitle, submittedAt }) => {
 
                 {/* Right: Student */}
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-indigo-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-indigo-500 flex items-center justify-center text-eyDark font-bold text-xs flex-shrink-0">
                         {initials}
                     </div>
                     <div>

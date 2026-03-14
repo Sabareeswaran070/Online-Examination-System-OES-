@@ -11,8 +11,8 @@ const QuestionList = ({ questions, activeQuestionId, onSelectQuestion, type = 'M
         }
 
         // Descriptive
-        if (q.isManuallyEvaluated) return { variant: 'success', label: 'Manually Reviewed', color: 'bg-blue-500' };
-        if (q.aiScore !== undefined) return { variant: 'info', label: 'AI Evaluated', color: 'bg-indigo-500' };
+        if (q.isManuallyEvaluated) return { variant: 'success', label: 'Manually Reviewed', color: 'bg-primary-500' };
+        if (q.aiScore !== undefined) return { variant: 'info', label: 'AI Evaluated', color: 'bg-primary-500' };
         return { variant: 'warning', label: 'Pending Review', color: 'bg-amber-500' };
     };
 

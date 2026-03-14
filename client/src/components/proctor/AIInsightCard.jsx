@@ -29,12 +29,12 @@ const AIInsightCard = ({ eventLog }) => {
             <div className="p-4 border-b border-gray-800 bg-gradient-to-r from-primary-900/10 to-transparent flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <FiCpu className="text-primary-500" />
-                    <h3 className="text-sm font-black text-white uppercase tracking-widest font-display">AI Behavior Inspector</h3>
+                    <h3 className="text-sm font-black text-eyDark uppercase tracking-widest font-display">AI Behavior Inspector</h3>
                 </div>
                 {!report && !loading && (
                     <button
                         onClick={generateReport}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 hover:bg-primary-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all hover:shadow-[0_0_15px_rgba(37,99,235,0.4)]"
+                        className="flex items-center gap-2 px-3 py-1.5 bg-primary-500 hover:bg-primary-500 text-eyDark rounded-lg text-[10px] font-black uppercase tracking-widest transition-all hover:shadow-[0_0_15px_rgba(37,99,235,0.4)]"
                     >
                         <FiZap className="w-3 h-3" />
                         Analyze Behavior

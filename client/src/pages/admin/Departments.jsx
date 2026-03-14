@@ -244,14 +244,14 @@ const Departments = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-700 to-indigo-800 rounded-2xl shadow-lg p-6 text-white">
+      <div className="bg-gradient-to-r from-eyDark to-gray-900 rounded-2xl shadow-lg p-6 text-white">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold">Departments</h1>
             <p className="mt-1 opacity-90">Manage college organizational structure and department heads</p>
           </div>
           <Button
-            className="bg-white text-blue-700 hover:bg-blue-50 border-none shadow-md"
+            className="bg-white text-eyDark hover:bg-primary-50 border-none shadow-md"
             size="lg"
             onClick={() => setShowModal(true)}
           >
@@ -267,7 +267,7 @@ const Departments = () => {
           <input
             type="text"
             placeholder="Search departments by name or code..."
-            className="w-full pl-10 pr-4 py-2 border border-blue-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
+            className="w-full pl-10 pr-4 py-2 border border-primary-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
@@ -277,7 +277,7 @@ const Departments = () => {
         </div>
         <div className="flex gap-2">
           <select
-            className="px-4 py-2 border border-blue-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white shadow-sm"
+            className="px-4 py-2 border border-primary-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white shadow-sm"
             value={pageSize}
             onChange={(e) => {
               setPageSize(Number(e.target.value));
@@ -305,14 +305,14 @@ const Departments = () => {
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <h3 className="text-lg font-bold text-gray-900 uppercase tracking-tight">{dept.name}</h3>
-                        <p className="text-xs font-mono text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full inline-block mt-1 border border-primary-100">
+                        <p className="text-xs font-mono text-eyDark bg-primary-50 px-2 py-0.5 rounded-full inline-block mt-1 border border-primary-100">
                           {dept.departmentCode}
                         </p>
                       </div>
                       <div className="flex gap-1">
                         <button
                           onClick={() => handleEdit(dept)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                          className="p-1.5 text-blue-600 hover:bg-primary-50 rounded-lg transition-colors border border-transparent hover:border-primary-100"
                         >
                           <FiEdit size={16} />
                         </button>
@@ -353,7 +353,7 @@ const Departments = () => {
                     <div className="mt-4 pt-4 border-t border-gray-100">
                       <button
                         onClick={() => toggleExpand(dept._id)}
-                        className="flex items-center justify-between w-full text-blue-600 hover:text-blue-700 font-medium transition-colors text-sm"
+                        className="flex items-center justify-between w-full text-blue-600 hover:text-eyDark font-medium transition-colors text-sm"
                       >
                         <span className="flex items-center">
                           <FiBook className="mr-2" />
@@ -371,7 +371,7 @@ const Departments = () => {
                                 setSubjectFormData({ ...subjectFormData, departmentId: dept._id });
                                 setShowSubjectModal(true);
                               }}
-                              className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors flex items-center"
+                              className="text-[10px] bg-primary-50 text-blue-600 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors flex items-center"
                             >
                               <FiPlus className="mr-1" /> Add
                             </button>
@@ -457,7 +457,7 @@ const Departments = () => {
                       key={i + 1}
                       onClick={() => setCurrentPage(i + 1)}
                       className={`w-10 h-10 text-sm font-bold rounded-lg transition-all ${currentPage === i + 1
-                        ? 'bg-primary-600 text-white shadow-md'
+                        ? 'bg-primary-500 text-eyDark shadow-md'
                         : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
                         }`}
                     >
@@ -518,11 +518,11 @@ const Departments = () => {
           {/* Proctoring Defaults & Locks Section */}
           <div className="border-t pt-4 mt-6">
             <h4 className="text-md font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <FiShield className="text-primary-600" />
+              <FiShield className="text-eyDark" />
               Department Proctoring Defaults & Locks
             </h4>
 
-            <div className="space-y-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+            <div className="space-y-4 bg-primary-50/50 p-4 rounded-xl border border-primary-100">
               <p className="text-xs text-blue-600 font-medium mb-3 italic">
                 Configure default security for this department.
                 "Lock" a setting to prevent Faculty from overriding it.
@@ -539,7 +539,7 @@ const Departments = () => {
                         ...formData,
                         defaultProctoringSettings: { ...formData.defaultProctoringSettings, enforceFullscreen: e.target.checked }
                       })}
-                      className="w-4 h-4 text-primary-600 rounded"
+                      className="w-4 h-4 text-eyDark rounded"
                     />
                     <span className="text-sm text-gray-700">Default: Enforce Fullscreen</span>
                   </div>
@@ -567,7 +567,7 @@ const Departments = () => {
                         ...formData,
                         defaultProctoringSettings: { ...formData.defaultProctoringSettings, blockNotifications: e.target.checked }
                       })}
-                      className="w-4 h-4 text-primary-600 rounded"
+                      className="w-4 h-4 text-eyDark rounded"
                     />
                     <span className="text-sm text-gray-700">Default: Block Notifications</span>
                   </div>
@@ -595,7 +595,7 @@ const Departments = () => {
                         ...formData,
                         defaultProctoringSettings: { ...formData.defaultProctoringSettings, tabSwitchingAllowed: e.target.checked }
                       })}
-                      className="w-4 h-4 text-primary-600 rounded"
+                      className="w-4 h-4 text-eyDark rounded"
                     />
                     <span className="text-sm text-gray-700">Default: Allow Tab Switching</span>
                   </div>

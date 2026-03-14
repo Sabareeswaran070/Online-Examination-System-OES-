@@ -7,22 +7,23 @@ export default {
   theme: {
     extend: {
       colors: {
+        eyDark: '#161d23',
         primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
+          50: '#fffce0',
+          100: '#fff8b3',
+          200: '#fff380',
+          300: '#ffef4d',
+          400: '#ffea1a',
+          500: '#ffe600',
+          600: '#ccb800',
+          700: '#998a00',
+          800: '#665c00',
+          900: '#332e00',
         },
         evaluator: {
           base: '#F8F9FB',
-          dark: '#1E2235',
-          accent: '#4F6EF7',
+          dark: '#161d23',
+          accent: '#ffe600',
         }
       },
       fontFamily: {

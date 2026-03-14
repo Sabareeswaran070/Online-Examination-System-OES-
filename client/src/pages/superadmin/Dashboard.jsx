@@ -92,7 +92,7 @@ const SuperAdminDashboard = () => {
             {stats?.usersByRole?.map((role) => (
               <div key={role._id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                 <span className="font-medium text-gray-900 capitalize">{role._id}</span>
-                <span className="text-primary-600 font-semibold">{role.count}</span>
+                <span className="text-eyDark font-semibold">{role.count}</span>
               </div>
             ))}
           </div>

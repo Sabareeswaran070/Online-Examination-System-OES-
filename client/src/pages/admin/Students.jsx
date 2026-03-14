@@ -147,7 +147,7 @@ const Students = () => {
               <FiUpload className="mr-2" /> Bulk Import
             </Button>
             <Button
-              className="bg-white text-indigo-700 hover:bg-indigo-50 border-none shadow-md"
+              className="bg-white text-eyDark hover:bg-primary-50 border-none shadow-md"
               onClick={() => setShowModal(true)}
             >
               <FiPlus className="mr-2 w-5 h-5" />
@@ -163,7 +163,7 @@ const Students = () => {
           <input
             type="text"
             placeholder="Search students by name, email, reg no or enrollment..."
-            className="w-full pl-10 pr-4 py-2 border border-blue-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
+            className="w-full pl-10 pr-4 py-2 border border-primary-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
@@ -173,7 +173,7 @@ const Students = () => {
         </div>
         <div className="flex gap-2">
           <select
-            className="px-4 py-2 border border-blue-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white shadow-sm"
+            className="px-4 py-2 border border-primary-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white shadow-sm"
             value={pageSize}
             onChange={(e) => {
               setPageSize(Number(e.target.value));
@@ -211,7 +211,7 @@ const Students = () => {
                       <tr key={student._id} className="hover:bg-gray-50/50 transition-colors group">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="group-hover:scale-110 transition-transform w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center mr-4 text-indigo-700 font-bold border border-indigo-100">
+                            <div className="group-hover:scale-110 transition-transform w-10 h-10 rounded-xl bg-gradient-to-br from-primary-50 to-white flex items-center justify-center mr-4 text-eyDark font-bold border border-primary-100">
                               {student.name.charAt(0).toUpperCase()}
                             </div>
                             <div>
@@ -224,7 +224,7 @@ const Students = () => {
                           <span className="text-sm font-medium text-gray-700">{student.regNo || '-'}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-3 py-1 text-xs font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-100 uppercase tracking-wider">
+                          <span className="px-3 py-1 text-xs font-bold rounded-full bg-primary-50 text-eyDark border border-primary-100 uppercase tracking-wider">
                             {student.departmentId?.name || 'Unassigned'}
                           </span>
                         </td>
@@ -245,7 +245,7 @@ const Students = () => {
                                 e.stopPropagation();
                                 handleEdit(student);
                               }}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 bg-primary-50 hover:bg-blue-100 rounded-md transition-colors cursor-pointer"
                             >
                               <FiEdit size={14} />
                               <span>Edit</span>
@@ -313,7 +313,7 @@ const Students = () => {
                           key={pageNum}
                           onClick={() => setCurrentPage(pageNum)}
                           className={`w-10 h-10 text-sm font-bold rounded-lg transition-all ${currentPage === pageNum
-                            ? 'bg-primary-600 text-white shadow-md'
+                            ? 'bg-primary-500 text-eyDark shadow-md'
                             : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
                             }`}
                         >

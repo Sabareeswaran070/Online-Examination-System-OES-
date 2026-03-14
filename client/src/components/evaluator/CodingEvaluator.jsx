@@ -22,8 +22,8 @@ const CodingEvaluator = ({ question, onUpdateScore, onAcceptAI, loadingAI }) => 
                 {/* Header */}
                 <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center">
-                            <FiAward size={20} className="text-white" />
+                        <div className="w-10 h-10 rounded-xl bg-primary-500 flex items-center justify-center">
+                            <FiAward size={20} className="text-eyDark" />
                         </div>
                         <div>
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Coding Challenge</p>
@@ -32,7 +32,7 @@ const CodingEvaluator = ({ question, onUpdateScore, onAcceptAI, loadingAI }) => 
                     </div>
                     <div className="flex flex-wrap gap-2 items-center">
                         {question.language && <span className="bg-primary-100 text-primary-700 text-xs font-bold px-3 py-1.5 rounded-lg">{question.language}</span>}
-                        <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1.5 rounded-lg">{question.marksAwarded ?? 0}/{question.maxMarks} pts</span>
+                        <span className="bg-indigo-100 text-eyDark text-xs font-bold px-3 py-1.5 rounded-lg">{question.marksAwarded ?? 0}/{question.maxMarks} pts</span>
                         {testCases.length > 0 && (
                             <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${passed === testCases.length ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                                 {passed}/{testCases.length} Tests Passed
@@ -61,7 +61,7 @@ const CodingEvaluator = ({ question, onUpdateScore, onAcceptAI, loadingAI }) => 
                                 <div className="mt-3 grid grid-cols-2 gap-3">
                                     <div className="p-3 bg-white rounded-lg border border-gray-200">
                                         <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Sample Input</p>
-                                        <pre className="text-xs font-mono text-blue-700">{question.sampleIO.input}</pre>
+                                        <pre className="text-xs font-mono text-eyDark">{question.sampleIO.input}</pre>
                                     </div>
                                     <div className="p-3 bg-white rounded-lg border border-gray-200">
                                         <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Sample Output</p>
@@ -117,7 +117,7 @@ const CodingEvaluator = ({ question, onUpdateScore, onAcceptAI, loadingAI }) => 
                                         return (
                                             <tr key={i} className={isPass ? 'bg-emerald-50/30' : 'bg-red-50/30'}>
                                                 <td className="px-4 py-2.5 text-gray-500 font-mono text-xs">{i + 1}</td>
-                                                <td className="px-4 py-2.5 text-blue-700 font-mono text-xs">{tc.input || tc.stdin || '–'}</td>
+                                                <td className="px-4 py-2.5 text-eyDark font-mono text-xs">{tc.input || tc.stdin || '–'}</td>
                                                 <td className="px-4 py-2.5 text-emerald-700 font-mono text-xs">{tc.expectedOutput || tc.expected || '–'}</td>
                                                 <td className="px-4 py-2.5 font-mono text-xs" style={{ color: isPass ? '#059669' : '#dc2626' }}>{tc.actualOutput || tc.actual || '–'}</td>
                                                 <td className="px-4 py-2.5">
@@ -139,8 +139,8 @@ const CodingEvaluator = ({ question, onUpdateScore, onAcceptAI, loadingAI }) => 
                 {question.aiReasoning && (
                     <div className="bg-primary-50 border border-primary-200 rounded-xl p-5 shadow-sm">
                         <div className="flex items-center gap-3 mb-3">
-                            <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
-                                <FiCpu size={16} className="text-white" />
+                            <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center">
+                                <FiCpu size={16} className="text-eyDark" />
                             </div>
                             <div>
                                 <p className="text-primary-800 font-bold text-sm">AI Code Review</p>
@@ -180,7 +180,7 @@ const CodingEvaluator = ({ question, onUpdateScore, onAcceptAI, loadingAI }) => 
                             <button
                                 onClick={() => onAcceptAI(question._id)}
                                 disabled={loadingAI}
-                                className="px-4 py-2 border border-primary-200 text-primary-600 text-sm font-semibold rounded-lg hover:bg-primary-50 flex items-center gap-2 disabled:opacity-50"
+                                className="px-4 py-2 border border-primary-200 text-eyDark text-sm font-semibold rounded-lg hover:bg-primary-50 flex items-center gap-2 disabled:opacity-50"
                             >
                                 <FiCpu size={16} className={loadingAI ? "animate-spin" : ""} />
                                 {loadingAI ? 'Evaluating...' : 'Evaluate with AI'}
@@ -190,7 +190,7 @@ const CodingEvaluator = ({ question, onUpdateScore, onAcceptAI, loadingAI }) => 
                             </button>
                             <button
                                 onClick={() => onUpdateScore(question._id, localScore, localFeedback)}
-                                className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold rounded-lg transition-colors flex items-center gap-2"
+                                className="px-6 py-2 bg-primary-500 hover:bg-primary-700 text-eyDark text-sm font-bold rounded-lg transition-colors flex items-center gap-2"
                             >
                                 Submit Evaluation ✓
                             </button>

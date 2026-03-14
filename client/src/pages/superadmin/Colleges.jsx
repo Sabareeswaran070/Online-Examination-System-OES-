@@ -266,6 +266,24 @@ const Colleges = () => {
   const columns = [
     { header: 'College Name', accessor: 'collegeName' },
     { header: 'Code', accessor: 'collegeCode' },
+    {
+      header: 'Admin',
+      render: (row) => (
+        <div className="text-sm">
+          {row.adminIds && row.adminIds.length > 0 ? (
+            <div className="flex flex-col">
+              {row.adminIds.map((admin, idx) => (
+                <span key={admin._id || idx} className="text-gray-900 font-medium">
+                  {admin.name || 'Admin'}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="text-gray-400 italic text-xs">No Admin</span>
+          )}
+        </div>
+      )
+    },
     { header: 'City', accessor: 'address.city' },
     { header: 'District', accessor: 'address.district' },
     { header: 'Year', accessor: 'establishedYear' },
@@ -285,12 +303,12 @@ const Colleges = () => {
         <div className="flex space-x-2">
           <button
             onClick={() => { setSelectedCollege(row); setShowHierarchyModal(true); }}
-            className="text-primary-600 hover:text-primary-800 p-1 hover:bg-primary-50 rounded transition-colors"
+            className="text-eyDark hover:text-primary-800 p-1 hover:bg-primary-50 rounded transition-colors"
             title="Manage Hierarchy"
           >
             <FiUsers />
           </button>
-          <button onClick={() => handleEdit(row)} className="text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded transition-colors">
+          <button onClick={() => handleEdit(row)} className="text-blue-600 hover:text-blue-800 p-1 hover:bg-primary-50 rounded transition-colors">
             <FiEdit />
           </button>
           <button onClick={() => toggleStatus(row)} className="text-yellow-600 hover:text-yellow-800 p-1 hover:bg-yellow-50 rounded transition-colors">
@@ -375,7 +393,7 @@ const Colleges = () => {
                   key={i + 1}
                   onClick={() => setCurrentPage(i + 1)}
                   className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${currentPage === i + 1
-                    ? 'bg-primary-600 text-white shadow-sm'
+                    ? 'bg-primary-500 text-eyDark shadow-sm'
                     : 'hover:bg-gray-100 text-gray-700'
                     }`}
                 >
@@ -429,7 +447,7 @@ const Colleges = () => {
             {pincodeLoading && (
               <div className="absolute right-3 top-9 flex items-center space-x-1">
                 <div className="animate-spin h-4 w-4 border-2 border-primary-500 border-t-transparent rounded-full"></div>
-                <span className="text-xs text-primary-600">Fetching...</span>
+                <span className="text-xs text-eyDark">Fetching...</span>
               </div>
             )}
             {!pincodeLoading && formData.zipCode.length === 6 && formData.state && (
@@ -521,11 +539,11 @@ const Colleges = () => {
           {/* Proctoring Defaults & Locks Section */}
           <div className="border-t pt-4 mt-6">
             <h4 className="text-md font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <FiShield className="text-primary-600" />
+              <FiShield className="text-eyDark" />
               College Proctoring Defaults & Locks
             </h4>
 
-            <div className="space-y-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+            <div className="space-y-4 bg-primary-50/50 p-4 rounded-xl border border-primary-100">
               <p className="text-xs text-blue-600 font-medium mb-3 italic">
                 Configure default security settings for all exams in this college.
                 "Lock" a setting to prevent Departments and Faculty from overriding it.
@@ -542,7 +560,7 @@ const Colleges = () => {
                         ...formData,
                         defaultProctoringSettings: { ...formData.defaultProctoringSettings, enforceFullscreen: e.target.checked }
                       })}
-                      className="w-4 h-4 text-primary-600 rounded"
+                      className="w-4 h-4 text-eyDark rounded"
                     />
                     <span className="text-sm text-gray-700">Default: Enforce Fullscreen</span>
                   </div>
@@ -570,7 +588,7 @@ const Colleges = () => {
                         ...formData,
                         defaultProctoringSettings: { ...formData.defaultProctoringSettings, blockNotifications: e.target.checked }
                       })}
-                      className="w-4 h-4 text-primary-600 rounded"
+                      className="w-4 h-4 text-eyDark rounded"
                     />
                     <span className="text-sm text-gray-700">Default: Block Notifications</span>
                   </div>
@@ -598,7 +616,7 @@ const Colleges = () => {
                         ...formData,
                         defaultProctoringSettings: { ...formData.defaultProctoringSettings, tabSwitchingAllowed: e.target.checked }
                       })}
-                      className="w-4 h-4 text-primary-600 rounded"
+                      className="w-4 h-4 text-eyDark rounded"
                     />
                     <span className="text-sm text-gray-700">Default: Allow Tab Switching</span>
                   </div>
@@ -730,7 +748,7 @@ const Colleges = () => {
                   <span className="font-bold text-gray-800">{deleteStats.exams}</span>
                 </div>
               </div>
-              <div className="bg-blue-50 p-3 rounded-lg flex justify-between items-center border border-blue-100">
+              <div className="bg-primary-50 p-3 rounded-lg flex justify-between items-center border border-primary-100">
                 <span className="text-xs text-blue-600 font-bold uppercase tracking-wider">Total Impact</span>
                 <span className="text-lg font-black text-blue-800">{deleteStats.totalImpact} Records</span>
               </div>

@@ -177,7 +177,7 @@ const CollegeHierarchyModal = ({ isOpen, onClose, college, onUpdate }) => {
                 {/* Admin Assignment Section */}
                 <div className="bg-primary-50/30 p-5 rounded-2xl border border-primary-100">
                     <div className="flex items-center gap-2 mb-4">
-                        <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center text-primary-600">
+                        <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center text-eyDark">
                             <FiUser size={18} />
                         </div>
                         <h3 className="font-bold text-gray-900">
@@ -300,7 +300,7 @@ const CollegeHierarchyModal = ({ isOpen, onClose, college, onUpdate }) => {
                                 <div key={dept._id} className="p-5 bg-white border border-gray-200 rounded-2xl space-y-5 group hover:border-primary-300 transition-all shadow-sm">
                                     <div className="flex justify-between items-start">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                                            <div className="w-10 h-10 rounded-xl bg-primary-50 flex items-center justify-center text-blue-600">
                                                 <FiHome size={20} />
                                             </div>
                                             <div>
@@ -322,7 +322,7 @@ const CollegeHierarchyModal = ({ isOpen, onClose, college, onUpdate }) => {
                                                 <FiPlus className="mr-1.5" /> Subject
                                             </Button>
                                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => handleEditDept(dept)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Edit Department">
+                                                <button onClick={() => handleEditDept(dept)} className="p-1.5 text-blue-600 hover:bg-primary-50 rounded-lg" title="Edit Department">
                                                     <FiEdit size={16} />
                                                 </button>
                                                 <button onClick={() => handleDeleteDept(dept._id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg" title="Delete Department">

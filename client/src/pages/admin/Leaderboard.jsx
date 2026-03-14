@@ -58,7 +58,7 @@ const Leaderboard = () => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-primary-600">{student.avgScore || student.averageScore || 0}%</p>
+                  <p className="text-2xl font-bold text-eyDark">{student.avgScore || student.averageScore || 0}%</p>
                   <p className="text-sm text-gray-600">{student.examsCompleted || 0} exams</p>
                 </div>
               </div>

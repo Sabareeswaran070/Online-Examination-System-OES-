@@ -325,7 +325,7 @@ const ExamDetails = () => {
     {
       header: 'Type',
       render: (row) => (
-        <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+        <span className="text-xs px-2 py-0.5 bg-blue-100 text-eyDark rounded-full font-medium">
           {row.questionId?.type || 'N/A'}
         </span>
       )
@@ -427,7 +427,7 @@ const ExamDetails = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <div className="text-center">
-            <p className="text-sm text-blue-700 font-medium">Start Time</p>
+            <p className="text-sm text-eyDark font-medium">Start Time</p>
             <p className="text-base font-semibold text-blue-900 mt-2">
               {formatDateTime(exam.startTime)}
             </p>
@@ -441,7 +441,7 @@ const ExamDetails = () => {
         </Card>
         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
           <div className="text-center">
-            <p className="text-sm text-purple-700 font-medium">Total Marks</p>
+            <p className="text-sm text-eyDark font-medium">Total Marks</p>
             <p className="text-2xl font-bold text-purple-900 mt-2">{exam.totalMarks}</p>
           </div>
         </Card>
@@ -513,7 +513,7 @@ const ExamDetails = () => {
           </div>
         </div>
         {exam.instructions && (
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="mt-6 p-4 bg-primary-50 rounded-lg border border-blue-200">
             <p className="text-sm font-medium text-blue-900 mb-2">Instructions:</p>
             <p className="text-sm text-blue-800">{exam.instructions}</p>
           </div>
@@ -644,7 +644,7 @@ const ExamDetails = () => {
                       setSelectedQuestions(availableQuestions.map(q => q._id));
                     }
                   }}
-                  className="ml-3 text-xs text-primary-600 font-medium hover:underline"
+                  className="ml-3 text-xs text-eyDark font-medium hover:underline"
                 >
                   {selectedQuestions.length === availableQuestions.length ? 'Deselect All' : 'Select All'}
                 </button>
@@ -678,15 +678,15 @@ const ExamDetails = () => {
                           setSelectedQuestions(selectedQuestions.filter(id => id !== q._id));
                         }
                       }}
-                      className="mt-1 w-4 h-4 text-primary-600 rounded"
+                      className="mt-1 w-4 h-4 text-eyDark rounded"
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{q.questionText}</p>
                       <div className="flex flex-wrap gap-2 mt-1">
-                        <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">{q.type}</span>
+                        <span className="text-xs px-2 py-0.5 bg-blue-100 text-eyDark rounded-full font-medium">{q.type}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${q.difficulty === 'easy' ? 'bg-green-100 text-green-700' : q.difficulty === 'hard' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{q.difficulty}</span>
                         <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full font-medium">{q.marks} marks</span>
-                        {q.subject?.name && <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">{q.subject.name}</span>}
+                        {q.subject?.name && <span className="text-xs px-2 py-0.5 bg-purple-100 text-eyDark rounded-full font-medium">{q.subject.name}</span>}
                       </div>
                     </div>
                   </label>
@@ -728,7 +728,7 @@ const ExamDetails = () => {
                 <h3 className="text-lg font-bold text-gray-900">Generate with AI</h3>
                 <p className="text-sm text-gray-500 mt-1">
                   Not enough questions in the bank. AI will generate and add them to this exam.
-                  {exam.subject?.name && <span className="font-semibold text-purple-700"> Subject: {exam.subject.name}</span>}
+                  {exam.subject?.name && <span className="font-semibold text-eyDark"> Subject: {exam.subject.name}</span>}
                 </p>
               </div>
 

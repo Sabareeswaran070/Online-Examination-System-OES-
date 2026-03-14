@@ -93,7 +93,7 @@ const DeptHeadDashboard = () => {
                       </p>
                     </div>
                     {subject.credits && (
-                      <span className="text-[10px] font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-bold text-eyDark bg-primary-50 px-2 py-0.5 rounded-full">
                         {subject.credits} credits
                       </span>
                     )}
@@ -112,7 +112,7 @@ const DeptHeadDashboard = () => {
               stats.facultyWorkload.slice(0, 5).map((faculty) => (
                 <div key={faculty._id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="font-medium text-gray-900">{faculty.name}</span>
-                  <span className="text-primary-600 font-semibold">{faculty.subjectCount} subjects</span>
+                  <span className="text-eyDark font-semibold">{faculty.subjectCount} subjects</span>
                 </div>
               ))
             ) : (

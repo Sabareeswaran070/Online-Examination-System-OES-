@@ -163,12 +163,12 @@ const Subjects = () => {
             header: 'Subject Information',
             render: (row) => (
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100 shadow-sm">
+                    <div className="w-10 h-10 rounded-xl bg-primary-50 flex items-center justify-center text-blue-600 border border-primary-100 shadow-sm">
                         <FiBook className="w-5 h-5" />
                     </div>
                     <div>
                         <div className="font-bold text-gray-900 uppercase tracking-tight">{row.name}</div>
-                        <div className="text-xs font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full inline-block mt-0.5 border border-blue-100">
+                        <div className="text-xs font-mono text-blue-600 bg-primary-50 px-2 py-0.5 rounded-full inline-block mt-0.5 border border-primary-100">
                             {row.subjectCode}
                         </div>
                     </div>
@@ -180,11 +180,11 @@ const Subjects = () => {
             render: (row) => (
                 <div className="space-y-1">
                     <div className="flex items-center text-xs text-gray-600">
-                        <FiLayers className="mr-1.5 w-3.5 h-3.5 text-indigo-500" />
+                        <FiLayers className="mr-1.5 w-3.5 h-3.5 text-primary-600" />
                         Semester {row.semester}
                     </div>
                     <div className="flex items-center text-xs text-gray-600">
-                        <FiClock className="mr-1.5 w-3.5 h-3.5 text-indigo-500" />
+                        <FiClock className="mr-1.5 w-3.5 h-3.5 text-primary-600" />
                         {row.credits} Credits
                     </div>
                 </div>
@@ -227,14 +227,14 @@ const Subjects = () => {
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => handleOpenAssign(row)}
-                        className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border border-transparent hover:border-indigo-100"
+                        className="p-2 text-indigo-600 hover:bg-primary-50 rounded-xl transition-all border border-transparent hover:border-primary-100"
                         title="Assign Faculty"
                     >
                         <FiUserPlus className="w-4 h-4" />
                     </button>
                     <button
                         onClick={() => handleEdit(row)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all border border-transparent hover:border-blue-100"
+                        className="p-2 text-blue-600 hover:bg-primary-50 rounded-xl transition-all border border-transparent hover:border-primary-100"
                         title="Edit Subject"
                     >
                         <FiEdit className="w-4 h-4" />
@@ -255,7 +255,7 @@ const Subjects = () => {
 
     return (
         <div className="space-y-6">
-            <div className="bg-gradient-to-r from-blue-700 to-indigo-800 rounded-2xl shadow-lg p-6 text-white">
+            <div className="bg-gradient-to-r from-eyDark to-gray-900 rounded-2xl shadow-lg p-6 text-white">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <h1 className="text-2xl md:text-3xl font-bold">Subject Management</h1>
@@ -263,7 +263,7 @@ const Subjects = () => {
                     </div>
                     <Button
                         variant="primary"
-                        className="bg-white text-blue-700 hover:bg-blue-50 border-none shadow-md"
+                        className="bg-white text-eyDark hover:bg-primary-50 border-none shadow-md"
                         onClick={() => { resetForm(); setShowModal(true); }}
                     >
                         <FiPlus className="mr-2" />
@@ -362,7 +362,7 @@ const Subjects = () => {
                 title={`Assign Faculty to ${selectedSubject?.name}`}
             >
                 <form onSubmit={handleAssignSubmit} className="space-y-4 pt-2">
-                    <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-start gap-3 mb-2">
+                    <div className="bg-primary-50 border border-primary-100 rounded-xl p-4 flex items-start gap-3 mb-2">
                         <FiUsers className="text-indigo-600 w-5 h-5 mt-0.5" />
                         <div className="text-sm text-indigo-800">
                             Select a faculty member from your department to assign them to this subject.

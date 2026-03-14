@@ -39,7 +39,7 @@ const ScoreOverride = ({ currentScore, maxMarks, feedback, onUpdate, onAcceptAI 
                     <div className="flex items-end">
                         <Button
                             variant="outline"
-                            className="w-full flex items-center justify-center gap-2 h-[42px] border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                            className="w-full flex items-center justify-center gap-2 h-[42px] border-indigo-200 text-indigo-600 hover:bg-primary-50"
                             onClick={onAcceptAI}
                         >
                             <FiCheck /> Accept AI Score

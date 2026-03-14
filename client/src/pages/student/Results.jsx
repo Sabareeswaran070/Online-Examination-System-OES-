@@ -95,7 +95,7 @@ const Results = () => {
       value: results.length,
       icon: FiFileText,
       color: 'text-indigo-600',
-      bgColor: 'bg-indigo-50'
+      bgColor: 'bg-primary-50'
     },
     {
       label: 'Results Published',
@@ -116,7 +116,7 @@ const Results = () => {
       value: `${formatPercentage(analytics?.overallStats?.avgPercentage || 0)}`,
       icon: FiTrendingUp,
       color: 'text-purple-600',
-      bgColor: 'bg-purple-50'
+      bgColor: 'bg-primary-50'
     },
   ];
 
@@ -130,7 +130,7 @@ const Results = () => {
               {user?.profileImage ? (
                 <img src={user.profileImage} alt={user.name} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-xl font-bold text-indigo-700">
+                <span className="text-xl font-bold text-eyDark">
                   {user?.name?.split(' ').map(n => n[0]).join('')}
                 </span>
               )}
@@ -152,7 +152,7 @@ const Results = () => {
               </div>
             </div>
           </div>
-          <button className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-50 border border-indigo-100 text-indigo-700 text-sm font-semibold rounded-xl hover:bg-indigo-100 transition-colors">
+          <button className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-50 border border-primary-100 text-eyDark text-sm font-semibold rounded-xl hover:bg-indigo-100 transition-colors">
             <FiDownload className="w-4 h-4" />
             Download Transcript
           </button>
@@ -197,7 +197,7 @@ const Results = () => {
                   "px-4 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap",
                   activeFilter === filter
                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
-                    : "bg-white border border-slate-200 text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-100"
+                    : "bg-white border border-slate-200 text-slate-600 hover:bg-primary-50 hover:text-eyDark hover:border-primary-100"
                 )}
               >
                 {filter}
@@ -205,7 +205,7 @@ const Results = () => {
             ))}
           </div>
           <div className="flex items-center gap-3 shrink-0 border-l border-slate-200 pl-4 ml-0 lg:ml-2">
-            <div className="relative flex items-center gap-2 px-3 py-2 bg-indigo-50/50 border border-indigo-100 rounded-lg text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors group">
+            <div className="relative flex items-center gap-2 px-3 py-2 bg-primary-50/50 border border-primary-100 rounded-lg text-xs font-semibold text-eyDark hover:bg-indigo-100 transition-colors group">
               <FiCalendar className="w-3.5 h-3.5 shrink-0" />
               <div className="relative">
                 {!dateFilter && <span className="absolute inset-0 flex items-center pointer-events-none opacity-60">Any Date</span>}
@@ -231,7 +231,7 @@ const Results = () => {
           </div>
         </div>
 
-        <div className="px-6 py-4 bg-indigo-50/30 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="px-6 py-4 bg-primary-50/30 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-sm text-slate-500 font-medium">
             Showing <span className="font-extrabold text-indigo-600">{filteredResults.length}</span> of <span className="font-bold text-slate-700">{results.length}</span> results
           </p>
@@ -253,7 +253,7 @@ const Results = () => {
                         setSortBy(option);
                         setIsSortOpen(false);
                       }}
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-primary-50 hover:text-eyDark transition-colors"
                     >
                       {option}
                     </button>
@@ -285,7 +285,7 @@ const Results = () => {
               <div className="p-6 flex-1">
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex gap-2">
-                    <Badge variant="info" className="rounded-full bg-blue-50 text-blue-600 border-blue-100 px-3 py-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
+                    <Badge variant="info" className="rounded-full bg-primary-50 text-blue-600 border-primary-100 px-3 py-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
                       <FiGlobe className="w-3 h-3" /> Global
                     </Badge>
                     <Badge variant="secondary" className="rounded-lg bg-slate-100 text-slate-600 px-2 py-0.5 text-[10px] font-bold">
@@ -303,7 +303,7 @@ const Results = () => {
 
                 <div className="space-y-3 mb-8">
                   <div className="flex items-center gap-3 text-slate-500">
-                    <div className="w-5 flex justify-center"><FiCalendar className="w-4 h-4 text-indigo-500" /></div>
+                    <div className="w-5 flex justify-center"><FiCalendar className="w-4 h-4 text-primary-600" /></div>
                     <p className="text-sm">Conducted: <span className="font-medium text-slate-700">{formatDate(row.examId?.startTime, 'MMM dd, yyyy')}</span></p>
                   </div>
                   <div className="flex items-center gap-3 text-emerald-600">
@@ -337,7 +337,7 @@ const Results = () => {
                     <div
                       className={clsx(
                         "absolute top-0 left-0 h-full rounded-full transition-all duration-1000",
-                        row.percentage >= 80 ? "bg-emerald-500" : row.percentage >= 60 ? "bg-blue-500" : "bg-amber-500"
+                        row.percentage >= 80 ? "bg-emerald-500" : row.percentage >= 60 ? "bg-primary-500" : "bg-amber-500"
                       )}
                       style={{ width: `${row.isPublished ? row.percentage : 0}%` }}
                     />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiPlus, FiEdit, FiTrash2, FiEye, FiUpload, FiFileText, FiSearch, FiCheckCircle } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiEye, FiUpload, FiFileText, FiSearch, FiCheckCircle, FiMonitor } from 'react-icons/fi';
 import Card from '@/components/common/Card.jsx';
 import Button from '@/components/common/Button.jsx';
 import Table from '@/components/common/Table.jsx';
@@ -15,7 +15,7 @@ import { useAuth } from '@/context/AuthContext';
 import { formatDateTime, getExamLiveStatus, getTimeRemainingText, toLocalISOString } from '@/utils/dateUtils';
 import toast from 'react-hot-toast';
 
-const Exams = () => {
+const Exams = ({ monitoring }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const basePath = user?.role === 'superadmin' ? '/super-admin' : '/faculty';
@@ -320,6 +320,16 @@ const Exams = () => {
           >
             <FiEye className="w-4 h-4" />
           </Button>
+          {monitoring && row.status === 'ongoing' && (
+            <Button
+              size="sm"
+              variant="success"
+              onClick={() => navigate(`${basePath}/monitoring/${row._id}`)}
+              title="Monitor Exam"
+            >
+              <FiMonitor className="w-4 h-4" />
+            </Button>
+          )}
           <Button
             size="sm"
             variant="primary"
@@ -356,14 +366,14 @@ const Exams = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl shadow-lg p-8 text-white">
+      <div className="bg-eyDark rounded-2xl shadow-lg p-8 text-white">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
-            <h1 className="text-3xl font-bold font-display tracking-tight text-white mb-2">Exam Management</h1>
-            <p className="text-blue-100 max-w-xl">Create, manage, and monitor examination sessions across your assigned subjects</p>
+            <h1 className="text-3xl font-bold font-display tracking-tight text-white mb-2">{monitoring ? 'Live Monitoring Control' : 'Exam Management'}</h1>
+            <p className="text-blue-100 max-w-xl">{monitoring ? 'Select an ongoing examination session to start real-time proctoring and student oversight' : 'Create, manage, and monitor examination sessions across your assigned subjects'}</p>
           </div>
           <Button
-            className="bg-white text-blue-700 hover:bg-blue-50 border-none shadow-xl transition-all hover:scale-105"
+            className="bg-white text-eyDark hover:bg-primary-50 border-none shadow-xl transition-all hover:scale-105"
             size="lg"
             onClick={() => { resetForm(); setShowModal(true); }}
           >
@@ -420,14 +430,14 @@ const Exams = () => {
       </div>
 
       {selectedExams.length > 0 && (
-        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center justify-between animate-fade-in">
+        <div className="bg-primary-50 p-4 rounded-xl border border-primary-100 flex items-center justify-between animate-fade-in">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg">
               {selectedExams.length}
             </div>
             <div>
               <p className="text-blue-900 font-bold text-sm">Exams Selected</p>
-              <p className="text-blue-700 text-xs">Bulk actions available for selected items</p>
+              <p className="text-eyDark text-xs">Bulk actions available for selected items</p>
             </div>
           </div>
           <Button
@@ -488,7 +498,7 @@ const Exams = () => {
                           key={pageNum}
                           onClick={() => setCurrentPage(pageNum)}
                           className={`w-10 h-10 text-sm font-bold rounded-lg transition-all ${currentPage === pageNum
-                            ? 'bg-primary-600 text-white shadow-md'
+                            ? 'bg-primary-500 text-eyDark shadow-md'
                             : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
                             }`}
                         >
@@ -627,7 +637,7 @@ const Exams = () => {
                 name="negativeMarkingEnabled"
                 checked={formData.negativeMarkingEnabled}
                 onChange={handleChange}
-                className="w-4 h-4 text-primary-600 rounded"
+                className="w-4 h-4 text-eyDark rounded"
               />
               <span className="text-sm text-gray-700">Allow Negative Marking</span>
             </label>
@@ -647,7 +657,7 @@ const Exams = () => {
 
             <div className="border-t pt-4 mt-6">
               <h4 className="text-md font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <FiEye className="text-primary-600" />
+                <FiEye className="text-eyDark" />
                 Proctoring & Security Settings
               </h4>
 
@@ -658,7 +668,7 @@ const Exams = () => {
                     name="proctoring.enabled"
                     checked={formData.proctoring.enabled}
                     onChange={handleChange}
-                    className="w-4 h-4 text-primary-600 rounded"
+                    className="w-4 h-4 text-eyDark rounded"
                   />
                   <span className="text-sm text-gray-900">Enable Proctoring System</span>
                 </label>
@@ -674,7 +684,7 @@ const Exams = () => {
                           checked={formData.proctoring.enforceFullscreen}
                           onChange={handleChange}
                           disabled={proctoringDefaults.college.isLocked?.enforceFullscreen || proctoringDefaults.department.isLocked?.enforceFullscreen}
-                          className="w-4 h-4 text-primary-600 rounded"
+                          className="w-4 h-4 text-eyDark rounded"
                         />
                         <span className="text-sm text-gray-700">Enforce Fullscreen Mode</span>
                         {(proctoringDefaults.college.isLocked?.enforceFullscreen || proctoringDefaults.department.isLocked?.enforceFullscreen) && (
@@ -690,7 +700,7 @@ const Exams = () => {
                           checked={formData.proctoring.blockNotifications}
                           onChange={handleChange}
                           disabled={proctoringDefaults.college.isLocked?.blockNotifications || proctoringDefaults.department.isLocked?.blockNotifications}
-                          className="w-4 h-4 text-primary-600 rounded"
+                          className="w-4 h-4 text-eyDark rounded"
                         />
                         <span className="text-sm text-gray-700">Block Notifications</span>
                         {(proctoringDefaults.college.isLocked?.blockNotifications || proctoringDefaults.department.isLocked?.blockNotifications) && (
@@ -706,7 +716,7 @@ const Exams = () => {
                           checked={formData.proctoring.tabSwitchingAllowed}
                           onChange={handleChange}
                           disabled={proctoringDefaults.college.isLocked?.tabSwitchingAllowed || proctoringDefaults.department.isLocked?.tabSwitchingAllowed}
-                          className="w-4 h-4 text-primary-600 rounded"
+                          className="w-4 h-4 text-eyDark rounded"
                         />
                         <span className="text-sm text-gray-700">Allow Tab Switching</span>
                         {(proctoringDefaults.college.isLocked?.tabSwitchingAllowed || proctoringDefaults.department.isLocked?.tabSwitchingAllowed) && (
@@ -721,7 +731,7 @@ const Exams = () => {
                           name="proctoring.cameraRequired"
                           checked={formData.proctoring.cameraRequired}
                           onChange={handleChange}
-                          className="w-4 h-4 text-primary-600 rounded"
+                          className="w-4 h-4 text-eyDark rounded"
                         />
                         <span className="text-sm text-gray-700 font-bold">Require Real-time Camera Monitoring</span>
                         <Badge size="xs" variant="info">NEW</Badge>
@@ -787,13 +797,13 @@ const Exams = () => {
                 name="isRandomized"
                 checked={formData.isRandomized}
                 onChange={handleChange}
-                className="w-4 h-4 text-primary-600 rounded"
+                className="w-4 h-4 text-eyDark rounded"
               />
               <span className="text-sm text-gray-700">Shuffle Questions</span>
             </label>
 
             {/* Results now always require manual publication as per new security requirement */}
-            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 flex items-center gap-2">
+            <div className="p-3 bg-primary-50 rounded-lg border border-primary-100 flex items-center gap-2">
               <FiCheckCircle className="text-blue-600 w-4 h-4" />
               <span className="text-xs text-blue-800 font-medium">Results will require manual publication after the exam ends.</span>
             </div>

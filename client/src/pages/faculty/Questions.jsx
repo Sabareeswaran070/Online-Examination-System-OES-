@@ -259,14 +259,14 @@ const Questions = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-teal-600 to-emerald-700 rounded-2xl shadow-lg p-8 text-white">
+      <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl shadow-lg p-8 text-white">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
             <h1 className="text-3xl font-bold font-display tracking-tight text-white mb-2">Question Bank</h1>
             <p className="text-emerald-50 max-w-xl">Centralized repository for your examination questions. Create, organize, and filter content across subjects.</p>
           </div>
           <Button
-            className="bg-white text-teal-700 hover:bg-emerald-50 border-none shadow-xl transition-all hover:scale-105"
+            className="bg-white text-eyDark hover:bg-emerald-50 border-none shadow-xl transition-all hover:scale-105"
             size="lg"
             onClick={() => { resetForm(); setShowModal(true); }}
           >
@@ -564,18 +564,18 @@ const Questions = () => {
             rows={2}
           />
 
-          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+          <div className="bg-primary-50 p-4 rounded-xl border border-primary-100">
             <label className="flex items-center gap-3 cursor-pointer group">
               <input
                 type="checkbox"
                 name="isGlobal"
                 checked={formData.isGlobal}
                 onChange={(e) => setFormData({ ...formData, isGlobal: e.target.checked })}
-                className="w-5 h-5 text-primary-600 rounded border-gray-300 focus:ring-primary-500 transition-all"
+                className="w-5 h-5 text-eyDark rounded border-gray-300 focus:ring-primary-500 transition-all"
               />
               <div>
-                <span className="block text-sm font-bold text-blue-900 group-hover:text-blue-700">Contribute to Global Pool</span>
-                <span className="block text-[11px] text-blue-700 opacity-80 mt-0.5">Global questions require Super Admin approval before they're visible to other colleges.</span>
+                <span className="block text-sm font-bold text-blue-900 group-hover:text-eyDark">Contribute to Global Pool</span>
+                <span className="block text-[11px] text-eyDark opacity-80 mt-0.5">Global questions require Super Admin approval before they're visible to other colleges.</span>
               </div>
             </label>
           </div>

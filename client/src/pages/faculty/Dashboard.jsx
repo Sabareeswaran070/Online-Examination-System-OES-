@@ -119,7 +119,7 @@ const FacultyDashboard = () => {
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <p className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                      <p className="font-semibold text-gray-900 group-hover:text-eyDark transition-colors">
                         {exam.title}
                       </p>
                       <p className="text-sm text-gray-600 mt-1">
@@ -177,7 +177,7 @@ const FacultyDashboard = () => {
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <p className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                      <p className="font-semibold text-gray-900 group-hover:text-eyDark transition-colors">
                         {exam.title}
                       </p>
                       <p className="text-sm text-gray-600 mt-1">

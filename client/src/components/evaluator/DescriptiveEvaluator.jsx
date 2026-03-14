@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { FiCpu } from 'react-icons/fi';
 
 const getStatusInfo = (q) => {
-    if (q.isManuallyEvaluated) return { label: 'Manually Reviewed', badge: 'bg-purple-100 text-purple-700' };
-    if (q.aiScore !== undefined && q.aiScore !== null) return { label: 'AI Evaluated', badge: 'bg-blue-100 text-blue-700' };
+    if (q.isManuallyEvaluated) return { label: 'Manually Reviewed', badge: 'bg-purple-100 text-eyDark' };
+    if (q.aiScore !== undefined && q.aiScore !== null) return { label: 'AI Evaluated', badge: 'bg-blue-100 text-eyDark' };
     return { label: 'Pending Review', badge: 'bg-amber-100 text-amber-700' };
 };
 
@@ -105,8 +105,8 @@ const DescriptiveEvaluator = ({ questions, activeQuestion, onSelectQuestion, onU
                     {/* AI Evaluation */}
                     <div className="bg-primary-50 border border-primary-200 rounded-xl p-5 shadow-sm">
                         <div className="flex items-center gap-3 mb-3">
-                            <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
-                                <FiCpu size={16} className="text-white" />
+                            <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center">
+                                <FiCpu size={16} className="text-eyDark" />
                             </div>
                             <div>
                                 <p className="text-primary-800 font-bold text-sm">AI Evaluation</p>
@@ -132,7 +132,7 @@ const DescriptiveEvaluator = ({ questions, activeQuestion, onSelectQuestion, onU
                                     <button
                                         onClick={() => { onAcceptAI(q._id); }}
                                         disabled={loadingAI}
-                                        className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                                        className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-eyDark text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
                                     >
                                         ✓ Accept AI Score ({q.aiScore}/{q.maxMarks})
                                     </button>
@@ -140,7 +140,7 @@ const DescriptiveEvaluator = ({ questions, activeQuestion, onSelectQuestion, onU
                                     <button
                                         onClick={() => { onAcceptAI(q._id); }}
                                         disabled={loadingAI}
-                                        className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                                        className="flex items-center gap-2 px-4 py-2.5 bg-primary-500 hover:bg-primary-700 text-eyDark text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
                                     >
                                         <FiCpu className={loadingAI ? "animate-spin" : ""} />
                                         {loadingAI ? 'Evaluating...' : 'Evaluate with AI'}
@@ -156,8 +156,8 @@ const DescriptiveEvaluator = ({ questions, activeQuestion, onSelectQuestion, onU
                             </div>
                         ) : isOverridden && !overriding ? (
                             <div className="flex items-center gap-3">
-                                <span className="text-purple-700 font-semibold text-sm">Manual Score: {ls.manual}/{q.maxMarks}</span>
-                                <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full">Overridden</span>
+                                <span className="text-eyDark font-semibold text-sm">Manual Score: {ls.manual}/{q.maxMarks}</span>
+                                <span className="bg-purple-100 text-eyDark text-[10px] font-bold px-2 py-0.5 rounded-full">Overridden</span>
                                 <button onClick={() => setOverriding(true)}
                                     className="ml-auto px-3 py-1.5 border border-gray-200 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-50">
                                     Edit
@@ -181,7 +181,7 @@ const DescriptiveEvaluator = ({ questions, activeQuestion, onSelectQuestion, onU
                                 />
                                 <div className="flex gap-2">
                                     <button onClick={handleSaveOverride}
-                                        className="px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition-colors">
+                                        className="px-5 py-2 bg-primary-500 hover:bg-primary-700 text-eyDark text-sm font-semibold rounded-lg transition-colors">
                                         Save
                                     </button>
                                     <button onClick={() => setOverriding(false)}

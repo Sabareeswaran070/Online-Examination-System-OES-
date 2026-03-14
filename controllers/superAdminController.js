@@ -475,6 +475,13 @@ exports.clearAuditLogs = async (req, res, next) => {
 exports.createUser = async (req, res, next) => {
   try {
     const user = await User.create(req.body);
+    
+    // Automatically assign as college admin if role is 'admin'
+    if (user.role === 'admin' && user.collegeId) {
+      await College.findByIdAndUpdate(user.collegeId, {
+        $addToSet: { adminIds: user._id }
+      });
+    }
 
     logger.info(`User created: ${user.email} by ${req.user.email}`);
 
@@ -671,7 +678,20 @@ exports.bulkConfirmUpload = async (req, res, next) => {
       logger.warn(`Partial success in bulk import: ${created.length} created, some failed.`);
     }
 
-    logger.info(`${created.length} users imported in bulk by ${req.user.email}`);
+    // Automatically assign new admins to their respective colleges
+    const adminAssignments = created.filter(u => u.role === 'admin' && u.collegeId);
+    if (adminAssignments.length > 0) {
+      const collegeUpdates = adminAssignments.reduce((acc, admin) => {
+        const collegeId = admin.collegeId.toString();
+        if (!acc[collegeId]) acc[collegeId] = [];
+        acc[collegeId].push(admin._id);
+        return acc;
+      }, {});
+
+      await Promise.all(Object.entries(collegeUpdates).map(([collegeId, adminIds]) => 
+        College.findByIdAndUpdate(collegeId, { $addToSet: { adminIds: { $each: adminIds } } })
+      ));
+    }
 
     res.status(201).json({
       success: true,

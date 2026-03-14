@@ -78,7 +78,7 @@ const EvaluatorLayout = ({ studentData, examData, onClose, onUpdateEvaluation, o
                             key={t.key}
                             onClick={() => setActiveTab(t.key)}
                             className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold border-b-2 transition-all duration-150 ${isActive
-                                ? 'border-primary-600 text-primary-600 bg-primary-50/50'
+                                ? 'border-primary-600 text-eyDark bg-primary-50/50'
                                 : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50'
                                 }`}
                         >

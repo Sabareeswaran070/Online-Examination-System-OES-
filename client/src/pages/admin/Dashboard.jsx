@@ -71,15 +71,15 @@ const CollegeAdminDashboard = () => {
       {(stats?.statistics?.totalCompetitions > 0 || stats?.statistics?.pendingCompetitions > 0) && (
         <div>
           <h2 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <FiAward className="w-5 h-5 text-indigo-500" /> Competition Overview
+            <FiAward className="w-5 h-5 text-primary-600" /> Competition Overview
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div
               onClick={() => navigate('/admin/competitions')}
-              className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-center cursor-pointer hover:shadow-md transition-shadow"
+              className="bg-primary-50 border border-primary-100 rounded-xl p-4 text-center cursor-pointer hover:shadow-md transition-shadow"
             >
-              <FiAward className="w-6 h-6 text-indigo-500 mx-auto mb-1" />
-              <p className="text-2xl font-bold text-indigo-700">{stats?.statistics?.totalCompetitions || 0}</p>
+              <FiAward className="w-6 h-6 text-primary-600 mx-auto mb-1" />
+              <p className="text-2xl font-bold text-eyDark">{stats?.statistics?.totalCompetitions || 0}</p>
               <p className="text-xs text-gray-500 mt-0.5 font-medium">Total Competitions</p>
             </div>
             <div
@@ -100,10 +100,10 @@ const CollegeAdminDashboard = () => {
             </div>
             <div
               onClick={() => navigate('/admin/competitions')}
-              className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center cursor-pointer hover:shadow-md transition-shadow"
+              className="bg-primary-50 border border-primary-100 rounded-xl p-4 text-center cursor-pointer hover:shadow-md transition-shadow"
             >
-              <FiShield className="w-6 h-6 text-blue-500 mx-auto mb-1" />
-              <p className="text-2xl font-bold text-blue-700">{stats?.statistics?.approvedCompetitions || 0}</p>
+              <FiShield className="w-6 h-6 text-primary-600 mx-auto mb-1" />
+              <p className="text-2xl font-bold text-eyDark">{stats?.statistics?.approvedCompetitions || 0}</p>
               <p className="text-xs text-gray-500 mt-0.5 font-medium">SA Approved</p>
             </div>
           </div>

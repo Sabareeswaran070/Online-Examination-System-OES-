@@ -18,6 +18,8 @@ const deptHeadRoutes = require('./routes/deptHead');
 const facultyRoutes = require('./routes/faculty');
 const studentRoutes = require('./routes/student');
 const competitionRoutes = require('./routes/competitions');
+const monitoringRoutes = require('./routes/monitoring');
+const socketService = require('./services/socketService');
 
 // Initialize express app
 const app = express();
@@ -108,6 +110,7 @@ app.use('/api/depthead', deptHeadRoutes);
 app.use('/api/faculty', facultyRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/competitions', competitionRoutes);
+app.use('/api/monitoring', monitoringRoutes);
 
 // Welcome route
 app.get('/', (req, res) => {
@@ -191,6 +194,10 @@ const startServer = async () => {
       console.log(`📚 API Documentation: http://localhost:${PORT}/api/docs`);
       console.log(`💚 Health Check: http://localhost:${PORT}/health\n`);
     });
+
+    // Initialize Socket.io
+    socketService.init(server);
+    logger.info('WebSocket server initialized');
 
     // Create super admin after DB is connected and server starts
     await createSuperAdmin();

@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { SocketProvider } from '@/context/SocketContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layout/DashboardLayout.jsx';
 
@@ -48,6 +49,9 @@ import FacultyExamDetails from './pages/faculty/ExamDetails';
 const FacultyQuestions = lazy(() => import('./pages/faculty/Questions'));
 const FacultyResults = lazy(() => import('./pages/faculty/Results'));
 const FacultySubmissions = lazy(() => import('./pages/faculty/Submissions'));
+import MonitoringDashboard from './pages/faculty/MonitoringDashboard';
+import StudentMonitoringDetail from './pages/faculty/StudentMonitoringDetail';
+import MonitoringReport from './pages/faculty/MonitoringReport';
 import LiveMonitoring from './pages/faculty/LiveMonitoring';
 
 // Student Pages
@@ -219,7 +223,10 @@ const FacultyRoutes = () => {
         <Route path="exams/:id/results" element={<FacultyResults />} />
         <Route path="evaluations" element={<FacultySubmissions />} />
         <Route path="questions" element={<FacultyQuestions />} />
-        <Route path="monitoring" element={<LiveMonitoring />} />
+        <Route path="monitoring" element={<FacultyExams monitoring />} />
+        <Route path="monitoring/:id" element={<MonitoringDashboard />} />
+        <Route path="monitoring/:id/student/:studentId" element={<StudentMonitoringDetail />} />
+        <Route path="monitoring/:id/report" element={<MonitoringReport />} />
       </Routes>
     </DashboardLayout>
   );
@@ -252,93 +259,95 @@ const StudentRoutes = () => {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <Suspense fallback={<div className="h-screen w-full flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>}>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/unauthorized" element={<Unauthorized />} />
+      <SocketProvider>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <Suspense fallback={<div className="h-screen w-full flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>}>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/unauthorized" element={<Unauthorized />} />
 
-            {/* Root and Dashboard redirect */}
-            <Route path="/" element={<RoleBasedRedirect />} />
-            <Route path="/dashboard" element={<RoleBasedRedirect />} />
+              {/* Root and Dashboard redirect */}
+              <Route path="/" element={<RoleBasedRedirect />} />
+              <Route path="/dashboard" element={<RoleBasedRedirect />} />
 
-            {/* Protected Routes by Role */}
-            <Route
-              path="/super-admin/*"
-              element={
-                <ProtectedRoute allowedRoles={[USER_ROLES.SUPER_ADMIN]}>
-                  <SuperAdminRoutes />
-                </ProtectedRoute>
-              }
-            />
+              {/* Protected Routes by Role */}
+              <Route
+                path="/super-admin/*"
+                element={
+                  <ProtectedRoute allowedRoles={[USER_ROLES.SUPER_ADMIN]}>
+                    <SuperAdminRoutes />
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/admin/*"
-              element={
-                <ProtectedRoute allowedRoles={[USER_ROLES.ADMIN]}>
-                  <AdminRoutes />
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/admin/*"
+                element={
+                  <ProtectedRoute allowedRoles={[USER_ROLES.ADMIN]}>
+                    <AdminRoutes />
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/dept-head/*"
-              element={
-                <ProtectedRoute allowedRoles={[USER_ROLES.DEPT_HEAD]}>
-                  <DeptHeadRoutes />
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/dept-head/*"
+                element={
+                  <ProtectedRoute allowedRoles={[USER_ROLES.DEPT_HEAD]}>
+                    <DeptHeadRoutes />
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/faculty/*"
-              element={
-                <ProtectedRoute allowedRoles={[USER_ROLES.FACULTY]}>
-                  <FacultyRoutes />
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/faculty/*"
+                element={
+                  <ProtectedRoute allowedRoles={[USER_ROLES.FACULTY]}>
+                    <FacultyRoutes />
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/student/*"
-              element={
-                <ProtectedRoute allowedRoles={[USER_ROLES.STUDENT]}>
-                  <StudentRoutes />
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/student/*"
+                element={
+                  <ProtectedRoute allowedRoles={[USER_ROLES.STUDENT]}>
+                    <StudentRoutes />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* 404 */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
+              {/* 404 */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
 
-        {/* Toast Notifications */}
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 3000,
-            style: {
-              background: '#fff',
-              color: '#363636',
-            },
-            success: {
-              iconTheme: {
-                primary: '#10b981',
-                secondary: '#fff',
+          {/* Toast Notifications */}
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: '#fff',
+                color: '#363636',
               },
-            },
-            error: {
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fff',
+              success: {
+                iconTheme: {
+                  primary: '#10b981',
+                  secondary: '#fff',
+                },
               },
-            },
-          }}
-        />
-      </BrowserRouter>
+              error: {
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
+        </BrowserRouter>
+      </SocketProvider>
     </AuthProvider>
   );
 }

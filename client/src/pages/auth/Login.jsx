@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import Button from '@/components/common/Button.jsx';
 import Input from '@/components/common/Input.jsx';
+import Logo from '@/components/common/Logo.jsx';
 import { USER_ROLES } from '../../config/constants';
 
 const Login = () => {
@@ -80,9 +81,7 @@ const Login = () => {
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-xl shadow-2xl p-8 animate-fade-in">
         <div className="text-center mb-8">
-          <div className="inline-block h-16 w-16 bg-primary-600 rounded-xl flex items-center justify-center mb-4">
-            <span className="text-white font-bold text-3xl">E</span>
-          </div>
+          <Logo className="h-16 w-auto mb-4 mx-auto" />
           <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
           <p className="text-gray-600 mt-2">Sign in to your account</p>
         </div>
@@ -116,7 +115,7 @@ const Login = () => {
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             Don&apos;t have an account?{' '}
-            <Link to="/register" className="text-primary-600 hover:text-primary-700 font-medium">
+            <Link to="/register" className="text-eyDark hover:text-primary-700 font-medium">
               Register here
             </Link>
           </p>

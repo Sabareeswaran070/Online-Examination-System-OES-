@@ -114,14 +114,14 @@ const AIProctorPane = ({ studentName = 'Arjun Ramesh', useRealFeed = false }) =>
                         <FiShield className="text-primary-500 w-4 h-4" />
                     </div>
                     <div>
-                        <h2 className="text-xs font-black text-white uppercase tracking-widest font-display">AIProctor™ Enterprise</h2>
+                        <h2 className="text-xs font-black text-eyDark uppercase tracking-widest font-display">AIProctor™ Enterprise</h2>
                         <div className="flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                             <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">Live Session #942</span>
                         </div>
                     </div>
                 </div>
-                <button className="p-2 text-gray-600 hover:text-white transition-colors">
+                <button className="p-2 text-gray-600 hover:text-eyDark transition-colors">
                     <FiSettings className="w-4 h-4" />
                 </button>
             </div>
@@ -139,7 +139,7 @@ const AIProctorPane = ({ studentName = 'Arjun Ramesh', useRealFeed = false }) =>
                         <div className="bg-[#14171f] rounded-xl border border-gray-800/50 p-4 flex flex-col justify-center gap-4">
                             <div className="space-y-1">
                                 <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest">Active Time</span>
-                                <p className="text-xl font-mono text-white font-bold">
+                                <p className="text-xl font-mono text-eyDark font-bold">
                                     {Math.floor(state.examElapsed / 60).toString().padStart(2, '0')}:
                                     {(state.examElapsed % 60).toString().padStart(2, '0')}
                                 </p>
@@ -153,7 +153,7 @@ const AIProctorPane = ({ studentName = 'Arjun Ramesh', useRealFeed = false }) =>
                                             style={{ width: `${100 - state.riskScore}%` }}
                                         />
                                     </div>
-                                    <span className="text-[10px] text-white font-bold">{100 - Math.round(state.riskScore)}%</span>
+                                    <span className="text-[10px] text-eyDark font-bold">{100 - Math.round(state.riskScore)}%</span>
                                 </div>
                             </div>
                         </div>
@@ -169,7 +169,7 @@ const AIProctorPane = ({ studentName = 'Arjun Ramesh', useRealFeed = false }) =>
                         <div className="flex border-b border-gray-800">
                             <button
                                 onClick={() => setActiveFilter('all')}
-                                className={`flex-1 px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-colors ${activeFilter === 'all' ? 'bg-primary-600/10 text-primary-500 border-b-2 border-primary-500' : 'text-gray-600'}`}
+                                className={`flex-1 px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-colors ${activeFilter === 'all' ? 'bg-primary-500/10 text-primary-500 border-b-2 border-primary-500' : 'text-gray-600'}`}
                             >
                                 Behavior Feed
                             </button>

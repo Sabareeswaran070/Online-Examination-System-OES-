@@ -15,6 +15,8 @@ const {
   respondToCompetition,
   getStudentCompetitions,
   getCompetitionLiveScores,
+  inviteColleges,
+  moveToApprovalStage,
 } = require('../controllers/competitionController');
 const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/rbac');
@@ -37,6 +39,8 @@ router.put('/college/:competitionId/respond', authorize('admin'), respondToCompe
 router.get('/admin/all', authorize('superadmin'), getAllCompetitions);
 router.post('/', authorize('superadmin'), createCompetition);
 router.put('/:id/publish', authorize('superadmin'), publishCompetition);
+router.put('/:id/invite', authorize('superadmin'), inviteColleges);
+router.put('/:id/approval-stage', authorize('superadmin'), moveToApprovalStage);
 router.put('/:id/live', authorize('superadmin'), makeCompetitionLive);
 router.get('/:id/live-scores', authorize('superadmin'), getCompetitionLiveScores);
 router.put('/:id/approve-all', authorize('superadmin'), approveAllAcceptedColleges);

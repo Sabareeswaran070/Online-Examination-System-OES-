@@ -294,7 +294,7 @@ const Results = () => {
           <button
             onClick={() => handleBulkAIResult(row._id)}
             disabled={loadingAIRows[row._id]}
-            className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg border border-primary-100 transition-colors disabled:opacity-50"
+            className="p-2 text-eyDark hover:bg-primary-50 rounded-lg border border-primary-100 transition-colors disabled:opacity-50"
             title="AI Evaluate All Questions"
           >
             <FiCpu
@@ -363,7 +363,7 @@ const Results = () => {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
               <div className="text-center">
-                <p className="text-sm text-blue-700 font-medium">
+                <p className="text-sm text-eyDark font-medium">
                   Total Students
                 </p>
                 <p className="text-3xl font-bold text-blue-900 mt-2">
@@ -410,7 +410,7 @@ const Results = () => {
             </Card>
             <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
               <div className="text-center">
-                <p className="text-sm text-purple-700 font-medium">Pass Rate</p>
+                <p className="text-sm text-eyDark font-medium">Pass Rate</p>
                 <p className="text-3xl font-bold text-purple-900 mt-2">
                   {results.length > 0
                     ? (
@@ -431,13 +431,13 @@ const Results = () => {
           <div className="flex border-b border-gray-200">
             <button
               onClick={() => setActiveTab("results")}
-              className={`px-6 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${activeTab === "results" ? "border-primary-600 text-primary-600 bg-primary-50/50" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+              className={`px-6 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${activeTab === "results" ? "border-primary-600 text-eyDark bg-primary-50/50" : "border-transparent text-gray-500 hover:text-gray-700"}`}
             >
               <FiFileText /> Completed Results
             </button>
             <button
               onClick={() => setActiveTab("monitoring")}
-              className={`px-6 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${activeTab === "monitoring" ? "border-indigo-600 text-indigo-600 bg-indigo-50/50" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+              className={`px-6 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${activeTab === "monitoring" ? "border-indigo-600 text-indigo-600 bg-primary-50/50" : "border-transparent text-gray-500 hover:text-gray-700"}`}
             >
               <FiMonitor
                 className={
@@ -505,12 +505,12 @@ const Results = () => {
                             <div className="flex justify-between items-start mb-3">
                               <div className="flex items-center gap-3">
                                 <div
-                                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${result.status === "locked" ? "bg-red-500 shadow-md shadow-red-100" : result.status === "submitted" ? "bg-gray-400" : "bg-indigo-500 shadow-md shadow-indigo-100"}`}
+                                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${result.status === "locked" ? "bg-red-500 shadow-md shadow-red-100" : result.status === "submitted" ? "bg-gray-400" : "bg-primary-500 shadow-md shadow-indigo-100"}`}
                                 >
                                   {result.studentId?.name?.charAt(0)}
                                 </div>
                                 <div>
-                                  <p className="font-bold text-gray-900 group-hover:text-primary-600 transition-colors">
+                                  <p className="font-bold text-gray-900 group-hover:text-eyDark transition-colors">
                                     {result.studentId?.name}
                                   </p>
                                   <p className="text-[10px] font-mono text-gray-400">

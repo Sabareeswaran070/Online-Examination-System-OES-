@@ -809,8 +809,8 @@ const AdminQuestions = () => {
 
     const getTypeIcon = (type) => {
         switch (type) {
-            case 'MCQ': return <FiList className="text-blue-500" />;
-            case 'Coding': return <FiCode className="text-purple-500" />;
+            case 'MCQ': return <FiList className="text-primary-600" />;
+            case 'Coding': return <FiCode className="text-primary-600" />;
             case 'TrueFalse': return <FiCheckCircle className="text-green-500" />;
             default: return <FiFileText className="text-gray-500" />;
         }
@@ -882,7 +882,7 @@ const AdminQuestions = () => {
                     >
                         <FiHelpCircle className="w-4 h-4" />
                     </button>
-                    <button onClick={() => handleEdit(row)} className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
+                    <button onClick={() => handleEdit(row)} className="p-2 text-eyDark hover:bg-primary-50 rounded-lg transition-colors">
                         <FiEdit className="w-4 h-4" />
                     </button>
                     <button onClick={() => handleDelete(row._id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
@@ -900,7 +900,7 @@ const AdminQuestions = () => {
                 <div>
                     <h1 className="text-3xl font-extrabold text-gray-900">Library Manager</h1>
                     <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                        <span className="hover:text-primary-600 cursor-pointer transition-colors" onClick={resetView}>Question Bank</span>
+                        <span className="hover:text-eyDark cursor-pointer transition-colors" onClick={resetView}>Question Bank</span>
                         {selectedFolder && (
                             <>
                                 <FiChevronRight className="text-gray-300" />
@@ -938,7 +938,7 @@ const AdminQuestions = () => {
                     <Button
                         variant="secondary"
                         onClick={handleNewCodingQuestion}
-                        className="flex-1 sm:flex-none border-purple-200 hover:border-purple-500 text-purple-700"
+                        className="flex-1 sm:flex-none border-purple-200 hover:border-purple-500 text-eyDark"
                     >
                         <FiCode className="mr-2" /> Coding Q
                     </Button>
@@ -1025,7 +1025,7 @@ const AdminQuestions = () => {
                     {/* Academic Subjects */}
                     <section>
                         <h2 className="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
-                            <FiGrid className="text-purple-500" /> Academic Subjects
+                            <FiGrid className="text-primary-600" /> Academic Subjects
                         </h2>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 opacity-80 hover:opacity-100 transition-opacity">
                             {subjects.map((sub) => (
@@ -1034,10 +1034,10 @@ const AdminQuestions = () => {
                                     onClick={() => handleFolderClick(sub, 'subject')}
                                     className="group flex flex-col items-center gap-3 p-6 rounded-2xl bg-gray-50 border-2 border-transparent hover:border-purple-500 transition-all cursor-pointer"
                                 >
-                                    <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center group-hover:bg-purple-50 transition-colors shadow-sm">
+                                    <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center group-hover:bg-primary-50 transition-colors shadow-sm">
                                         <FiFolder className="w-8 h-8 text-purple-400 group-hover:text-purple-600" />
                                     </div>
-                                    <span className="text-xs font-bold text-gray-600 group-hover:text-purple-700 text-center line-clamp-2">{sub.name}</span>
+                                    <span className="text-xs font-bold text-gray-600 group-hover:text-eyDark text-center line-clamp-2">{sub.name}</span>
                                 </div>
                             ))}
                         </div>
@@ -1182,7 +1182,7 @@ const AdminQuestions = () => {
                                                     key={pageNum}
                                                     onClick={() => setFilters({ ...filters, page: pageNum })}
                                                     className={`w-9 h-9 text-sm font-medium rounded-lg transition-all ${filters.page === pageNum
-                                                        ? 'bg-primary-600 text-white shadow-md'
+                                                        ? 'bg-primary-500 text-eyDark shadow-md'
                                                         : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
                                                         }`}
                                                 >
@@ -1354,7 +1354,7 @@ const AdminQuestions = () => {
                                             name="correctAnswer"
                                             checked={Number(formData.correctAnswer) === idx}
                                             onChange={() => setFormData({ ...formData, correctAnswer: idx })}
-                                            className="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                                            className="w-4 h-4 text-eyDark border-gray-300 focus:ring-primary-500"
                                         />
                                         <input
                                             type="text"
@@ -1552,7 +1552,7 @@ const AdminQuestions = () => {
                                 </div>
 
                                 {/* Hidden Test Cases */}
-                                <div className="space-y-3 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                <div className="space-y-3 p-4 bg-primary-50 rounded-lg border border-purple-200">
                                     <div className="flex justify-between items-center">
                                         <label className="text-sm font-bold text-purple-900 flex items-center gap-2">
                                             <FiX /> Hidden Test Cases (For evaluation only)
@@ -1560,7 +1560,7 @@ const AdminQuestions = () => {
                                         <button
                                             type="button"
                                             onClick={addHiddenTestCase}
-                                            className="text-xs text-purple-700 font-bold hover:underline flex items-center gap-1"
+                                            className="text-xs text-eyDark font-bold hover:underline flex items-center gap-1"
                                         >
                                             <FiPlus /> Add Hidden Test Case
                                         </button>
@@ -1606,18 +1606,18 @@ const AdminQuestions = () => {
                         required
                     />
 
-                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100/50">
+                    <div className="bg-primary-50/50 p-4 rounded-xl border border-primary-100/50">
                         <label className="flex items-center gap-3 cursor-pointer group">
                             <input
                                 type="checkbox"
                                 name="isGlobal"
                                 checked={formData.isGlobal}
                                 onChange={(e) => setFormData({ ...formData, isGlobal: e.target.checked })}
-                                className="w-5 h-5 text-primary-600 rounded border-gray-300 focus:ring-primary-500 transition-all"
+                                className="w-5 h-5 text-eyDark rounded border-gray-300 focus:ring-primary-500 transition-all"
                             />
                             <div>
-                                <span className="block text-sm font-bold text-blue-900 group-hover:text-blue-700">Make Global</span>
-                                <span className="block text-[11px] text-blue-700 opacity-80 mt-0.5">Global questions are visible to all colleges and can be used in global exams.</span>
+                                <span className="block text-sm font-bold text-blue-900 group-hover:text-eyDark">Make Global</span>
+                                <span className="block text-[11px] text-eyDark opacity-80 mt-0.5">Global questions are visible to all colleges and can be used in global exams.</span>
                             </div>
                         </label>
                     </div>
@@ -1706,7 +1706,7 @@ const AdminQuestions = () => {
                         {previewQuestion.type === 'Descriptive' && previewQuestion.correctAnswer && (
                             <div>
                                 <h4 className="font-medium text-gray-700 mb-2">Ideal Answer:</h4>
-                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <div className="p-3 bg-primary-50 border border-blue-200 rounded-lg">
                                     <p className="text-gray-800">{previewQuestion.correctAnswer}</p>
                                 </div>
                             </div>
@@ -1815,7 +1815,7 @@ const AdminQuestions = () => {
                                     </span>
                                 )}
                                 {previewQuestion.memoryLimit && (
-                                    <span className="flex items-center gap-1 text-xs font-medium text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200">
+                                    <span className="flex items-center gap-1 text-xs font-medium text-eyDark bg-primary-50 px-2.5 py-1.5 rounded-lg border border-blue-200">
                                         <FiCpu className="w-3.5 h-3.5" /> {previewQuestion.memoryLimit}MB
                                     </span>
                                 )}
@@ -1838,7 +1838,7 @@ const AdminQuestions = () => {
                                         type="button"
                                         onClick={() => setCodingPreviewTab(tab.id)}
                                         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${isActive
-                                            ? 'bg-indigo-50 text-indigo-700 font-bold shadow-sm'
+                                            ? 'bg-primary-50 text-eyDark font-bold shadow-sm'
                                             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                                             }`}
                                     >
@@ -1883,7 +1883,7 @@ const AdminQuestions = () => {
                             {codingPreviewTab === 'io' && (
                                 <div className="space-y-5">
                                     {previewQuestion.inputFormat && (
-                                        <div className="p-5 bg-blue-50/60 border border-blue-200 rounded-xl">
+                                        <div className="p-5 bg-primary-50/60 border border-blue-200 rounded-xl">
                                             <h4 className="font-bold text-blue-900 mb-2 flex items-center gap-2 text-sm">
                                                 <FiArrowLeft className="rotate-180 text-blue-600" /> Input Format
                                             </h4>
@@ -1947,7 +1947,7 @@ const AdminQuestions = () => {
                                         <div className="h-4 w-px bg-gray-300" />
                                         <div className="flex items-center gap-1.5">
                                             <FiEyeOff className="text-purple-600 w-4 h-4" />
-                                            <span className="text-sm text-purple-700 font-bold">{previewQuestion.hiddenTestCases?.length || 0} hidden</span>
+                                            <span className="text-sm text-eyDark font-bold">{previewQuestion.hiddenTestCases?.length || 0} hidden</span>
                                         </div>
                                     </div>
 
@@ -1991,7 +1991,7 @@ const AdminQuestions = () => {
                                     {/* Hidden */}
                                     {previewQuestion.hiddenTestCases?.length > 0 && (
                                         <div className="rounded-xl border-2 border-purple-200 overflow-hidden">
-                                            <div className="bg-purple-50 px-5 py-3">
+                                            <div className="bg-primary-50 px-5 py-3">
                                                 <h4 className="font-bold text-purple-900 flex items-center gap-2 text-sm">
                                                     <FiEyeOff className="text-purple-600" /> Hidden Test Cases
                                                     <span className="text-xs font-normal text-purple-600">— for evaluation only</span>
@@ -1999,7 +1999,7 @@ const AdminQuestions = () => {
                                             </div>
                                             <div className="p-4 space-y-3 bg-white">
                                                 {previewQuestion.hiddenTestCases.map((tc, idx) => (
-                                                    <div key={idx} className="border border-purple-200 rounded-lg p-4 bg-purple-50/30">
+                                                    <div key={idx} className="border border-purple-200 rounded-lg p-4 bg-primary-50/30">
                                                         <span className="text-xs font-bold text-purple-800 bg-purple-100 px-2.5 py-1 rounded-full flex items-center gap-1.5 w-fit">
                                                             <FiEyeOff className="w-3 h-3" /> Hidden #{idx + 1}
                                                         </span>
@@ -2059,7 +2059,7 @@ const AdminQuestions = () => {
                                     {previewQuestion.starterCode && (
                                         <div>
                                             <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2 text-sm">
-                                                <FiCode className="text-indigo-500" /> Starter Code Template
+                                                <FiCode className="text-primary-600" /> Starter Code Template
                                             </h4>
                                             <div className="rounded-xl overflow-hidden border border-gray-300 shadow-sm">
                                                 <div className="bg-gray-800 px-4 py-2 flex items-center justify-between">

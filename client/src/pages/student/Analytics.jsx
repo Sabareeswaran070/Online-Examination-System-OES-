@@ -95,7 +95,7 @@ const StudentAnalytics = () => {
                         subject.avgPercentage >= 80
                           ? 'bg-green-500'
                           : subject.avgPercentage >= 60
-                          ? 'bg-blue-500'
+                          ? 'bg-primary-500'
                           : subject.avgPercentage >= 40
                           ? 'bg-yellow-500'
                           : 'bg-red-500'

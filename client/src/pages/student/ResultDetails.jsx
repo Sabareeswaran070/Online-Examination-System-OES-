@@ -144,7 +144,7 @@ const ResultDetails = () => {
                     onClick={() => setSelectedQuestion(index)}
                     className={`h-10 w-10 rounded-lg font-medium text-sm transition-colors ${
                       selectedQuestion === index
-                        ? 'bg-primary-600 text-white ring-2 ring-primary-300'
+                        ? 'bg-primary-500 text-eyDark ring-2 ring-primary-300'
                         : answer.isCorrect
                         ? 'bg-green-100 text-green-800'
                         : answer.isEvaluated === false
@@ -282,16 +282,16 @@ const ResultDetails = () => {
 
                   {/* Explanation */}
                   {currentQuestion.explanation && (
-                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm font-semibold text-blue-700 mb-1">Explanation</p>
+                    <div className="p-4 bg-primary-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm font-semibold text-eyDark mb-1">Explanation</p>
                       <p className="text-sm text-blue-800">{currentQuestion.explanation}</p>
                     </div>
                   )}
 
                   {/* Faculty Feedback */}
                   {currentAnswer.feedback && (
-                    <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                      <p className="text-sm font-semibold text-purple-700 mb-1">Faculty Feedback</p>
+                    <div className="p-4 bg-primary-50 border border-purple-200 rounded-lg">
+                      <p className="text-sm font-semibold text-eyDark mb-1">Faculty Feedback</p>
                       <p className="text-sm text-purple-800">{currentAnswer.feedback}</p>
                     </div>
                   )}

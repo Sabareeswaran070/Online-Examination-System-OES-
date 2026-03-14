@@ -2,11 +2,20 @@ import { useState, useEffect, useRef } from 'react';
 import { FACE_STATUS_LABELS } from './constants';
 import { FiVideo, FiVideoOff, FiActivity, FiRefreshCw } from 'react-icons/fi';
 
-const LiveFeedPanel = ({ status = 'detected', studentName = 'Arjun Ramesh', useRealFeed = false, mediaActive = true, showOverlays = true }) => {
+const LiveFeedPanel = ({
+    status = 'detected',
+    studentName = 'Arjun Ramesh',
+    useRealFeed = false,
+    mediaActive = true,
+    showOverlays = true,
+    onSnapshot = null,
+    snapshotInterval = 5000
+}) => {
     const [stream, setStream] = useState(null);
     const [error, setError] = useState(null);
     const videoRef = useRef(null);
     const streamRef = useRef(null);
+    const canvasRef = useRef(null);
     const activeRequestRef = useRef(0);
     const isOnline = status !== 'unavailable' && !error;
 
@@ -23,6 +32,37 @@ const LiveFeedPanel = ({ status = 'detected', studentName = 'Arjun Ramesh', useR
             stopCamera();
         };
     }, [useRealFeed, mediaActive]);
+
+    // Handle periodic snapshots
+    useEffect(() => {
+        if (!onSnapshot || !stream || !mediaActive) return;
+
+        const capture = () => {
+            if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+                if (!canvasRef.current) {
+                    canvasRef.current = document.createElement('canvas');
+                }
+                const canvas = canvasRef.current;
+                canvas.width = videoRef.current.videoWidth;
+                canvas.height = videoRef.current.videoHeight;
+                const ctx = canvas.getContext('2d');
+
+                // Flip horizontally for mirror mode if needed
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
+
+                ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/jpeg', 0.5); // 0.5 quality for better performance
+                onSnapshot(imageData);
+            }
+        };
+
+        const intervalId = setInterval(capture, snapshotInterval);
+        // Also capture immediately
+        setTimeout(capture, 1000);
+
+        return () => clearInterval(intervalId);
+    }, [onSnapshot, stream, mediaActive, snapshotInterval]);
 
     // Sync stream to video element once it renders
     useEffect(() => {
@@ -88,7 +128,7 @@ const LiveFeedPanel = ({ status = 'detected', studentName = 'Arjun Ramesh', useR
                 {error ? (
                     <div className="flex flex-col items-center text-center px-4">
                         <FiVideoOff className="w-12 h-12 mb-4 text-red-500/50" />
-                        <h4 className="text-sm font-black text-white uppercase tracking-widest mb-1">{error}</h4>
+                        <h4 className="text-sm font-black text-eyDark uppercase tracking-widest mb-1">{error}</h4>
                         <p className="text-[10px] text-gray-500 font-bold max-w-[200px]">
                             {error === 'Permission Denied'
                                 ? 'Please allow camera access in your browser settings to continue.'
@@ -96,7 +136,7 @@ const LiveFeedPanel = ({ status = 'detected', studentName = 'Arjun Ramesh', useR
                         </p>
                         <button
                             onClick={startCamera}
-                            className="mt-4 flex items-center gap-2 px-3 py-1 bg-primary-600 hover:bg-primary-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
+                            className="mt-4 flex items-center gap-2 px-3 py-1 bg-primary-500 hover:bg-primary-500 text-eyDark rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
                         >
                             <FiRefreshCw className="w-3 h-3" /> Retry Connection
                         </button>
@@ -156,7 +196,7 @@ const LiveFeedPanel = ({ status = 'detected', studentName = 'Arjun Ramesh', useR
                 <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
                     <div className={`px-3 py-1 bg-black/60 backdrop-blur-md rounded-lg border border-white/10 flex items-center gap-2 ${!mediaActive ? 'opacity-50' : ''}`}>
                         <div className={!mediaActive ? 'w-2 h-2 rounded-full bg-gray-500' : (status === 'detected' ? 'w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]' : 'w-2 h-2 rounded-full bg-red-500')} />
-                        <span className="text-[10px] font-black text-white uppercase tracking-wider">
+                        <span className="text-[10px] font-black text-eyDark uppercase tracking-wider">
                             {!mediaActive ? 'Devices Inactive' : FACE_STATUS_LABELS[status]}
                         </span>
                     </div>
@@ -171,13 +211,13 @@ const LiveFeedPanel = ({ status = 'detected', studentName = 'Arjun Ramesh', useR
                 <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent flex justify-between items-end z-10">
                     <div className="flex flex-col gap-0.5">
                         <span className="text-[9px] text-gray-500 font-bold uppercase">Signal Quality</span>
-                        <span className="text-[11px] text-white font-mono leading-none">
+                        <span className="text-[11px] text-eyDark font-mono leading-none">
                             {!mediaActive ? 'MEDIA RELEASED' : (stream ? 'HD LIVE' : 'SIMULATED')} | {error ? 'ERROR' : 'STABLE'}
                         </span>
                     </div>
                     <div className="flex flex-col items-end gap-0.5">
                         <span className="text-[9px] text-gray-500 font-bold uppercase">Timestamp</span>
-                        <span className="text-[11px] text-white font-mono leading-none">{new Date().toLocaleTimeString()}</span>
+                        <span className="text-[11px] text-eyDark font-mono leading-none">{new Date().toLocaleTimeString()}</span>
                     </div>
                 </div>
             )}

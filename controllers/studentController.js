@@ -1,5 +1,6 @@
-const mongoose = require('mongoose');
 const Exam = require('../models/Exam');
+const Competition = require('../models/Competition'); // Added Competition
+const CompetitionCollege = require('../models/CompetitionCollege'); // Added CompetitionCollege
 const Result = require('../models/Result');
 const Question = require('../models/Question');
 const logger = require('../config/logger');
@@ -178,6 +179,31 @@ exports.getDashboard = async (req, res, next) => {
       .populate('facultyId', 'name')
       .sort({ startTime: 1 });
 
+    // Fetch live competitions
+    const approvedAssignments = await CompetitionCollege.find({
+      collegeId: req.user.collegeId,
+      approvalStatus: 'approved'
+    }).select('competitionId');
+    const approvedCompIds = approvedAssignments.map(a => a.competitionId);
+    
+    const upcomingCompetitions = await Competition.find({
+      _id: { $in: approvedCompIds },
+      status: 'live',
+      endTime: { $gte: new Date() }
+    }).populate('createdBy', 'name');
+
+    // Merge into upcoming assessments
+    const allUpcoming = [
+      ...upcomingExams.map(e => ({ ...e.toObject(), type: 'exam' })),
+      ...upcomingCompetitions.map(c => ({
+        ...c.toObject(),
+        type: 'competition',
+        subject: { name: 'Competition' },
+        isPublished: true,
+        facultyId: c.createdBy
+      }))
+    ].sort((a, b) => new Date(a.startTime) - new Date(b.startTime)).slice(0, 5);
+
     // Sync stale statuses
     for (const exam of upcomingExams) {
       if (syncExamStatus(exam)) {
@@ -209,12 +235,11 @@ exports.getDashboard = async (req, res, next) => {
             status: { $in: ['submitted', 'evaluated', 'pending-evaluation'] },
             isPassed: true,
           }),
-          currentRank: 0, // Placeholder, will implement rank calculation if needed or leave as 0 for now
+          currentRank: 0,
           avgPercentage: avgPerformance[0]?.avgPercentage || 0,
           totalScore: avgPerformance[0]?.totalScore || 0,
         },
-        upcomingExams,
-        recentResults,
+        upcomingExams: allUpcoming,
         recentResults,
       },
       debugInfo: {
@@ -279,31 +304,39 @@ exports.getAvailableExams = async (req, res, next) => {
       { $sort: { startTime: 1 } }
     ]);
 
-    const examIds = examsAggregation.map(e => e._id);
-    const exams = await Exam.find({ _id: { $in: examIds } })
-      .populate('subject', 'name subjectCode')
-      .populate('facultyId', 'name')
-      .sort({ startTime: 1 });
+    // Fetch live competitions
+    const approvedAssignments = await CompetitionCollege.find({
+      collegeId: req.user.collegeId,
+      approvalStatus: 'approved'
+    }).select('competitionId');
+    const approvedCompIds = approvedAssignments.map(a => a.competitionId);
 
-    // Sync stale statuses
-    const updates = [];
-    for (const exam of exams) {
-      if (syncExamStatus(exam)) {
-        updates.push(Exam.updateOne({ _id: exam._id }, { status: exam.status }));
-      }
-    }
-    if (updates.length > 0) await Promise.all(updates);
+    const competitions = await Competition.find({
+      _id: { $in: approvedCompIds },
+      status: 'live'
+    }).populate('createdBy', 'name');
 
-    // Check if student has already attempted
-    const examsWithStatus = await Promise.all(
-      exams.map(async (exam) => {
+    // Combine and check attempts
+    const allAssessments = [
+      ...exams.map(e => ({ ...e.toObject(), type: 'exam' })),
+      ...competitions.map(c => ({
+        ...c.toObject(),
+        type: 'competition',
+        subject: { name: 'Competition' },
+        isPublished: true,
+        facultyId: c.createdBy
+      }))
+    ];
+
+    const assessmentsWithStatus = await Promise.all(
+      allAssessments.map(async (item) => {
         const result = await Result.findOne({
           studentId: req.user._id,
-          examId: exam._id,
+          examId: item._id,
         });
 
         return {
-          ...exam.toObject(),
+          ...item,
           attempted: !!result,
           resultStatus: result?.status,
         };
@@ -312,8 +345,8 @@ exports.getAvailableExams = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      count: examsWithStatus.length,
-      data: examsWithStatus,
+      count: assessmentsWithStatus.length,
+      data: assessmentsWithStatus,
     });
   } catch (error) {
     logger.error('Get available exams error:', error);
@@ -331,13 +364,65 @@ exports.getExamDetails = async (req, res, next) => {
       .populate('facultyId', 'name');
 
     if (!exam) {
-      return res.status(404).json({
-        success: false,
-        message: 'Exam not found',
+      // Fallback to Competition
+      const competition = await Competition.findById(req.params.id)
+        .populate('questions.questionId')
+        .populate('createdBy', 'name');
+
+      if (!competition) {
+        return res.status(404).json({
+          success: false,
+          message: 'Assessment not found',
+        });
+      }
+
+      // Competition Access Check
+      const assignment = await CompetitionCollege.findOne({
+        competitionId: competition._id,
+        collegeId: req.user.collegeId,
+        approvalStatus: 'approved'
+      });
+
+      if (!assignment) {
+        return res.status(403).json({
+          success: false,
+          message: 'Your college is not approved for this competition',
+        });
+      }
+
+      if (competition.status !== 'live') {
+        return res.status(400).json({
+          success: false,
+          message: 'This competition is not live yet',
+        });
+      }
+
+      // Mock Exam object for frontend compatibility
+      return res.status(200).json({
+        success: true,
+        data: {
+          exam: {
+            _id: competition._id,
+            title: competition.title,
+            description: competition.description,
+            subject: { name: 'Competition' },
+            facultyId: competition.createdBy,
+            startTime: competition.startTime,
+            endTime: competition.endTime,
+            duration: competition.duration,
+            totalMarks: competition.totalMarks,
+            passingMarks: competition.passingMarks,
+            instructions: competition.instructions,
+            proctoring: { enabled: true, cameraRequired: false }, // Default proctoring for competitions
+            totalQuestions: competition.questions.length,
+          },
+          attempted: !!(await Result.findOne({ studentId: req.user._id, examId: competition._id })),
+          resultStatus: (await Result.findOne({ studentId: req.user._id, examId: competition._id }))?.status,
+        },
       });
     }
 
-    // Role-based access check simplified
+    // Role-based access check simplified (Original Exam Logic)
     let isAllowed = false;
 
     if (exam.allowedStudents && exam.allowedStudents.some(id => id.toString() === req.user._id.toString())) {
@@ -403,38 +488,65 @@ exports.getExamDetails = async (req, res, next) => {
 // @access  Private/Student
 exports.startExam = async (req, res, next) => {
   try {
-    const exam = await Exam.findById(req.params.id).populate(
+    let exam = await Exam.findById(req.params.id).populate(
       'questions.questionId'
     );
 
     if (!exam) {
-      return res.status(404).json({
-        success: false,
-        message: 'Exam not found',
-      });
-    }
+      // Fallback to Competition
+      const competition = await Competition.findById(req.params.id).populate('questions.questionId');
+      if (!competition) {
+        return res.status(404).json({ success: false, message: 'Assessment not found' });
+      }
 
-    // Role-based access check
-    let isAllowed = false;
-    if (exam.allowedStudents && exam.allowedStudents.some(id => id.toString() === req.user._id.toString())) {
-      isAllowed = true;
-    } else if (!exam.allowedStudents || exam.allowedStudents.length === 0) {
-      if (!exam.collegeId) {
+      // Access check
+      const assignment = await CompetitionCollege.findOne({
+        competitionId: competition._id,
+        collegeId: req.user.collegeId,
+        approvalStatus: 'approved'
+      });
+
+      if (!assignment) {
+        return res.status(403).json({ success: false, message: 'Your college is not approved for this competition' });
+      }
+
+      if (competition.status !== 'live') {
+        return res.status(400).json({ success: false, message: 'Competition is not live yet' });
+      }
+
+      // Mock Exam object for downstream logic
+      exam = {
+        ...competition.toObject(),
+        isPublished: true,
+        allowedStudents: [],
+        subject: { name: 'Competition' }, // Mock subject
+        proctoring: { enabled: true, cameraRequired: false }, // Default proctoring for competitions
+        negativeMarkingEnabled: false,
+        negativeMarks: 0
+      };
+    } else {
+      // Role-based access check (Standard Exam)
+      let isAllowed = false;
+      if (exam.allowedStudents && exam.allowedStudents.some(id => id.toString() === req.user._id.toString())) {
         isAllowed = true;
-      } else if (exam.collegeId.toString() === req.user.collegeId?.toString()) {
-        if (!exam.departmentId) {
+      } else if (!exam.allowedStudents || exam.allowedStudents.length === 0) {
+        if (!exam.collegeId) {
           isAllowed = true;
-        } else if (exam.departmentId.toString() === req.user.departmentId?.toString()) {
-          isAllowed = true;
+        } else if (exam.collegeId.toString() === req.user.collegeId?.toString()) {
+          if (!exam.departmentId) {
+            isAllowed = true;
+          } else if (exam.departmentId.toString() === req.user.departmentId?.toString()) {
+            isAllowed = true;
+          }
         }
       }
-    }
 
-    if (!isAllowed) {
-      return res.status(403).json({
-        success: false,
-        message: 'You are not allowed to take this exam',
-      });
+      if (!isAllowed) {
+        return res.status(403).json({
+          success: false,
+          message: 'You are not allowed to take this exam',
+        });
+      }
     }
 
     // Check if exam is active
@@ -628,6 +740,8 @@ exports.submitExam = async (req, res, next) => {
 
     const exam = await Exam.findById(req.params.id).populate(
       'questions.questionId'
+    ) || await Competition.findById(req.params.id).populate(
+      'questions.questionId'
     );
 
     // Use Evaluation Service
@@ -766,34 +880,50 @@ exports.getResults = async (req, res, next) => {
       })
       .sort({ submittedAt: -1 });
 
-    // Filter: Show result if published OR if showResultsImmediately is true
-    const filteredResults = results.map(r => {
-      // Safety check if examId is populated
+    // Filter: Show result if published
+    const filteredResults = await Promise.all(results.map(async (r) => {
+      // Manual fallback for Competition if examId wasn't populated
+      if (!r.examId || (r.examId && !r.examId.title)) {
+        const competition = await Competition.findById(r.examId).populate('createdBy', 'name');
+        if (competition) {
+          r.examId = competition;
+        }
+      }
+
       if (!r.examId) return null;
 
-      const isPublished = r.examId.resultsPublished; // Simplified to only check resultsPublished
+      // Check resultsPublished (handle competitions)
+      let isPublished = r.examId.resultsPublished;
+      if (isPublished === undefined) {
+        isPublished = true; // Competition results are usually published if status is live/completed
+      }
 
-      // If not published, we strip sensitive info but keep the entry so they know it's being evaluated
+      // If not published, strip sensitive info
       if (!isPublished) {
         return {
           _id: r._id,
-          examId: r.examId,
+          examId: {
+            _id: r.examId._id,
+            title: r.examId.title,
+            subject: r.examId.subject || { name: 'Competition' }
+          },
           status: r.status,
           submittedAt: r.submittedAt,
           isPublished: false,
-          // Hide scores
           score: null,
           percentage: null,
           rank: null,
         };
       }
       return { ...r.toObject(), isPublished: true };
-    }).filter(r => r !== null);
+    }));
+
+    const finalResults = filteredResults.filter(r => r !== null);
 
     res.status(200).json({
       success: true,
-      count: filteredResults.length,
-      data: filteredResults,
+      count: finalResults.length,
+      data: finalResults,
     });
   } catch (error) {
     logger.error('Get results error:', error);
@@ -832,6 +962,14 @@ exports.getResultDetails = async (req, res, next) => {
       });
     }
 
+    // Manual fallback for Competition if examId wasn't populated (because it ref: 'Exam')
+    if (!result.examId || (result.examId && !result.examId.title)) {
+      const competition = await Competition.findById(result.examId || req.params.examId).populate('createdBy', 'name');
+      if (competition) {
+        result.examId = competition;
+      }
+    }
+
     // Check if exam still exists (may have been deleted)
     if (!result.examId) {
       return res.status(404).json({
@@ -841,11 +979,17 @@ exports.getResultDetails = async (req, res, next) => {
     }
 
     // Check if results are published
-    const isPublished = result.examId.resultsPublished;
-    if (!isPublished) {
+    const isPublished = result.examId.resultsPublished || result.examId.status === 'completed' || result.examId.status === 'live'; 
+    // For competitions, results might be available if status is live/completed. 
+    // Adapting for frontend consistency:
+    if (result.examId && result.examId.resultsPublished === undefined) {
+      result.examId.resultsPublished = true; // Default to true for competitions if live/completed
+    }
+
+    if (!isPublished && !result.examId.resultsPublished) {
       return res.status(403).json({
         success: false,
-        message: 'Results for this exam have not been published yet.',
+        message: 'Results for this assessment have not been published yet.',
       });
     }
 
@@ -885,7 +1029,14 @@ exports.getLeaderboard = async (req, res, next) => {
     }).select('_id');
     const publishedExamIds = publishedExams.map(e => e._id);
 
-    matchQuery.examId = { $in: publishedExamIds };
+    // Also include live/completed competitions
+    const competitions = await Competition.find({
+      _id: examIds.length > 0 ? { $in: examIds } : { $exists: true },
+      status: { $in: ['live', 'completed'] }
+    }).select('_id');
+    const publishedCompIds = competitions.map(c => c._id);
+
+    matchQuery.examId = { $in: [...publishedExamIds, ...publishedCompIds] };
     matchQuery.status = { $in: ['submitted', 'evaluated', 'pending-evaluation'] };
 
     const leaderboard = await Result.aggregate([
@@ -944,28 +1095,21 @@ exports.getLeaderboard = async (req, res, next) => {
 // @access  Private/Student
 exports.getAnalytics = async (req, res, next) => {
   try {
+    const publishedExams = await Exam.find({
+      resultsPublished: true
+    }).select('_id');
+    const publishedCompetitions = await Competition.find({
+      status: { $in: ['live', 'completed'] }
+    }).select('_id');
+    const publishedIds = [...publishedExams.map(e => e._id), ...publishedCompetitions.map(c => c._id)];
+
     // Overall performance
     const overallStats = await Result.aggregate([
       {
         $match: {
           studentId: req.user._id,
           status: { $in: ['submitted', 'evaluated', 'pending-evaluation'] },
-        },
-      },
-      {
-        $lookup: {
-          from: 'exams',
-          localField: 'examId',
-          foreignField: '_id',
-          as: 'exam',
-        },
-      },
-      { $unwind: '$exam' },
-      {
-        $match: {
-          $or: [
-            { 'exam.resultsPublished': true },
-          ],
+          examId: { $in: publishedIds }
         },
       },
       {
@@ -1023,28 +1167,32 @@ exports.getAnalytics = async (req, res, next) => {
       },
     ]);
 
-    // Performance trend (last 10 exams)
-    const publishedExams = await Exam.find({
-      resultsPublished: true
-    }).select('_id');
-    const publishedExamIds = publishedExams.map(e => e._id);
-
     const performanceTrend = await Result.find({
       studentId: req.user._id,
       status: { $in: ['submitted', 'evaluated', 'pending-evaluation'] },
-      examId: { $in: publishedExamIds },
+      examId: { $in: publishedIds },
     })
-      .populate('examId', 'title')
       .sort({ submittedAt: -1 })
       .limit(10)
       .select('percentage score submittedAt examId');
+
+    // Manually populate examId field for the trend (could be Exam or Competition)
+    const populatedTrend = await Promise.all(performanceTrend.map(async (r) => {
+      const resultObj = r.toObject();
+      let assessment = await Exam.findById(r.examId).select('title');
+      if (!assessment) {
+        assessment = await Competition.findById(r.examId).select('title');
+      }
+      resultObj.examId = assessment || { title: 'Unknown' };
+      return resultObj;
+    }));
 
     res.status(200).json({
       success: true,
       data: {
         overallStats: overallStats[0] || {},
         subjectWise,
-        performanceTrend,
+        performanceTrend: populatedTrend,
       },
     });
   } catch (error) {

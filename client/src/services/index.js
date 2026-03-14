@@ -44,6 +44,10 @@ export const superAdminService = {
     const response = await api.get('/superadmin/colleges', { params });
     return response.data;
   },
+  getAllColleges: async (params) => {
+    const response = await api.get('/superadmin/colleges', { params });
+    return response.data;
+  },
 
   getDepartmentsByCollege: async (collegeId) => {
     const response = await api.get(`/superadmin/colleges/${collegeId}/departments`);
@@ -642,6 +646,24 @@ export const studentService = {
   },
   requestUnlock: async (id, reason) => {
     const response = await api.post(`/student/exams/${id}/request-unlock`, { reason });
+    return response.data;
+  },
+};
+
+// Monitoring Services
+export const monitoringService = {
+  getStats: async (examId) => {
+    const response = await api.get(`/monitoring/exams/${examId}/stats`);
+    return response.data;
+  },
+
+  getStudentLog: async (examId, studentId) => {
+    const response = await api.get(`/monitoring/exams/${examId}/students/${studentId}/log`);
+    return response.data;
+  },
+
+  getReport: async (examId) => {
+    const response = await api.get(`/monitoring/exams/${examId}/report`);
     return response.data;
   },
 };

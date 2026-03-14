@@ -54,7 +54,7 @@ const Analytics = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl shadow-lg p-6 text-white">
+      <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl shadow-lg p-6 text-eyDark">
         <h1 className="text-3xl font-bold">System Analytics</h1>
         <p className="mt-2 opacity-90">Comprehensive overview of system usage and performance</p>
       </div>
@@ -96,7 +96,7 @@ const Analytics = () => {
                 <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                      <FiUsers className="text-primary-600" />
+                      <FiUsers className="text-eyDark" />
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900 capitalize">{item._id || 'Unknown'}</p>
@@ -106,7 +106,7 @@ const Analytics = () => {
                   <div className="text-right">
                     <div className="w-24 bg-gray-200 rounded-full h-2">
                       <div
-                        className="bg-primary-600 h-2 rounded-full"
+                        className="bg-primary-500 h-2 rounded-full"
                         style={{ width: `${(item.count / analytics.totalUsers) * 100}%` }}
                       />
                     </div>
@@ -159,7 +159,7 @@ const Analytics = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-primary-50 rounded-lg">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                   <FiBook className="text-blue-600" />

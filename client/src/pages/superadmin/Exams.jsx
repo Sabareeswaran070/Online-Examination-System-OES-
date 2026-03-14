@@ -454,14 +454,14 @@ const SuperAdminExams = () => {
 
     return (
         <div className="space-y-6">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl shadow-lg p-8 text-white">
+            <div className="bg-eyDark rounded-2xl shadow-lg p-8 text-white">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                     <div>
                         <h1 className="text-3xl font-bold font-display tracking-tight text-white mb-2">Global Exam Management</h1>
                         <p className="text-blue-100 max-w-xl">Manage and monitor examinations across all registered institutions</p>
                     </div>
                     <Button
-                        className="bg-white text-blue-700 hover:bg-blue-50 border-none shadow-xl transition-all hover:scale-105"
+                        className="bg-white text-eyDark hover:bg-primary-50 border-none shadow-xl transition-all hover:scale-105"
                         size="lg"
                         onClick={() => { resetForm(); setShowModal(true); }}
                     >
@@ -518,14 +518,14 @@ const SuperAdminExams = () => {
             </div>
 
             {selectedExams.length > 0 && (
-                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center justify-between animate-fade-in text-blue-900 font-bold text-sm mb-4">
+                <div className="bg-primary-50 p-4 rounded-xl border border-primary-100 flex items-center justify-between animate-fade-in text-blue-900 font-bold text-sm mb-4">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg">
                             {selectedExams.length}
                         </div>
                         <div>
                             <p>Exams Selected</p>
-                            <p className="text-blue-700 text-xs font-normal">Bulk actions available for selected items</p>
+                            <p className="text-eyDark text-xs font-normal">Bulk actions available for selected items</p>
                         </div>
                     </div>
                     <Button
@@ -585,7 +585,7 @@ const SuperAdminExams = () => {
                                                     key={pageNum}
                                                     onClick={() => setCurrentPage(pageNum)}
                                                     className={`w-10 h-10 text-sm font-bold rounded-lg transition-all ${currentPage === pageNum
-                                                        ? 'bg-primary-600 text-white shadow-md'
+                                                        ? 'bg-primary-500 text-eyDark shadow-md'
                                                         : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
                                                         }`}
                                                 >
@@ -744,7 +744,7 @@ const SuperAdminExams = () => {
                                     name="negativeMarkingEnabled"
                                     checked={formData.negativeMarkingEnabled}
                                     onChange={handleChange}
-                                    className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                                    className="w-4 h-4 text-eyDark rounded border-gray-300 focus:ring-primary-500"
                                 />
                                 <span className="text-sm text-gray-700 font-bold group-hover:text-primary-700 transition-colors">Allow Negative Marking</span>
                             </label>
@@ -755,7 +755,7 @@ const SuperAdminExams = () => {
                                     name="isRandomized"
                                     checked={formData.isRandomized}
                                     onChange={handleChange}
-                                    className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                                    className="w-4 h-4 text-eyDark rounded border-gray-300 focus:ring-primary-500"
                                 />
                                 <span className="text-sm text-gray-700 font-bold group-hover:text-primary-700 transition-colors">Shuffle Questions</span>
                             </label>
@@ -776,14 +776,14 @@ const SuperAdminExams = () => {
                             </div>
                         )}
 
-                        <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-100 flex items-center gap-2">
+                        <div className="p-3 bg-primary-50/50 rounded-lg border border-primary-100 flex items-center gap-2">
                             <FiCheckCircle className="text-blue-600 w-4 h-4" />
                             <span className="text-[10px] text-blue-800 font-medium tracking-tight">Results will require manual publication after the exam ends for security.</span>
                         </div>
                     </div>
 
                     {/* Proctoring Settings */}
-                    <div className="space-y-4 bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100/50 shadow-sm transition-all hover:shadow-md">
+                    <div className="space-y-4 bg-primary-50/50 p-5 rounded-2xl border border-primary-100/50 shadow-sm transition-all hover:shadow-md">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <div className="p-2.5 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-100">
@@ -810,7 +810,7 @@ const SuperAdminExams = () => {
                             <div className="space-y-6 pt-2 animate-in fade-in zoom-in-95 duration-300">
                                 {/* Feature Toggles */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${formData.proctoring.enforceFullscreen ? 'border-blue-600 bg-blue-50/50' : 'border-gray-100 bg-gray-50/30'}`}
+                                    <div className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${formData.proctoring.enforceFullscreen ? 'border-blue-600 bg-primary-50/50' : 'border-gray-100 bg-gray-50/30'}`}
                                         onClick={() => setFormData(prev => ({ ...prev, proctoring: { ...prev.proctoring, enforceFullscreen: !prev.proctoring.enforceFullscreen } }))}>
                                         <div className="flex items-center justify-between mb-2">
                                             <FiLock className={formData.proctoring.enforceFullscreen ? 'text-blue-600' : 'text-gray-400'} />
@@ -846,7 +846,7 @@ const SuperAdminExams = () => {
                                         <p className="text-[10px] text-gray-500 font-medium mt-1">Enforce webcam monitoring</p>
                                     </div>
 
-                                    <div className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${formData.proctoring.blockNotifications ? 'border-purple-600 bg-purple-50/50' : 'border-gray-100 bg-gray-50/30'}`}
+                                    <div className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${formData.proctoring.blockNotifications ? 'border-purple-600 bg-primary-50/50' : 'border-gray-100 bg-gray-50/30'}`}
                                         onClick={() => setFormData(prev => ({ ...prev, proctoring: { ...prev.proctoring, blockNotifications: !prev.proctoring.blockNotifications } }))}>
                                         <div className="flex items-center justify-between mb-2">
                                             <FiAlertTriangle className={formData.proctoring.blockNotifications ? 'text-purple-600' : 'text-gray-400'} />
@@ -861,7 +861,7 @@ const SuperAdminExams = () => {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
                                     <div className="space-y-4">
-                                        <div className="bg-white/80 p-4 rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="bg-white/80 p-4 rounded-xl border border-primary-100 shadow-sm hover:shadow-md transition-shadow">
                                             <div className="grid grid-cols-3 gap-4">
                                                 <Input
                                                     label="Tab Limit"
@@ -890,7 +890,7 @@ const SuperAdminExams = () => {
                                             </div>
                                         </div>
 
-                                        <div className="bg-white/80 p-5 rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="bg-white/80 p-5 rounded-xl border border-primary-100 shadow-sm hover:shadow-md transition-shadow">
                                             <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Action on Limit Reach</label>
                                             <div className="space-y-3">
                                                 {[
@@ -900,7 +900,7 @@ const SuperAdminExams = () => {
                                                 ].map(action => (
                                                     <label
                                                         key={action.id}
-                                                        className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${formData.proctoring.actionOnLimit === action.id ? 'border-indigo-600 bg-indigo-50/50 shadow-sm' : 'border-transparent bg-gray-50/50 hover:bg-white'}`}
+                                                        className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${formData.proctoring.actionOnLimit === action.id ? 'border-indigo-600 bg-primary-50/50 shadow-sm' : 'border-transparent bg-gray-50/50 hover:bg-white'}`}
                                                     >
                                                         <input
                                                             type="radio"
@@ -938,7 +938,7 @@ const SuperAdminExams = () => {
                                                 : formData.contributingColleges.filter(id => id !== college._id);
                                             setFormData({ ...formData, contributingColleges: updated });
                                         }}
-                                        className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                                        className="w-4 h-4 text-eyDark rounded border-gray-300 focus:ring-primary-500"
                                     />
                                     <span className="text-xs font-semibold text-gray-600 group-hover:text-primary-700 truncate">
                                         {college.collegeName}
@@ -972,7 +972,7 @@ const SuperAdminExams = () => {
             >
                 <div className="space-y-4">
                     {assigningExam && (
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                        <div className="bg-eyDark p-4 rounded-xl border border-primary-100">
                             <p className="font-bold text-gray-900">{assigningExam.title}</p>
                             <p className="text-sm text-gray-500 mt-1">
                                 {assigningExam.duration} min • {assigningExam.totalMarks} marks • {assigningExam.questions?.length || 0} questions
@@ -1023,7 +1023,7 @@ const SuperAdminExams = () => {
 
                         <button
                             onClick={addAssignRow}
-                            className="flex items-center gap-2 text-sm font-medium text-primary-600 hover:text-primary-700 px-3 py-2 hover:bg-primary-50 rounded-lg transition-all"
+                            className="flex items-center gap-2 text-sm font-medium text-eyDark hover:text-primary-700 px-3 py-2 hover:bg-primary-50 rounded-lg transition-all"
                         >
                             <FiPlus className="w-4 h-4" /> Add Another College
                         </button>

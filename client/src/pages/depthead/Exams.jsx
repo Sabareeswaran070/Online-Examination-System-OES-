@@ -298,14 +298,14 @@ const Exams = () => {
 
     return (
         <div className="space-y-6">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl shadow-lg p-8 text-white">
+            <div className="bg-eyDark rounded-2xl shadow-lg p-8 text-white">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                     <div>
                         <h1 className="text-3xl font-bold font-display tracking-tight text-white mb-2">Department Exam Management</h1>
                         <p className="text-blue-100 max-w-xl">Manage examinations for your department subjects</p>
                     </div>
                     <Button
-                        className="bg-white text-blue-700 hover:bg-blue-50 border-none shadow-xl transition-all hover:scale-105"
+                        className="bg-white text-eyDark hover:bg-primary-50 border-none shadow-xl transition-all hover:scale-105"
                         size="lg"
                         onClick={() => { resetForm(); setShowModal(true); }}
                     >
@@ -340,14 +340,14 @@ const Exams = () => {
             </div>
 
             {selectedExams.length > 0 && (
-                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center justify-between animate-fade-in text-blue-900 font-bold text-sm mb-6">
+                <div className="bg-primary-50 p-4 rounded-xl border border-primary-100 flex items-center justify-between animate-fade-in text-blue-900 font-bold text-sm mb-6">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg">
                             {selectedExams.length}
                         </div>
                         <div>
                             <p>Exams Selected</p>
-                            <p className="text-blue-700 text-xs font-normal">Bulk actions available for selected items</p>
+                            <p className="text-eyDark text-xs font-normal">Bulk actions available for selected items</p>
                         </div>
                     </div>
                     <Button
@@ -544,7 +544,7 @@ const Exams = () => {
                                 name="negativeMarkingEnabled"
                                 checked={formData.negativeMarkingEnabled}
                                 onChange={handleChange}
-                                className="w-4 h-4 text-primary-600 rounded"
+                                className="w-4 h-4 text-eyDark rounded"
                             />
                             <span className="text-sm text-gray-700 font-bold">Allow Negative Marking</span>
                         </label>
@@ -568,7 +568,7 @@ const Exams = () => {
                                     name="isRandomized"
                                     checked={formData.isRandomized}
                                     onChange={handleChange}
-                                    className="w-4 h-4 text-primary-600 rounded"
+                                    className="w-4 h-4 text-eyDark rounded"
                                 />
                                 <span className="text-sm text-gray-700 font-bold">Shuffle Questions</span>
                             </label>
@@ -576,7 +576,7 @@ const Exams = () => {
                             {/* Proctoring Settings */}
                             <div className="border-t pt-4 mt-2">
                                 <h4 className="text-md font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                    <FiEye className="text-primary-600" />
+                                    <FiEye className="text-eyDark" />
                                     Proctoring & Security
                                 </h4>
 
@@ -587,7 +587,7 @@ const Exams = () => {
                                             name="proctoring.enabled"
                                             checked={formData.proctoring.enabled}
                                             onChange={handleChange}
-                                            className="w-4 h-4 text-primary-600 rounded"
+                                            className="w-4 h-4 text-eyDark rounded"
                                         />
                                         <span className="text-sm text-gray-900">Enable Proctoring System</span>
                                     </label>
@@ -601,7 +601,7 @@ const Exams = () => {
                                                         name="proctoring.enforceFullscreen"
                                                         checked={formData.proctoring.enforceFullscreen}
                                                         onChange={handleChange}
-                                                        className="w-4 h-4 text-primary-600 rounded"
+                                                        className="w-4 h-4 text-eyDark rounded"
                                                     />
                                                     <span className="text-sm text-gray-700 font-bold">Enforce Fullscreen</span>
                                                 </label>
@@ -612,7 +612,7 @@ const Exams = () => {
                                                         name="proctoring.blockNotifications"
                                                         checked={formData.proctoring.blockNotifications}
                                                         onChange={handleChange}
-                                                        className="w-4 h-4 text-primary-600 rounded"
+                                                        className="w-4 h-4 text-eyDark rounded"
                                                     />
                                                     <span className="text-sm text-gray-700 font-bold">Block Notifications</span>
                                                 </label>
@@ -623,7 +623,7 @@ const Exams = () => {
                                                         name="proctoring.tabSwitchingAllowed"
                                                         checked={formData.proctoring.tabSwitchingAllowed}
                                                         onChange={handleChange}
-                                                        className="w-4 h-4 text-primary-600 rounded"
+                                                        className="w-4 h-4 text-eyDark rounded"
                                                     />
                                                     <span className="text-sm text-gray-700 font-bold">Allow Tab Switching</span>
                                                 </label>
@@ -683,7 +683,7 @@ const Exams = () => {
                             </div>
 
                             {/* Results always manual publication footer */}
-                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 flex items-center gap-2 mt-2">
+                            <div className="p-3 bg-primary-50 rounded-lg border border-primary-100 flex items-center gap-2 mt-2">
                                 <FiCheckCircle className="text-blue-600 w-4 h-4" />
                                 <span className="text-xs text-blue-800 font-medium italic">Results will require manual publication.</span>
                             </div>

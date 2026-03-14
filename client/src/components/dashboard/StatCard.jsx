@@ -2,11 +2,11 @@ import { clsx } from 'clsx';
 
 const StatCard = ({ title, value, icon: Icon, trend, trendValue, color = 'primary' }) => {
   const colorClasses = {
-    primary: 'bg-primary-50 text-primary-600',
+    primary: 'bg-primary-50 text-eyDark',
     success: 'bg-green-50 text-green-600',
     warning: 'bg-yellow-50 text-yellow-600',
     danger: 'bg-red-50 text-red-600',
-    info: 'bg-blue-50 text-blue-600',
+    info: 'bg-primary-50 text-blue-600',
   };
 
   return (

@@ -116,7 +116,7 @@ const Students = () => {
             header: 'Student Name',
             render: (row) => (
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold border border-indigo-100 uppercase">
+                    <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center text-indigo-600 font-bold border border-primary-100 uppercase">
                         {row.name.charAt(0)}
                     </div>
                     <div className="font-semibold text-gray-900">{row.name}</div>
@@ -155,7 +155,7 @@ const Students = () => {
                 <div className="flex justify-end gap-2">
                     <button
                         onClick={() => handleEdit(row)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                        className="p-2 text-blue-600 hover:bg-primary-50 rounded-lg transition-colors border border-transparent hover:border-primary-100"
                         title="Edit Student"
                     >
                         <FiEdit size={16} />
@@ -181,7 +181,7 @@ const Students = () => {
                         <p className="mt-1 opacity-90">Manage student records for your department</p>
                     </div>
                     <Button
-                        className="bg-white text-indigo-700 hover:bg-indigo-50 border-none shadow-md"
+                        className="bg-white text-eyDark hover:bg-primary-50 border-none shadow-md"
                         size="lg"
                         onClick={() => { resetForm(); setShowModal(true); }}
                     >
@@ -197,7 +197,7 @@ const Students = () => {
                     <input
                         type="text"
                         placeholder="Search students..."
-                        className="w-full pl-10 pr-4 py-2 border border-blue-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                        className="w-full pl-10 pr-4 py-2 border border-primary-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />

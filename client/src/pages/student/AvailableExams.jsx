@@ -91,7 +91,7 @@ const AvailableExams = () => {
                 className={`group relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 border-2 ${priority ? 'border-transparent hover:border-indigo-200' : 'border-transparent hover:border-gray-200'}`}
               >
                 {priority && (
-                  <div className="absolute top-0 right-0 p-8 -mr-8 -mt-8 bg-indigo-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
+                  <div className="absolute top-0 right-0 p-8 -mr-8 -mt-8 bg-primary-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
                 )}
 
                 <div className="relative space-y-4">
@@ -101,7 +101,7 @@ const AvailableExams = () => {
                         {exam.title}
                       </h3>
                       <div className="flex items-center gap-1.5 opacity-70">
-                        <FiBookOpen className="text-indigo-500 w-3.5 h-3.5" />
+                        <FiBookOpen className="text-primary-600 w-3.5 h-3.5" />
                         <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">{exam.subject?.name}</span>
                       </div>
                     </div>
@@ -163,7 +163,7 @@ const AvailableExams = () => {
   return (
     <div className="max-w-7xl mx-auto space-y-8 px-4 sm:px-6 lg:px-8 py-8">
       <div className="relative bg-white/50 p-8 rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full -mr-32 -mt-32 blur-3xl opacity-50"></div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary-50 rounded-full -mr-32 -mt-32 blur-3xl opacity-50"></div>
         <div className="relative">
           <h1 className="text-4xl font-black text-gray-900 tracking-tight">Available Exams</h1>
           <p className="text-gray-500 mt-2 font-medium">Elevate your performance. Your future starts with these assessments.</p>

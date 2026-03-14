@@ -13,15 +13,15 @@ const ExamSimulationArea = () => (
                 </div>
                 <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
                     <span className="text-xs font-bold text-gray-500 block uppercase tracking-tighter mb-1">Time Remaining</span>
-                    <span className="text-xl font-mono font-black text-primary-600 tracking-tighter">01:24:42</span>
+                    <span className="text-xl font-mono font-black text-eyDark tracking-tighter">01:24:42</span>
                 </div>
             </div>
 
             <div className="space-y-6">
                 <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100/50 shadow-sm">
                     <div className="flex items-center gap-3 mb-4">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600 text-white text-xs font-black">Q3</span>
-                        <span className="text-xs font-bold text-primary-600 uppercase tracking-widest bg-primary-50 px-2 py-0.5 rounded">Conceptual Area: React Hooks</span>
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-500 text-eyDark text-xs font-black">Q3</span>
+                        <span className="text-xs font-bold text-eyDark uppercase tracking-widest bg-primary-50 px-2 py-0.5 rounded">Conceptual Area: React Hooks</span>
                     </div>
                     <h3 className="text-lg font-bold text-gray-900 mb-6 font-display leading-snug">
                         In React, which hook is used to perform side effects such as data fetching, subscriptions, or manually changing the DOM?
@@ -59,7 +59,7 @@ const LiveMonitoring = () => {
                     <button className="p-2 hover:bg-gray-800 text-gray-400 rounded-lg transition-colors">
                         <FiChevronLeft className="w-5 h-5" />
                     </button>
-                    <h2 className="text-sm font-black text-white uppercase tracking-widest font-display flex items-center gap-2">
+                    <h2 className="text-sm font-black text-eyDark uppercase tracking-widest font-display flex items-center gap-2">
                         <span className="text-primary-500">Live</span> Monitoring Console
                     </h2>
                 </div>
@@ -67,9 +67,9 @@ const LiveMonitoring = () => {
                 <div className="flex items-center gap-6">
                     <div className="text-right">
                         <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Active Student</p>
-                        <p className="text-xs font-bold text-white font-display">Arjun Ramesh (STU-2024-047)</p>
+                        <p className="text-xs font-bold text-eyDark font-display">Arjun Ramesh (STU-2024-047)</p>
                     </div>
-                    <div className="w-10 h-10 rounded-full bg-primary-600/10 border border-primary-500/30 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-primary-500/10 border border-primary-500/30 flex items-center justify-center">
                         <FiUser className="text-primary-500 w-5 h-5" />
                     </div>
                 </div>
@@ -91,11 +91,11 @@ const LiveMonitoring = () => {
             {/* Bottom Floating Controls (Optional) */}
             <div className="absolute bottom-6 left-6 flex items-center gap-2 z-50">
                 <div className="px-4 py-2 bg-white/90 backdrop-blur-md rounded-full border border-gray-200 shadow-xl flex items-center gap-3">
-                    <button className="p-1.5 hover:bg-gray-100 text-gray-600 hover:text-primary-600 rounded-full transition-all">
+                    <button className="p-1.5 hover:bg-gray-100 text-gray-600 hover:text-eyDark rounded-full transition-all">
                         <FiGrid className="w-4 h-4" />
                     </button>
                     <div className="w-px h-4 bg-gray-200" />
-                    <button className="p-1.5 hover:bg-gray-100 text-gray-600 hover:text-primary-600 rounded-full transition-all">
+                    <button className="p-1.5 hover:bg-gray-100 text-gray-600 hover:text-eyDark rounded-full transition-all">
                         <FiList className="w-4 h-4" />
                     </button>
                     <div className="w-px h-4 bg-gray-200" />

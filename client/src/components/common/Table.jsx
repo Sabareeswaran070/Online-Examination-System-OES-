@@ -70,7 +70,7 @@ const Table = ({
                 onClick={() => onRowClick?.(row)}
                 className={clsx(
                   onRowClick && 'cursor-pointer hover:bg-gray-50',
-                  selectedRows.includes(row._id) && 'bg-blue-50',
+                  selectedRows.includes(row._id) && 'bg-primary-50',
                   'transition-colors'
                 )}
               >

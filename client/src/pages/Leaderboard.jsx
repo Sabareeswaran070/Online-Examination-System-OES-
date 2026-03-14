@@ -50,13 +50,13 @@ const Leaderboard = () => {
                 <div className="flex space-x-2">
                     <button
                         onClick={() => setFilter('all')}
-                        className={`px-4 py-2 rounded-lg ${filter === 'all' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700'}`}
+                        className={`px-4 py-2 rounded-lg ${filter === 'all' ? 'bg-primary-500 text-eyDark' : 'bg-white text-gray-700'}`}
                     >
                         All Time
                     </button>
                     <button
                         onClick={() => setFilter('competition')}
-                        className={`px-4 py-2 rounded-lg ${filter === 'competition' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700'}`}
+                        className={`px-4 py-2 rounded-lg ${filter === 'competition' ? 'bg-primary-500 text-eyDark' : 'bg-white text-gray-700'}`}
                     >
                         Competitions
                     </button>

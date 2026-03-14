@@ -3,6 +3,7 @@ import Modal from '@/components/common/Modal';
 import Loader from '@/components/common/Loader';
 import Input from '@/components/common/Input';
 import { superAdminService, competitionService } from '@/services';
+import { useSocket } from '@/context/SocketContext';
 import {
   FiPlus, FiEdit, FiTrash2, FiCalendar, FiClock, FiCode, FiSearch,
   FiCheck, FiAward, FiChevronRight, FiX, FiTarget, FiFolder,
@@ -22,7 +23,7 @@ const STATUS_TABS = [
 
 const TAB_COLORS = {
   pending: { bg: 'bg-yellow-50', text: 'text-yellow-700', ring: 'ring-yellow-500', dot: 'bg-yellow-500', badge: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  published: { bg: 'bg-blue-50', text: 'text-blue-700', ring: 'ring-blue-500', dot: 'bg-blue-500', badge: 'bg-blue-100 text-blue-700 border-blue-200' },
+  published: { bg: 'bg-primary-50', text: 'text-eyDark', ring: 'ring-blue-500', dot: 'bg-primary-500', badge: 'bg-blue-100 text-eyDark border-blue-200' },
   approved: { bg: 'bg-green-50', text: 'text-green-700', ring: 'ring-green-500', dot: 'bg-green-500', badge: 'bg-green-100 text-green-700 border-green-200' },
   live: { bg: 'bg-red-50', text: 'text-red-700', ring: 'ring-red-500', dot: 'bg-red-500', badge: 'bg-red-100 text-red-700 border-red-200' },
   completed: { bg: 'bg-gray-50', text: 'text-gray-600', ring: 'ring-gray-400', dot: 'bg-gray-400', badge: 'bg-gray-100 text-gray-600 border-gray-200' },
@@ -61,13 +62,65 @@ const AdminCompetitions = () => {
   const [scoresTab, setScoresTab] = useState('colleges');
   const [scoresAutoRefresh, setScoresAutoRefresh] = useState(false);
 
+  // Invite Modal
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [allColleges, setAllColleges] = useState([]);
+  const [selectedInviteIds, setSelectedInviteIds] = useState([]);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteCompId, setInviteCompId] = useState(null);
+  const [inviteSearch, setInviteSearch] = useState('');
+
+  // Live Deletion Modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteCompId, setDeleteCompId] = useState(null);
+  const [deleteTimer, setDeleteTimer] = useState(0);
+  const [canFinalDelete, setCanFinalDelete] = useState(false);
+  const [isDeletingFinal, setIsDeletingFinal] = useState(false);
+
+  const socket = useSocket();
+
   const [formData, setFormData] = useState({
     title: '', description: '', startTime: '', endTime: '',
     duration: 60, totalMarks: 0, passingMarks: 0, instructions: '', questions: [],
   });
 
-  // ─── Data Fetching ─────────────────────────────────────────
+  // ─── Data Fetching & Sync ─────────────────────────────────
   useEffect(() => { fetchCompetitions(); }, [activeTab]);
+
+  useEffect(() => {
+    if (socket) {
+      socket.emit('join_admin_lounge');
+
+      const handleSync = (data) => {
+        if (data.type === 'start') {
+          // If we're not already in a deletion flow, or it's a different competition
+          if (deleteCompId !== data.competitionId) {
+            setDeleteCompId(data.competitionId);
+            setDeleteTimer(120);
+            setCanFinalDelete(false);
+            setShowDeleteModal(true);
+            toast(`Admin starting live deletion for: ${data.title}`, { icon: '⚠️' });
+          }
+        } else if (data.type === 'stop') {
+          if (deleteCompId === data.competitionId) {
+            setDeleteCompId(null);
+            setDeleteTimer(0);
+            setCanFinalDelete(false);
+            setShowDeleteModal(false);
+            toast('Live deletion stopped by another admin');
+          }
+        } else if (data.type === 'confirm') {
+          if (deleteCompId === data.competitionId) {
+            setShowDeleteModal(false);
+            fetchCompetitions();
+          }
+        }
+      };
+
+      socket.on('live_deletion_sync', handleSync);
+      return () => socket.off('live_deletion_sync', handleSync);
+    }
+  }, [socket, deleteCompId]);
 
   const fetchCompetitions = async () => {
     try {
@@ -122,6 +175,32 @@ const AdminCompetitions = () => {
     } catch (error) {
       toast.error('Failed to load college data');
     } finally { setCollegeLoading(false); }
+  };
+
+  const fetchAllColleges = async () => {
+    try {
+      const res = await superAdminService.getAllColleges({ limit: 1000 });
+      setAllColleges(res.data || []);
+    } catch (error) {
+      console.error('Error fetching colleges:', error);
+    }
+  };
+
+  const handleOpenInviteModal = async (comp) => {
+    setInviteCompId(comp._id);
+    setInviteLoading(true);
+    setShowInviteModal(true);
+    try {
+      await fetchAllColleges();
+      // Sync previously invited colleges from backend
+      const res = await competitionService.getCompetitionColleges(comp._id);
+      const currentlyInvited = (res.data || []).map(c => c.collegeId?._id || c.collegeId);
+      setSelectedInviteIds(currentlyInvited);
+    } catch (error) {
+      console.error('Error syncing invitation state:', error);
+    } finally {
+      setInviteLoading(false);
+    }
   };
 
   // ─── Create / Edit Handlers ────────────────────────────────
@@ -231,12 +310,105 @@ const AdminCompetitions = () => {
     } catch (error) { toast.error(error.response?.data?.message || 'Failed to make live'); }
   };
 
+  const handleInviteColleges = async () => {
+    setInviteLoading(true);
+    try {
+      await competitionService.inviteColleges(inviteCompId, selectedInviteIds);
+      toast.success('Colleges invited successfully');
+      setShowInviteModal(false);
+      fetchCompetitions();
+    } catch (error) {
+      toast.error('Failed to update invitations');
+    } finally { setInviteLoading(false); }
+  };
+
+  const handleMoveToApproval = async (id) => {
+    if (!window.confirm('Move this competition to the Approval Stage? Only colleges that accepted will be considered.')) return;
+    try {
+      const res = await competitionService.moveToApprovalStage(id);
+      toast.success(res.message || 'Moved to Approval Stage');
+      fetchCompetitions();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to move to approval stage');
+    }
+  };
+
   const handleApproveCollege = async (collegeId, approve) => {
     try {
       await competitionService.approveCollege(collegeCompId, collegeId, approve, '');
       toast.success(approve ? 'College approved' : 'College not approved');
       fetchCollegeStatus(collegeCompId);
     } catch (error) { toast.error('Failed to update college approval'); }
+  };
+
+  const startLiveDeletion = (compId) => {
+    // If this competition already has an active or completed timer, just reopen the modal
+    if (deleteCompId === compId) {
+      setShowDeleteModal(true);
+      return;
+    }
+
+    // Otherwise, start a fresh 2-minute timer for this competition
+    setDeleteCompId(compId);
+    setDeleteTimer(120); // 2 minutes
+    setCanFinalDelete(false);
+    setShowDeleteModal(true);
+
+    if (socket) {
+      socket.emit('start_live_deletion', {
+        competitionId: compId,
+        title: competitions.find(c => c._id === compId)?.title
+      });
+    }
+  };
+
+  const stopLiveDeletion = () => {
+    const compId = deleteCompId;
+    setDeleteCompId(null);
+    setDeleteTimer(0);
+    setCanFinalDelete(false);
+    setShowDeleteModal(false);
+    toast.success('Live deletion process stopped');
+
+    if (socket && compId) {
+      socket.emit('stop_live_deletion', { competitionId: compId });
+    }
+  };
+
+  useEffect(() => {
+    let interval;
+    if (deleteTimer > 0) {
+      interval = setInterval(() => {
+        setDeleteTimer(prev => prev - 1);
+      }, 1000);
+    } else if (deleteTimer === 0 && deleteCompId) {
+      setCanFinalDelete(true);
+      // Automatically show modal if it was hidden
+      if (!showDeleteModal) {
+        setShowDeleteModal(true);
+      }
+    }
+    return () => clearInterval(interval);
+  }, [deleteTimer, deleteCompId]);
+
+  const confirmFinalDeletion = async () => {
+    if (!canFinalDelete) return;
+    setIsDeletingFinal(true);
+    try {
+      await competitionService.deleteCompetition(deleteCompId);
+      toast.success('Live competition deleted successfully');
+
+      if (socket) {
+        socket.emit('confirm_live_deletion', { competitionId: deleteCompId });
+      }
+
+      setShowDeleteModal(false);
+      fetchCompetitions();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete');
+    } finally {
+      setIsDeletingFinal(false);
+    }
   };
 
   const handleApproveAll = async () => {
@@ -272,7 +444,7 @@ const AdminCompetitions = () => {
           </div>
           <button
             onClick={() => handleOpenModal()}
-            className="flex items-center gap-2 px-6 py-3 bg-white text-purple-700 font-bold rounded-xl shadow-md hover:shadow-lg hover:scale-105 transition-all"
+            className="flex items-center gap-2 px-6 py-3 bg-white text-eyDark font-bold rounded-xl shadow-md hover:shadow-lg hover:scale-105 transition-all"
           >
             <FiPlus className="w-5 h-5" /> New Competition
           </button>
@@ -288,11 +460,10 @@ const AdminCompetitions = () => {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                isActive
-                  ? `bg-${tab.color}-50 text-${tab.color}-700 ring-1 ring-${tab.color}-300 shadow-sm`
-                  : 'text-gray-500 hover:bg-gray-50'
-              }`}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${isActive
+                ? `bg-${tab.color}-50 text-${tab.color}-700 ring-1 ring-${tab.color}-300 shadow-sm`
+                : 'text-gray-500 hover:bg-gray-50'
+                }`}
             >
               <Icon className="w-4 h-4" />
               {tab.label}
@@ -312,7 +483,7 @@ const AdminCompetitions = () => {
       ) : competitions.length === 0 ? (
         <div className="text-center py-20">
           <div className="w-20 h-20 mx-auto bg-purple-100 rounded-2xl flex items-center justify-center mb-4">
-            <FiCode className="w-10 h-10 text-purple-500" />
+            <FiCode className="w-10 h-10 text-primary-600" />
           </div>
           <h3 className="text-xl font-bold text-gray-700 mb-2">No {activeTab} competitions</h3>
           <p className="text-gray-500 mb-6">
@@ -341,13 +512,17 @@ const AdminCompetitions = () => {
                       {comp.status?.charAt(0).toUpperCase() + comp.status?.slice(1)}
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {(comp.status === 'pending' || comp.status === 'published') && (
-                        <button onClick={() => handleOpenModal(comp)} className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Edit">
+                      {(comp.status === 'pending' || comp.status === 'published' || comp.status === 'approved' || comp.status === 'live') && (
+                        <button onClick={() => handleOpenModal(comp)} className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-primary-50 rounded-lg transition-colors" title="Edit">
                           <FiEdit className="w-4 h-4" />
                         </button>
                       )}
-                      {comp.status !== 'live' && (
+                      {comp.status !== 'live' ? (
                         <button onClick={() => handleDelete(comp._id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                          <FiTrash2 className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <button onClick={() => startLiveDeletion(comp._id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete Live Competition">
                           <FiTrash2 className="w-4 h-4" />
                         </button>
                       )}
@@ -361,13 +536,13 @@ const AdminCompetitions = () => {
 
                 {/* Stats Row */}
                 <div className="px-5 pb-4 grid grid-cols-3 gap-3">
-                  <div className="text-center p-2 bg-purple-50 rounded-lg">
-                    <FiClock className="w-4 h-4 text-purple-500 mx-auto mb-1" />
+                  <div className="text-center p-2 bg-primary-50 rounded-lg">
+                    <FiClock className="w-4 h-4 text-primary-600 mx-auto mb-1" />
                     <p className="text-sm font-bold text-gray-800">{comp.duration}m</p>
                     <p className="text-[10px] text-gray-400 uppercase">Duration</p>
                   </div>
-                  <div className="text-center p-2 bg-blue-50 rounded-lg">
-                    <FiTarget className="w-4 h-4 text-blue-500 mx-auto mb-1" />
+                  <div className="text-center p-2 bg-primary-50 rounded-lg">
+                    <FiTarget className="w-4 h-4 text-primary-600 mx-auto mb-1" />
                     <p className="text-sm font-bold text-gray-800">{comp.totalMarks}</p>
                     <p className="text-[10px] text-gray-400 uppercase">Marks</p>
                   </div>
@@ -401,14 +576,29 @@ const AdminCompetitions = () => {
                 {/* Action Buttons */}
                 <div className="px-5 py-3 border-t border-gray-100 flex gap-2">
                   {comp.status === 'pending' && (
-                    <button onClick={() => handlePublish(comp._id)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
-                      <FiSend className="w-3.5 h-3.5" /> Publish
-                    </button>
+                    <>
+                      <button onClick={() => handleOpenInviteModal(comp)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
+                        <FiUsers className="w-3.5 h-3.5" /> Invite
+                      </button>
+                      <button onClick={() => handlePublish(comp._id)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+                        <FiSend className="w-3.5 h-3.5" /> Publish
+                      </button>
+                    </>
                   )}
-                  {(comp.status === 'published' || comp.status === 'approved') && (
+                  {comp.status === 'published' && (
                     <>
                       <button onClick={() => fetchCollegeStatus(comp._id)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
-                        <FiEye className="w-3.5 h-3.5" /> Colleges
+                        <FiEye className="w-3.5 h-3.5" /> Responses
+                      </button>
+                      <button onClick={() => handleMoveToApproval(comp._id)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors">
+                        <FiCheckCircle className="w-3.5 h-3.5" /> To Approval
+                      </button>
+                    </>
+                  )}
+                  {comp.status === 'approved' && (
+                    <>
+                      <button onClick={() => fetchCollegeStatus(comp._id)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
+                        <FiEye className="w-3.5 h-3.5" /> Final Approval
                       </button>
                       <button onClick={() => handleMakeLive(comp._id)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors">
                         <FiPlay className="w-3.5 h-3.5" /> Go Live
@@ -503,9 +693,9 @@ const AdminCompetitions = () => {
                   ))}
                 </div>
                 {formData.questions.length > 0 && (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-lg border border-purple-100">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-primary-50 rounded-lg border border-primary-100">
                     <FiCheck className="w-4 h-4 text-purple-600" />
-                    <span className="text-sm font-medium text-purple-700">{formData.questions.length} questions selected &bull; {formData.totalMarks} total marks</span>
+                    <span className="text-sm font-medium text-eyDark">{formData.questions.length} questions selected &bull; {formData.totalMarks} total marks</span>
                   </div>
                 )}
                 <div className="max-h-[45vh] overflow-y-auto border border-gray-100 rounded-xl divide-y">
@@ -514,15 +704,15 @@ const AdminCompetitions = () => {
                   ) : availableQuestions.length > 0 ? availableQuestions.map((q) => {
                     const isSelected = formData.questions.some(fq => fq.questionId === q._id);
                     return (
-                      <div key={q._id} onClick={() => toggleQuestion(q)} className={`p-3.5 flex items-center justify-between cursor-pointer transition-colors ${isSelected ? 'bg-purple-50' : 'hover:bg-gray-50'}`}>
+                      <div key={q._id} onClick={() => toggleQuestion(q)} className={`p-3.5 flex items-center justify-between cursor-pointer transition-colors ${isSelected ? 'bg-primary-50' : 'hover:bg-gray-50'}`}>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{q.questionText}</p>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${q.type === 'Coding' ? 'bg-violet-100 text-violet-700' : q.type === 'MCQ' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>{q.type}</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${q.type === 'Coding' ? 'bg-violet-100 text-violet-700' : q.type === 'MCQ' ? 'bg-blue-100 text-eyDark' : 'bg-gray-100 text-gray-600'}`}>{q.type}</span>
                             <span className="text-[10px] text-gray-500">{q.marks} marks</span>
                             <span className={`text-[10px] px-1.5 py-0.5 rounded ${q.difficulty === 'easy' ? 'bg-green-50 text-green-600' : q.difficulty === 'hard' ? 'bg-red-50 text-red-600' : 'bg-yellow-50 text-yellow-600'}`}>{q.difficulty}</span>
                             {q.questionSet?.name && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 flex items-center gap-0.5"><FiFolder className="w-2.5 h-2.5" /> {q.questionSet.name}</span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary-50 text-indigo-600 flex items-center gap-0.5"><FiFolder className="w-2.5 h-2.5" /> {q.questionSet.name}</span>
                             )}
                           </div>
                         </div>
@@ -560,7 +750,7 @@ const AdminCompetitions = () => {
                 { label: 'Pending', value: collegeData.stats.pending, bg: 'bg-yellow-50', text: 'text-yellow-700' },
                 { label: 'Accepted', value: collegeData.stats.accepted, bg: 'bg-green-50', text: 'text-green-700' },
                 { label: 'Rejected', value: collegeData.stats.rejected, bg: 'bg-red-50', text: 'text-red-700' },
-                { label: 'Approved', value: collegeData.stats.approved, bg: 'bg-blue-50', text: 'text-blue-700' },
+                { label: 'Approved', value: collegeData.stats.approved, bg: 'bg-primary-50', text: 'text-eyDark' },
                 { label: 'Not Approved', value: collegeData.stats.notApproved, bg: 'bg-orange-50', text: 'text-orange-700' },
               ].map((s) => (
                 <div key={s.label} className={`${s.bg} rounded-xl p-3 text-center`}>
@@ -589,19 +779,17 @@ const AdminCompetitions = () => {
                     <p className="font-semibold text-gray-900">{a.collegeId?.collegeName || 'Unknown College'}</p>
                     <p className="text-xs text-gray-500">{a.collegeId?.collegeCode}</p>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                        a.collegeStatus === 'accepted' ? 'bg-green-100 text-green-700 border-green-200' :
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${a.collegeStatus === 'accepted' ? 'bg-green-100 text-green-700 border-green-200' :
                         a.collegeStatus === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' :
-                        'bg-yellow-100 text-yellow-700 border-yellow-200'
-                      }`}>
+                          'bg-yellow-100 text-yellow-700 border-yellow-200'
+                        }`}>
                         College: {a.collegeStatus}
                       </span>
                       {a.collegeStatus === 'accepted' && (
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                          a.approvalStatus === 'approved' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${a.approvalStatus === 'approved' ? 'bg-blue-100 text-eyDark border-blue-200' :
                           a.approvalStatus === 'not-approved' ? 'bg-orange-100 text-orange-700 border-orange-200' :
-                          'bg-gray-100 text-gray-600 border-gray-200'
-                        }`}>
+                            'bg-gray-100 text-gray-600 border-gray-200'
+                          }`}>
                           Approval: {a.approvalStatus}
                         </span>
                       )}
@@ -656,13 +844,13 @@ const AdminCompetitions = () => {
             {/* Summary Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
               {[
-                { label: 'Participants', value: scoresData.summary?.totalParticipants, bg: 'bg-purple-50', text: 'text-purple-700', icon: FiUsers },
+                { label: 'Participants', value: scoresData.summary?.totalParticipants, bg: 'bg-primary-50', text: 'text-eyDark', icon: FiUsers },
                 { label: 'In Progress', value: scoresData.summary?.inProgress, bg: 'bg-yellow-50', text: 'text-yellow-700', icon: FiClock },
                 { label: 'Submitted', value: scoresData.summary?.submitted, bg: 'bg-green-50', text: 'text-green-700', icon: FiCheckCircle },
-                { label: 'Colleges', value: scoresData.summary?.totalColleges, bg: 'bg-indigo-50', text: 'text-indigo-700', icon: FiUsers },
-                { label: 'Avg Score', value: scoresData.summary?.avgScore, bg: 'bg-blue-50', text: 'text-blue-700', icon: FiBarChart2 },
+                { label: 'Colleges', value: scoresData.summary?.totalColleges, bg: 'bg-primary-50', text: 'text-eyDark', icon: FiUsers },
+                { label: 'Avg Score', value: scoresData.summary?.avgScore, bg: 'bg-primary-50', text: 'text-eyDark', icon: FiBarChart2 },
                 { label: 'Highest', value: scoresData.summary?.highestScore, bg: 'bg-emerald-50', text: 'text-emerald-700', icon: FiAward },
-                { label: 'Pass Rate', value: `${scoresData.summary?.passRate || 0}%`, bg: 'bg-teal-50', text: 'text-teal-700', icon: FiPercent },
+                { label: 'Pass Rate', value: `${scoresData.summary?.passRate || 0}%`, bg: 'bg-primary-50', text: 'text-eyDark', icon: FiPercent },
               ].map(s => {
                 const Icon = s.icon;
                 return (
@@ -686,11 +874,10 @@ const AdminCompetitions = () => {
                   <button
                     key={t.key}
                     onClick={() => setScoresTab(t.key)}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                      scoresTab === t.key
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${scoresTab === t.key
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                      }`}
                   >
                     <Icon className="w-4 h-4" /> {t.label}
                   </button>
@@ -719,9 +906,8 @@ const AdminCompetitions = () => {
                       <tr key={idx} className={`hover:bg-gray-50 ${idx < 3 ? 'bg-yellow-50/30' : ''}`}>
                         <td className="px-4 py-3 font-bold text-gray-600">
                           {c.rank <= 3 ? (
-                            <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                              c.rank === 1 ? 'bg-yellow-500' : c.rank === 2 ? 'bg-gray-400' : 'bg-orange-400'
-                            }`}>{c.rank}</span>
+                            <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white ${c.rank === 1 ? 'bg-yellow-500' : c.rank === 2 ? 'bg-gray-400' : 'bg-orange-400'
+                              }`}>{c.rank}</span>
                           ) : c.rank}
                         </td>
                         <td className="px-4 py-3">
@@ -737,15 +923,14 @@ const AdminCompetitions = () => {
                         <td className="px-4 py-3 text-center">
                           <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-bold">{c.submitted}</span>
                         </td>
-                        <td className="px-4 py-3 text-center font-bold text-blue-700">{c.avgScore}</td>
+                        <td className="px-4 py-3 text-center font-bold text-eyDark">{c.avgScore}</td>
                         <td className="px-4 py-3 text-center font-bold text-emerald-700">{c.highestScore}</td>
                         <td className="px-4 py-3 text-center">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                            c.avgPercentage >= 75 ? 'bg-green-100 text-green-700' :
-                            c.avgPercentage >= 50 ? 'bg-blue-100 text-blue-700' :
-                            c.avgPercentage >= 30 ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-red-100 text-red-700'
-                          }`}>{c.avgPercentage}%</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${c.avgPercentage >= 75 ? 'bg-green-100 text-green-700' :
+                            c.avgPercentage >= 50 ? 'bg-blue-100 text-eyDark' :
+                              c.avgPercentage >= 30 ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-red-100 text-red-700'
+                            }`}>{c.avgPercentage}%</span>
                         </td>
                       </tr>
                     )) : (
@@ -777,9 +962,8 @@ const AdminCompetitions = () => {
                         <tr key={idx} className={`hover:bg-gray-50 ${idx < 3 ? 'bg-yellow-50/30' : ''}`}>
                           <td className="px-4 py-3">
                             {s.rank <= 3 ? (
-                              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                                s.rank === 1 ? 'bg-yellow-500' : s.rank === 2 ? 'bg-gray-400' : 'bg-orange-400'
-                              }`}>{s.rank}</span>
+                              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white ${s.rank === 1 ? 'bg-yellow-500' : s.rank === 2 ? 'bg-gray-400' : 'bg-orange-400'
+                                }`}>{s.rank}</span>
                             ) : <span className="font-bold text-gray-500">{s.rank}</span>}
                           </td>
                           <td className="px-4 py-3">
@@ -795,12 +979,11 @@ const AdminCompetitions = () => {
                             <span className="text-xs text-gray-400">/{scoresData.competition?.totalMarks}</span>
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                              s.percentage >= 75 ? 'bg-green-100 text-green-700' :
-                              s.percentage >= 50 ? 'bg-blue-100 text-blue-700' :
-                              s.percentage >= 30 ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-red-100 text-red-700'
-                            }`}>{Math.round(s.percentage)}%</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${s.percentage >= 75 ? 'bg-green-100 text-green-700' :
+                              s.percentage >= 50 ? 'bg-blue-100 text-eyDark' :
+                                s.percentage >= 30 ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                              }`}>{Math.round(s.percentage)}%</span>
                           </td>
                           <td className="px-4 py-3 text-center">
                             {s.status === 'in-progress' ? (
@@ -808,9 +991,8 @@ const AdminCompetitions = () => {
                                 <div className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></div> Taking
                               </span>
                             ) : (
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                                s.isPassed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                              }`}>{s.isPassed ? 'Passed' : 'Failed'}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${s.isPassed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                }`}>{s.isPassed ? 'Passed' : 'Failed'}</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-center text-sm text-gray-600">
@@ -827,6 +1009,120 @@ const AdminCompetitions = () => {
             )}
           </div>
         ) : null}
+      </Modal>
+
+      {/* ─── Invite Colleges Modal ────────────────────────── */}
+      <Modal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} title="Invite Colleges" size="lg">
+        {inviteLoading ? <Loader /> : (
+          <div className="space-y-4">
+            <div className="relative">
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search colleges..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                value={inviteSearch}
+                onChange={(e) => setInviteSearch(e.target.value)}
+              />
+            </div>
+            <div className="max-h-[50vh] overflow-y-auto border rounded-xl divide-y">
+              {allColleges
+                .filter(c =>
+                  c.collegeName?.toLowerCase().includes(inviteSearch.toLowerCase()) ||
+                  c.collegeCode?.toLowerCase().includes(inviteSearch.toLowerCase())
+                )
+                .map(college => {
+                  const isSelected = selectedInviteIds.includes(college._id);
+                  return (
+                    <div
+                      key={college._id}
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedInviteIds(prev => prev.filter(id => id !== college._id));
+                        } else {
+                          setSelectedInviteIds(prev => [...prev, college._id]);
+                        }
+                      }}
+                      className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors"
+                    >
+                      <div>
+                        <p className="font-semibold text-gray-900">{college.collegeName}</p>
+                        <p className="text-xs text-gray-500">{college.collegeCode}</p>
+                      </div>
+                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'}`}>
+                        {isSelected && <FiCheck className="w-3.5 h-3.5" />}
+                      </div>
+                    </div>
+                  );
+                })}
+              {allColleges.length === 0 && <div className="p-8 text-center text-gray-400">No colleges found</div>}
+            </div>
+            <div className="flex justify-between items-center pt-2">
+              <span className="text-sm text-gray-500 font-medium">{selectedInviteIds.length} colleges selected</span>
+              <div className="flex gap-2">
+                <button onClick={() => setShowInviteModal(false)} className="px-5 py-2 text-gray-600 font-medium rounded-xl border border-gray-200 hover:bg-gray-50 transition-all">Cancel</button>
+                <button onClick={handleInviteColleges} disabled={inviteLoading} className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50 shadow-sm">
+                  Save Invitations
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ─── Live Deletion Countdown Modal ────────────────── */}
+      <Modal isOpen={showDeleteModal} onClose={() => !isDeletingFinal && setShowDeleteModal(false)} title="Live Deletion" size="md">
+        <div className="text-center space-y-6 py-4">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
+            <FiClock className={`w-10 h-10 text-red-600 ${deleteTimer > 0 ? 'animate-pulse' : ''}`} />
+          </div>
+
+          <div>
+            <h3 className="text-xl font-bold text-gray-900">Live Deletion</h3>
+            <p className="text-sm text-gray-500 mt-2 px-6">
+              Deleting a live competition is a critical action. A safety delay is required.
+            </p>
+          </div>
+
+          <div className="bg-gray-50 rounded-2xl p-8 border border-gray-100">
+            {deleteTimer > 0 ? (
+              <>
+                <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-1">Safety Wait Time</p>
+                <p className="text-5xl font-black text-red-600 font-mono">
+                  {Math.floor(deleteTimer / 60)}:{(deleteTimer % 60).toString().padStart(2, '0')}
+                </p>
+              </>
+            ) : (
+              <div className="space-y-4 animate-in fade-in zoom-in duration-500">
+                <div className="flex items-center justify-center gap-2 text-green-600 font-bold">
+                  <FiCheckCircle className="w-6 h-6" />
+                  <span>Timer Completed</span>
+                </div>
+                <p className="text-lg font-bold text-gray-900 leading-tight">
+                  Are you sure you want to delete this competition?
+                </p>
+                <button
+                  onClick={confirmFinalDeletion}
+                  disabled={isDeletingFinal}
+                  className="w-full py-4 bg-red-600 text-white font-bold rounded-xl shadow-lg hover:bg-red-700 transition-all active:scale-[0.98] disabled:opacity-50"
+                >
+                  {isDeletingFinal ? 'Permanently Deleting...' : 'YES, PERMANENTLY DELETE'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {deleteTimer > 0 && (
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={stopLiveDeletion}
+                className="px-6 py-2 text-red-500 text-sm font-semibold hover:text-red-700 transition-colors"
+              >
+                Cancel Deletion
+              </button>
+            </div>
+          )}
+        </div>
       </Modal>
     </div>
   );

@@ -175,7 +175,7 @@ const Submissions = () => {
                     <button
                         onClick={() => handleBulkAIResult(row._id)}
                         disabled={loadingAIRows[row._id]}
-                        className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg border border-primary-100 transition-colors disabled:opacity-50"
+                        className="p-2 text-eyDark hover:bg-primary-50 rounded-lg border border-primary-100 transition-colors disabled:opacity-50"
                         title="AI Evaluate All Questions"
                     >
                         <FiCpu className={`w-4 h-4 ${loadingAIRows[row._id] ? 'animate-spin' : ''}`} />
@@ -225,7 +225,7 @@ const Submissions = () => {
 
                 <Card className="p-5 border-l-4 border-l-blue-500">
                     <div className="flex items-start gap-4">
-                        <div className="p-3 bg-blue-50 rounded-xl text-blue-600">
+                        <div className="p-3 bg-primary-50 rounded-xl text-blue-600">
                             <FiFileText className="w-6 h-6" />
                         </div>
                         <div>
@@ -237,7 +237,7 @@ const Submissions = () => {
 
                 <Card className="p-5 border-l-4 border-l-indigo-500">
                     <div className="flex items-start gap-4">
-                        <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600">
+                        <div className="p-3 bg-primary-50 rounded-xl text-indigo-600">
                             <FiUser className="w-6 h-6" />
                         </div>
                         <div>

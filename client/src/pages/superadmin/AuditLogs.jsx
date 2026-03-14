@@ -148,7 +148,7 @@ const AuditLogs = () => {
                   <div key={index} className="flex items-start justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-100">
                     <div className="flex items-start space-x-4">
                       <div className="w-10 h-10 bg-primary-50 rounded-full flex items-center justify-center shrink-0">
-                        <FiActivity className="text-primary-600" />
+                        <FiActivity className="text-eyDark" />
                       </div>
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -214,7 +214,7 @@ const AuditLogs = () => {
                           key={pageNum}
                           onClick={() => setCurrentPage(pageNum)}
                           className={`w-10 h-10 text-sm font-medium rounded-lg transition-all ${currentPage === pageNum
-                            ? 'bg-primary-600 text-white shadow-md'
+                            ? 'bg-primary-500 text-eyDark shadow-md'
                             : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                             }`}
                         >

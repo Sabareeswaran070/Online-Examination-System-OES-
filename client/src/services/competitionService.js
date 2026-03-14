@@ -62,6 +62,16 @@ export const competitionService = {
     return response.data;
   },
 
+  inviteColleges: async (id, collegeIds) => {
+    const response = await api.put(`/competitions/${id}/invite`, { collegeIds });
+    return response.data;
+  },
+
+  moveToApprovalStage: async (id) => {
+    const response = await api.put(`/competitions/${id}/approval-stage`);
+    return response.data;
+  },
+
   // ── Live Scores ──
   getCompetitionLiveScores: async (id) => {
     const response = await api.get(`/competitions/${id}/live-scores`);

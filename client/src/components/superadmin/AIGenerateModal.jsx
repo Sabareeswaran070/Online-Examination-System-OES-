@@ -243,17 +243,17 @@ const AIGenerateModal = ({ isOpen, onClose, onGenerated, service = defaultServic
                                         ))}
                                     </div>
                                 </div>
-                                <div className="bg-purple-50 rounded-xl p-4 border-2 border-purple-200">
+                                <div className="bg-primary-50 rounded-xl p-4 border-2 border-purple-200">
                                     <div className="flex items-center justify-between mb-2">
-                                        <span className="text-sm font-medium text-purple-700">🔒 Hidden</span>
-                                        <span className="text-[10px] text-purple-500 uppercase">For evaluation</span>
+                                        <span className="text-sm font-medium text-eyDark">🔒 Hidden</span>
+                                        <span className="text-[10px] text-primary-600 uppercase">For evaluation</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {[2, 3, 4, 5, 6].map(n => (
                                             <button
                                                 key={n}
                                                 onClick={() => setHiddenCount(n)}
-                                                className={`w-9 h-9 rounded-lg text-sm font-bold transition-all ${hiddenCount === n ? 'bg-purple-600 text-white shadow-md' : 'bg-white text-purple-700 border border-purple-300 hover:bg-purple-100'}`}
+                                                className={`w-9 h-9 rounded-lg text-sm font-bold transition-all ${hiddenCount === n ? 'bg-purple-600 text-white shadow-md' : 'bg-white text-eyDark border border-purple-300 hover:bg-purple-100'}`}
                                             >
                                                 {n}
                                             </button>
@@ -395,10 +395,10 @@ const GeneratedPreview = ({ question, onUse, onRegenerate, onClose, generating }
                     }`}>
                     {question.difficulty?.charAt(0).toUpperCase() + question.difficulty?.slice(1)}
                 </span>
-                <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-eyDark">
                     {question.programmingLanguage}
                 </span>
-                <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-eyDark">
                     {question.marks} marks
                 </span>
                 <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
@@ -494,14 +494,14 @@ const GeneratedPreview = ({ question, onUse, onRegenerate, onClose, generating }
                         )}
                         {question.hiddenTestCases?.length > 0 && (
                             <div>
-                                <h4 className="text-xs font-bold text-purple-500 uppercase tracking-wider mb-2">
+                                <h4 className="text-xs font-bold text-primary-600 uppercase tracking-wider mb-2">
                                     Hidden Test Cases ({question.hiddenTestCases.length})
                                 </h4>
                                 <div className="space-y-3">
                                     {question.hiddenTestCases.map((tc, i) => (
-                                        <div key={i} className="bg-white rounded-lg p-3 border border-purple-100">
+                                        <div key={i} className="bg-white rounded-lg p-3 border border-primary-100">
                                             <div className="flex items-center gap-2 mb-2">
-                                                <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded">
+                                                <span className="text-xs font-bold text-purple-600 bg-primary-50 px-2 py-0.5 rounded">
                                                     Hidden {i + 1}
                                                 </span>
                                             </div>

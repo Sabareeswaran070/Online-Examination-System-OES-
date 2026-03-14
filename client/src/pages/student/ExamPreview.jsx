@@ -173,12 +173,12 @@ const ExamPreview = () => {
           {/* Proctoring Notice */}
           {exam.proctoring?.enabled && exam.proctoring?.cameraRequired && (
             <Card title="Proctoring Requirements">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-primary-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-start space-x-3">
                   <FiMonitor className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                   <div className="space-y-2">
                     <p className="text-sm text-blue-800 font-bold">Real-time Camera Monitoring Required</p>
-                    <ul className="text-xs text-blue-700 list-disc pl-4 space-y-1">
+                    <ul className="text-xs text-eyDark list-disc pl-4 space-y-1">
                       <li>Ensure your webcam is connected and functioning properly.</li>
                       <li>Place yourself in a well-lit environment.</li>
                       <li>Allow camera permissions when prompted after starting the exam.</li>
@@ -198,8 +198,8 @@ const ExamPreview = () => {
             <div className="text-center space-y-4">
               {examData.attempted ? (
                 <>
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <FiCheckCircle className="w-12 h-12 text-blue-500 mx-auto mb-2" />
+                  <div className="p-4 bg-primary-50 rounded-lg">
+                    <FiCheckCircle className="w-12 h-12 text-primary-600 mx-auto mb-2" />
                     <p className="text-lg font-semibold text-blue-800">Already Attempted</p>
                     <p className="text-sm text-blue-600 mt-1">
                       Status: {examData.resultStatus || 'Submitted'}

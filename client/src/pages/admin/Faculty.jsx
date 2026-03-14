@@ -137,14 +137,14 @@ const Faculty = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-teal-600 to-emerald-700 rounded-2xl shadow-lg p-6 text-white text-white">
+      <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl shadow-lg p-6 text-white text-white">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold font-display">Faculty Directory</h1>
             <p className="mt-1 opacity-90">Manage academic staff, department heads, and their roles</p>
           </div>
           <Button
-            className="bg-white text-teal-700 hover:bg-teal-50 border-none shadow-md"
+            className="bg-white text-eyDark hover:bg-primary-50 border-none shadow-md"
             size="lg"
             onClick={() => setShowModal(true)}
           >
@@ -184,7 +184,7 @@ const Faculty = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="relative">
         {loading && faculty.length === 0 ? (
           <div className="py-20 flex justify-center">
             <Loader />
@@ -197,12 +197,12 @@ const Faculty = () => {
                   <Card key={member._id} className="hover:shadow-lg transition-all hover:-translate-y-1 duration-300 border-none shadow-sm group">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-teal-50 to-emerald-50 rounded-2xl flex items-center justify-center text-teal-700 font-bold border border-teal-100 group-hover:scale-110 transition-transform">
+                        <div className="w-12 h-12 bg-gradient-to-br from-primary-50 to-white rounded-2xl flex items-center justify-center text-eyDark font-bold border border-primary-100 group-hover:scale-110 transition-transform">
                           {member.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
                           <h3 className="font-bold text-gray-900 leading-tight">{member.name}</h3>
-                          <div className={`text-[10px] inline-block px-2 py-0.5 rounded-full font-bold uppercase mt-1 tracking-wider ${member.role === 'depthead' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                          <div className={`text-[10px] inline-block px-2 py-0.5 rounded-full font-bold uppercase mt-1 tracking-wider ${member.role === 'depthead' ? 'bg-purple-100 text-eyDark' : 'bg-blue-100 text-eyDark'
                             }`}>
                             {member.role === 'depthead' ? 'Dept Head' : 'Faculty'}
                           </div>
@@ -211,7 +211,7 @@ const Faculty = () => {
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => handleEdit(member)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                          className="p-1.5 text-blue-600 hover:bg-primary-50 rounded-lg transition-colors border border-transparent hover:border-primary-100"
                           title="Edit Faculty"
                         >
                           <FiEdit size={16} />
@@ -228,17 +228,17 @@ const Faculty = () => {
 
                     <div className="mt-5 space-y-3">
                       <div className="flex items-center text-sm text-gray-600 bg-gray-50/50 p-2 rounded-xl border border-gray-100/50">
-                        <FiMail className="mr-3 text-emerald-500 shrink-0" size={14} />
+                        <FiMail className="mr-3 text-primary-600 shrink-0" size={14} />
                         <span className="truncate" title={member.email}>{member.email}</span>
                       </div>
                       {member.phone && (
                         <div className="flex items-center text-sm text-gray-600 bg-gray-50/50 p-2 rounded-xl border border-gray-100/50">
-                          <FiPhone className="mr-3 text-emerald-500 shrink-0" size={14} />
+                          <FiPhone className="mr-3 text-primary-600 shrink-0" size={14} />
                           {member.phone}
                         </div>
                       )}
                       <div className="flex items-center text-sm text-gray-700 font-medium px-2">
-                        <FiBook className="mr-3 text-teal-500" size={14} />
+                        <FiBook className="mr-3 text-primary-600" size={14} />
                         {member.departmentId?.name || 'Unassigned'}
                       </div>
                     </div>

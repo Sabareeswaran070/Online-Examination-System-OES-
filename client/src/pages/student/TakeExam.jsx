@@ -12,6 +12,7 @@ import { QUESTION_TYPES } from '@/config/constants';
 import toast from 'react-hot-toast';
 import LiveFeedPanel from '@/components/proctor/LiveFeedPanel';
 import { useAuth } from '@/context/AuthContext';
+import { useSocket } from '@/context/SocketContext';
 
 const CODING_LANGUAGES = [
   { value: 'javascript', label: 'JavaScript', icon: '🟨' },
@@ -25,6 +26,7 @@ const TakeExam = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const socket = useSocket();
   const [exam, setExam] = useState(null);
   const [result, setResult] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -55,12 +57,107 @@ const TakeExam = () => {
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [hasStartedTimer, setHasStartedTimer] = useState(false);
   const [isCameraExpanded, setIsCameraExpanded] = useState(false);
+  const [lastActivityTime, setLastActivityTime] = useState(Date.now());
+  const [isIdle, setIsIdle] = useState(false);
 
 
 
   useEffect(() => {
     startExam();
   }, [id]);
+
+  // Socket Events & Heartbeat
+  useEffect(() => {
+    if (socket && exam && result && !isLocked) {
+      socket.emit('join_exam', { examId: id, role: 'student', userId: user._id });
+
+      const heartbeatInterval = setInterval(() => {
+        socket.emit('student_activity', {
+          examId: id,
+          userId: user._id,
+          eventType: 'heartbeat',
+        });
+      }, 10000);
+
+      socket.on('command_received', (data) => {
+        const { targetStudentId, command, payload } = data;
+        if (targetStudentId && targetStudentId !== user._id) return;
+
+        switch (command) {
+          case 'warn':
+            toast(payload.message || 'Warning received from proctor', {
+              icon: '⚠️',
+              duration: 6000,
+              style: { border: '2px solid #f59e0b', background: '#fffbeb' }
+            });
+            break;
+          case 'pause':
+            setIsLocked(true);
+            setUnlockRequestStatus('none');
+            setUnlockReason('Session paused by administrator.');
+            break;
+          case 'extend_time':
+            setTimeLeft(prev => prev + (payload.minutes * 60));
+            toast.success(`Exam time extended by ${payload.minutes} minutes!`);
+            break;
+          case 'terminate':
+            toast.error('Your exam session has been terminated by an administrator.');
+            handleSubmit(true);
+            break;
+          default:
+            break;
+        }
+      });
+
+      return () => {
+        clearInterval(heartbeatInterval);
+        socket.off('command_received');
+      };
+    }
+  }, [socket, exam, result, isLocked, id, user._id]);
+
+  // Idle Detection
+  useEffect(() => {
+    if (isLocked) return;
+
+    const handleActivity = () => {
+      setLastActivityTime(Date.now());
+      if (isIdle) {
+        setIsIdle(false);
+        socket?.emit('student_activity', {
+          examId: id,
+          userId: user._id,
+          eventType: 'session_resumed',
+          description: 'Student resumed activity'
+        });
+      }
+    };
+
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+
+    const idleCheckInterval = setInterval(() => {
+      const now = Date.now();
+      const idleTime = now - lastActivityTime;
+      if (idleTime > 5 * 60 * 1000 && !isIdle) { // 5 minutes idle
+        setIsIdle(true);
+        socket?.emit('student_activity', {
+          examId: id,
+          userId: user._id,
+          eventType: 'long_idle',
+          description: 'No activity detected for 5 minutes'
+        });
+      }
+    }, 30000);
+
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      clearInterval(idleCheckInterval);
+    };
+  }, [lastActivityTime, isIdle, isLocked, socket, id, user._id]);
 
   // Timer
   useEffect(() => {
@@ -245,6 +342,14 @@ const TakeExam = () => {
         setIsLocked(true);
       }
     }
+
+    // Emit via socket for real-time alerting
+    socket?.emit('student_activity', {
+      examId: id,
+      userId: user._id,
+      eventType: type,
+      description
+    });
   };
 
   const enterFullscreen = () => {
@@ -336,12 +441,24 @@ const TakeExam = () => {
 
   const handleNext = () => {
     saveCurrentAnswer();
+    socket?.emit('student_activity', {
+      examId: id,
+      userId: user._id,
+      eventType: 'question_navigate',
+      metadata: { from: currentQuestion, to: currentQuestion + 1 }
+    });
     if (currentQuestion < exam.questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     }
   };
 
   const handlePrevious = () => {
+    socket?.emit('student_activity', {
+      examId: id,
+      userId: user._id,
+      eventType: 'question_navigate',
+      metadata: { from: currentQuestion, to: currentQuestion - 1 }
+    });
     if (currentQuestion > 0) {
       setCurrentQuestion(currentQuestion - 1);
     }
@@ -353,9 +470,9 @@ const TakeExam = () => {
   const toggleFlag = (qId) => setFlagged(f => ({ ...f, [qId]: !f[qId] }));
 
   const sectionLabel = (type) => ({
-    'MCQ': { label: 'MCQ', bg: 'bg-blue-100', text: 'text-blue-700', dot: 'bg-blue-500' },
+    'MCQ': { label: 'MCQ', bg: 'bg-blue-100', text: 'text-eyDark', dot: 'bg-primary-500' },
     'TrueFalse': { label: 'True/False', bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500' },
-    'Descriptive': { label: 'Desc', bg: 'bg-purple-100', text: 'text-purple-700', dot: 'bg-purple-500' },
+    'Descriptive': { label: 'Desc', bg: 'bg-purple-100', text: 'text-eyDark', dot: 'bg-primary-500' },
     'Coding': { label: 'Code', bg: 'bg-amber-100', text: 'text-amber-700', dot: 'bg-amber-500' },
   }[type] || { label: type, bg: 'bg-gray-100', text: 'text-gray-600', dot: 'bg-gray-400' });
 
@@ -562,7 +679,7 @@ const TakeExam = () => {
         <div className="fixed inset-0 z-[100] bg-gray-900/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-8 max-w-lg w-full text-center shadow-2xl">
             <div className="p-4 bg-primary-50 rounded-full w-20 h-20 mx-auto mb-5 flex items-center justify-center">
-              <FiLoader className="w-10 h-10 text-primary-600 animate-pulse" />
+              <FiLoader className="w-10 h-10 text-eyDark animate-pulse" />
             </div>
             <h2 className="text-2xl font-black text-gray-900 mb-3">Fullscreen Required</h2>
             <p className="text-gray-500 text-sm mb-6">This exam requires fullscreen mode to ensure academic integrity. Your access is paused until you return to fullscreen.</p>
@@ -576,7 +693,7 @@ const TakeExam = () => {
         <div className="px-5 py-3 flex items-center gap-4">
           {/* Left: Exam name */}
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">📝</div>
+            <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center text-eyDark text-sm font-bold flex-shrink-0">📝</div>
             <div className="min-w-0">
               <h1 className="text-base font-bold text-gray-900 leading-tight truncate">{exam.title}</h1>
               <p className="text-xs text-gray-400">{exam.subject?.name}</p>
@@ -631,7 +748,7 @@ const TakeExam = () => {
                       const isAns = !!answers[q._id];
                       const isFlagged = !!flagged[q._id];
                       let cls = 'bg-gray-100 text-gray-500 border-gray-200';
-                      if (isActive) cls = 'bg-primary-600 text-white border-primary-600 ring-2 ring-primary-300';
+                      if (isActive) cls = 'bg-primary-500 text-eyDark border-primary-600 ring-2 ring-primary-300';
                       else if (isFlagged) cls = 'bg-amber-100 text-amber-700 border-amber-300';
                       else if (isAns) cls = 'bg-emerald-100 text-emerald-700 border-emerald-300';
                       return (
@@ -698,12 +815,12 @@ const TakeExam = () => {
                         <label key={index}
                           className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${isSelected ? 'bg-primary-50 border-primary-400 ring-2 ring-primary-100' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                             }`}>
-                          <div className={`w-9 h-9 rounded-full border-2 flex items-center justify-center text-base font-black flex-shrink-0 ${isSelected ? 'bg-primary-600 border-primary-600 text-white' : 'border-gray-300 text-gray-400'
+                          <div className={`w-9 h-9 rounded-full border-2 flex items-center justify-center text-base font-black flex-shrink-0 ${isSelected ? 'bg-primary-500 border-primary-600 text-eyDark' : 'border-gray-300 text-gray-400'
                             }`}>{String.fromCharCode(65 + index)}</div>
                           <input type="radio" name={`question-${question._id}`} value={option.text} checked={isSelected}
                             onChange={(e) => handleAnswerChange(question._id, e.target.value)} className="hidden" />
                           <span className={`font-medium text-base ${isSelected ? 'text-primary-900' : 'text-gray-800'}`}>{option.text}</span>
-                          {isSelected && <span className="ml-auto text-primary-600 text-xl">✓</span>}
+                          {isSelected && <span className="ml-auto text-eyDark text-xl">✓</span>}
                         </label>
                       );
                     })}
@@ -779,20 +896,20 @@ const TakeExam = () => {
 
                     {/* Problem Details Toggle */}
                     {(question.inputFormat || question.outputFormat || question.constraints || question.visibleTestCases?.length > 0) && (
-                      <div className="border-2 border-blue-100 rounded-xl overflow-hidden">
+                      <div className="border-2 border-primary-100 rounded-xl overflow-hidden">
                         <button
                           type="button"
                           onClick={() => setShowProblemDetails(prev => ({ ...prev, [question._id]: !prev[question._id] }))}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-blue-50 hover:bg-blue-100 transition-colors"
+                          className="w-full flex items-center justify-between px-4 py-3 bg-primary-50 hover:bg-blue-100 transition-colors"
                         >
-                          <span className="flex items-center gap-2 text-sm font-semibold text-blue-700">
+                          <span className="flex items-center gap-2 text-sm font-semibold text-eyDark">
                             <FiFileText className="w-4 h-4" />
                             Problem Details & Test Cases
                           </span>
                           {showProblemDetails[question._id] ? (
-                            <FiChevronUp className="w-4 h-4 text-blue-500" />
+                            <FiChevronUp className="w-4 h-4 text-primary-600" />
                           ) : (
-                            <FiChevronDown className="w-4 h-4 text-blue-500" />
+                            <FiChevronDown className="w-4 h-4 text-primary-600" />
                           )}
                         </button>
                         {showProblemDetails[question._id] && (
@@ -966,7 +1083,7 @@ const TakeExam = () => {
                         <button
                           onClick={handleRun}
                           disabled={runningCode}
-                          className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 shadow-sm transition-all disabled:opacity-50"
+                          className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-eyDark rounded-lg font-bold text-sm hover:bg-indigo-700 shadow-sm transition-all disabled:opacity-50"
                         >
                           {runningCode ? (
                             <><FiLoader className="w-4 h-4 animate-spin" /> Running...</>
@@ -1045,12 +1162,12 @@ const TakeExam = () => {
             <span className="text-xs text-gray-400">{answered} answered · {exam.questions.length - answered} remaining</span>
             {currentQuestion < exam.questions.length - 1 ? (
               <button onClick={handleNext}
-                className="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-sm font-bold transition-colors">
+                className="px-6 py-2.5 bg-primary-500 hover:bg-primary-700 text-eyDark rounded-xl text-sm font-bold transition-colors">
                 Next →
               </button>
             ) : (
               <button onClick={() => handleSubmit(false)} disabled={submitting}
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-60">
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-eyDark rounded-xl text-sm font-bold transition-colors disabled:opacity-60">
                 {submitting ? 'Submitting…' : 'Finish & Submit ✓'}
               </button>
             )}
@@ -1234,7 +1351,7 @@ const TakeExam = () => {
       >
         <div className="text-center space-y-6 py-4">
           <div className="p-4 bg-primary-100 rounded-full w-20 h-20 mx-auto flex items-center justify-center">
-            <FiCheckCircle className="w-12 h-12 text-primary-600" />
+            <FiCheckCircle className="w-12 h-12 text-eyDark" />
           </div>
           <div>
             <h3 className="text-xl font-bold text-gray-900">Ready to Submit?</h3>
@@ -1293,6 +1410,15 @@ const TakeExam = () => {
               showOverlays={false}
               studentName={user?.name || 'Student'}
               status="detected"
+              onSnapshot={(snapshot) => {
+                if (socket) {
+                  socket.emit('student_feed', {
+                    examId: id,
+                    userId: user?._id || user?.id,
+                    snapshot
+                  });
+                }
+              }}
             />
           </div>
 
@@ -1300,7 +1426,7 @@ const TakeExam = () => {
           {!isCameraExpanded && (
             <button
               onClick={() => setIsCameraExpanded(true)}
-              className="w-12 h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95 group relative animate-in zoom-in duration-300"
+              className="w-12 h-12 bg-indigo-600 hover:bg-indigo-700 text-eyDark rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95 group relative animate-in zoom-in duration-300"
               title="Expand Monitoring Feed"
             >
               <FiVideo className="w-5 h-5" />

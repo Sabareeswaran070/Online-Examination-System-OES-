@@ -80,11 +80,25 @@ const resultSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    lastActive: {
+      type: Date,
+      default: Date.now,
+    },
     violations: [
       {
         type: {
           type: String,
-          enum: ['tab_switch', 'tab-switch', 'copy_paste', 'copy-paste', 'fullscreen_exit', 'fullscreen-exit'],
+          enum: [
+            'tab_switch',
+            'tab-switch',
+            'copy_paste',
+            'copy-paste',
+            'fullscreen_exit',
+            'fullscreen-exit',
+            'face_missing',
+            'multiple_faces',
+            'long_idle'
+          ],
         },
         timestamp: Date,
         description: String,
@@ -118,7 +132,13 @@ resultSchema.index({ examId: 1, score: -1 }); // For leaderboard
 resultSchema.pre('save', async function (next) {
   if (this.isModified('score')) {
     const Exam = mongoose.model('Exam');
-    const exam = await Exam.findById(this.examId);
+    const Competition = mongoose.model('Competition');
+    
+    let exam = await Exam.findById(this.examId);
+    if (!exam) {
+      exam = await Competition.findById(this.examId);
+    }
+    
     if (exam) {
       this.percentage = (this.score / exam.totalMarks) * 100;
       this.isPassed = this.score >= exam.passingMarks;

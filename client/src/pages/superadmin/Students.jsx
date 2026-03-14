@@ -195,7 +195,7 @@ const Students = () => {
                 <div className="flex space-x-2">
                     <button
                         onClick={() => handleEdit(row)}
-                        className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        className="p-1 text-blue-600 hover:bg-primary-50 rounded transition-colors"
                         title="Edit Student"
                     >
                         <FiEdit size={16} />

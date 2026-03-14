@@ -77,7 +77,7 @@ const StudentLeaderboard = () => {
             onClick={() => setFilter('department')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               filter === 'department'
-                ? 'bg-primary-600 text-white'
+                ? 'bg-primary-500 text-eyDark'
                 : 'bg-white text-gray-700 border hover:bg-gray-50'
             }`}
           >
@@ -87,7 +87,7 @@ const StudentLeaderboard = () => {
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               filter === 'all'
-                ? 'bg-primary-600 text-white'
+                ? 'bg-primary-500 text-eyDark'
                 : 'bg-white text-gray-700 border hover:bg-gray-50'
             }`}
           >
@@ -101,7 +101,7 @@ const StudentLeaderboard = () => {
         <div className="flex items-center justify-between p-2">
           <div className="flex items-center space-x-4">
             <div className="p-3 bg-primary-100 rounded-full">
-              <FiTrendingUp className="w-6 h-6 text-primary-600" />
+              <FiTrendingUp className="w-6 h-6 text-eyDark" />
             </div>
             <div>
               <p className="text-sm text-gray-500">Your Current Rank</p>
@@ -187,7 +187,7 @@ const StudentLeaderboard = () => {
                                 entry.avgPercentage >= 80
                                   ? 'bg-green-500'
                                   : entry.avgPercentage >= 60
-                                  ? 'bg-blue-500'
+                                  ? 'bg-primary-500'
                                   : entry.avgPercentage >= 40
                                   ? 'bg-yellow-500'
                                   : 'bg-red-500'

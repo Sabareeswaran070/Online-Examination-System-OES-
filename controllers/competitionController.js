@@ -140,7 +140,7 @@ exports.getCompetitionById = async (req, res, next) => {
   }
 };
 
-// @desc    Update competition (only when pending/published)
+// @desc    Update competition (only when pending/published/approved)
 // @route   PUT /api/competitions/:id
 // @access  Private/SuperAdmin
 exports.updateCompetition = async (req, res, next) => {
@@ -154,7 +154,7 @@ exports.updateCompetition = async (req, res, next) => {
       });
     }
 
-    if (competition.status === 'live' || competition.status === 'completed') {
+    if (competition.status === 'completed') {
       return res.status(400).json({
         success: false,
         message: `Cannot edit a competition that is ${competition.status}`,
@@ -192,12 +192,8 @@ exports.deleteCompetition = async (req, res, next) => {
       });
     }
 
-    if (competition.status === 'live') {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot delete a live competition',
-      });
-    }
+    // Delete is allowed in live status as per new requirements
+    // (Handled with confirmation on frontend)
 
     await CompetitionCollege.deleteMany({ competitionId: req.params.id });
     await competition.deleteOne();
@@ -214,7 +210,51 @@ exports.deleteCompetition = async (req, res, next) => {
   }
 };
 
-// @desc    Publish competition → sends to all active colleges
+// @desc    Invite colleges to competition (while pending)
+// @route   PUT /api/competitions/:id/invite
+// @access  Private/SuperAdmin
+exports.inviteColleges = async (req, res, next) => {
+  try {
+    const { collegeIds } = req.body;
+    const competition = await Competition.findById(req.params.id);
+
+    if (!competition) {
+      return res.status(404).json({ success: false, message: 'Competition not found' });
+    }
+
+    if (competition.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Can only invite colleges in pending stage',
+      });
+    }
+
+    // Replace existing assignments for a clean "manual selection"
+    await CompetitionCollege.deleteMany({ competitionId: competition._id });
+
+    if (collegeIds && collegeIds.length > 0) {
+      const assignments = collegeIds.map((id) => ({
+        competitionId: competition._id,
+        collegeId: id,
+        collegeStatus: 'pending',
+        approvalStatus: 'pending',
+      }));
+      await CompetitionCollege.insertMany(assignments);
+    }
+
+    logger.info(`Colleges invited to competition ${competition.title} by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Colleges invitation list updated',
+    });
+  } catch (error) {
+    logger.error('Invite colleges error:', error);
+    next(error);
+  }
+};
+
+// @desc    Publish competition (changes status from pending to published)
 // @route   PUT /api/competitions/:id/publish
 // @access  Private/SuperAdmin
 exports.publishCompetition = async (req, res, next) => {
@@ -239,39 +279,79 @@ exports.publishCompetition = async (req, res, next) => {
       });
     }
 
-    const colleges = await College.find({ status: 'active' }).select('_id');
+    const invitedCount = await CompetitionCollege.countDocuments({
+      competitionId: competition._id,
+    });
 
-    if (colleges.length === 0) {
+    if (invitedCount === 0) {
       return res.status(400).json({
         success: false,
-        message: 'No active colleges found to publish to.',
+        message: 'Please invite at least one college before publishing.',
       });
     }
-
-    const assignments = colleges.map((college) => ({
-      competitionId: competition._id,
-      collegeId: college._id,
-      collegeStatus: 'pending',
-      approvalStatus: 'pending',
-    }));
-
-    await CompetitionCollege.insertMany(assignments, { ordered: false }).catch(() => {});
 
     competition.status = 'published';
     competition.publishedAt = Date.now();
     await competition.save();
 
     logger.info(
-      `Competition published: ${competition.title} to ${colleges.length} colleges by ${req.user.email}`
+      `Competition published: ${competition.title} to ${invitedCount} colleges by ${req.user.email}`
     );
 
     res.status(200).json({
       success: true,
-      message: `Competition published to ${colleges.length} colleges`,
+      message: `Competition published to ${invitedCount} colleges`,
       data: competition,
     });
   } catch (error) {
     logger.error('Publish competition error:', error);
+    next(error);
+  }
+};
+
+// @desc    Move competition to approval stage
+// @route   PUT /api/competitions/:id/approval-stage
+// @access  Private/SuperAdmin
+exports.moveToApprovalStage = async (req, res, next) => {
+  try {
+    const competition = await Competition.findById(req.params.id);
+
+    if (!competition) {
+      return res.status(404).json({ success: false, message: 'Competition not found' });
+    }
+
+    if (competition.status !== 'published') {
+      return res.status(400).json({
+        success: false,
+        message: `Only published competitions can move to approval stage. Current status: ${competition.status}`,
+      });
+    }
+
+    const acceptedCount = await CompetitionCollege.countDocuments({
+      competitionId: competition._id,
+      collegeStatus: 'accepted'
+    });
+
+    if (acceptedCount === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No colleges have accepted the invitation yet.'
+      });
+    }
+
+    competition.status = 'approved';
+    competition.approvedAt = Date.now();
+    await competition.save();
+
+    logger.info(`Competition moved to approval stage: ${competition.title} by ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Competition moved to approval stage',
+      data: competition,
+    });
+  } catch (error) {
+    logger.error('Move to approval stage error:', error);
     next(error);
   }
 };
@@ -364,10 +444,10 @@ exports.makeCompetitionLive = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Competition not found' });
     }
 
-    if (competition.status !== 'published' && competition.status !== 'approved') {
+    if (competition.status !== 'approved') {
       return res.status(400).json({
         success: false,
-        message: `Cannot make a ${competition.status} competition live. It must be published first.`,
+        message: `Cannot make a ${competition.status} competition live. It must be in approved stage first.`,
       });
     }
 

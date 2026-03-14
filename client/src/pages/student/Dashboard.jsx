@@ -125,7 +125,7 @@ const StudentDashboard = () => {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-bold text-primary-600">
+                      <p className="text-lg font-bold text-eyDark">
                         {formatPercentage(result.percentage)}
                       </p>
                       <span className="text-sm text-gray-600">

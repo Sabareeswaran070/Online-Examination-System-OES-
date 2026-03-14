@@ -19,7 +19,7 @@ const Sidebar = ({ navigation, isOpen, onClose }) => {
               clsx(
                 'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
                 isActive
-                  ? 'bg-primary-50 text-primary-600 font-medium'
+                  ? 'bg-primary-50 text-eyDark font-medium'
                   : 'text-gray-700 hover:bg-gray-50'
               )
             }

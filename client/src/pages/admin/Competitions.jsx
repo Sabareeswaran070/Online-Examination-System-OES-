@@ -26,7 +26,7 @@ const STATUS_CONFIG = {
 
 const APPROVAL_CONFIG = {
   pending: { bg: 'bg-gray-100 text-gray-600 border-gray-200', label: 'Awaiting Approval' },
-  approved: { bg: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Approved' },
+  approved: { bg: 'bg-blue-100 text-eyDark border-blue-200', label: 'Approved' },
   'not-approved': { bg: 'bg-orange-100 text-orange-700 border-orange-200', label: 'Not Approved' },
 };
 
@@ -124,7 +124,7 @@ const CollegeCompetitions = () => {
           { label: 'Pending', value: stats.pending, bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
           { label: 'Accepted', value: stats.accepted, bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
           { label: 'Rejected', value: stats.rejected, bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-          { label: 'SA Approved', value: stats.approved, bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+          { label: 'SA Approved', value: stats.approved, bg: 'bg-primary-50', text: 'text-eyDark', border: 'border-blue-200' },
           { label: 'Live Now', value: stats.live, bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
         ].map(s => (
           <div key={s.label} className={`${s.bg} rounded-xl p-3 text-center border ${s.border}`}>
@@ -145,14 +145,14 @@ const CollegeCompetitions = () => {
               onClick={() => setActiveTab(tab.key)}
               className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                 activeTab === tab.key
-                  ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 shadow-sm'
+                  ? 'bg-primary-50 text-eyDark ring-1 ring-indigo-200 shadow-sm'
                   : 'text-gray-500 hover:bg-gray-50'
               }`}
             >
               <Icon className="w-4 h-4" />
               {tab.label}
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                activeTab === tab.key ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-500'
+                activeTab === tab.key ? 'bg-indigo-100 text-eyDark' : 'bg-gray-100 text-gray-500'
               }`}>{count}</span>
             </button>
           );
@@ -220,13 +220,13 @@ const CollegeCompetitions = () => {
 
                   {/* Stats */}
                   <div className="grid grid-cols-3 gap-3 mt-4">
-                    <div className="text-center p-2 bg-purple-50 rounded-lg">
-                      <FiClock className="w-4 h-4 text-purple-500 mx-auto mb-0.5" />
+                    <div className="text-center p-2 bg-primary-50 rounded-lg">
+                      <FiClock className="w-4 h-4 text-primary-600 mx-auto mb-0.5" />
                       <p className="text-sm font-bold text-gray-800">{comp.duration}m</p>
                       <p className="text-[10px] text-gray-400">Duration</p>
                     </div>
-                    <div className="text-center p-2 bg-blue-50 rounded-lg">
-                      <FiTarget className="w-4 h-4 text-blue-500 mx-auto mb-0.5" />
+                    <div className="text-center p-2 bg-primary-50 rounded-lg">
+                      <FiTarget className="w-4 h-4 text-primary-600 mx-auto mb-0.5" />
                       <p className="text-sm font-bold text-gray-800">{comp.totalMarks}</p>
                       <p className="text-[10px] text-gray-400">Marks</p>
                     </div>
@@ -248,7 +248,7 @@ const CollegeCompetitions = () => {
 
                   {/* Approval note */}
                   {comp.approvalNote && (
-                    <div className="mt-2 text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-100">
+                    <div className="mt-2 text-xs bg-primary-50 text-eyDark px-3 py-1.5 rounded-lg border border-primary-100">
                       <span className="font-semibold">Note:</span> {comp.approvalNote}
                     </div>
                   )}
@@ -283,7 +283,7 @@ const CollegeCompetitions = () => {
                   ) : (
                     <button
                       onClick={() => setShowDetailModal(comp._id)}
-                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-indigo-700 bg-indigo-50 text-sm font-semibold rounded-lg hover:bg-indigo-100 transition-colors"
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-eyDark bg-primary-50 text-sm font-semibold rounded-lg hover:bg-indigo-100 transition-colors"
                     >
                       <FiEye className="w-4 h-4" /> View Details
                     </button>
@@ -363,21 +363,21 @@ const CollegeCompetitions = () => {
                 <p className="text-xs text-gray-500 mb-1 font-medium">End Time</p>
                 <p className="text-sm font-semibold text-gray-900">{formatDateTime(detailComp.endTime)}</p>
               </div>
-              <div className="bg-purple-50 rounded-xl p-4">
+              <div className="bg-primary-50 rounded-xl p-4">
                 <p className="text-xs text-gray-500 mb-1 font-medium">Duration</p>
-                <p className="text-sm font-semibold text-purple-700">{detailComp.duration} minutes</p>
+                <p className="text-sm font-semibold text-eyDark">{detailComp.duration} minutes</p>
               </div>
-              <div className="bg-blue-50 rounded-xl p-4">
+              <div className="bg-primary-50 rounded-xl p-4">
                 <p className="text-xs text-gray-500 mb-1 font-medium">Total Marks</p>
-                <p className="text-sm font-semibold text-blue-700">{detailComp.totalMarks}</p>
+                <p className="text-sm font-semibold text-eyDark">{detailComp.totalMarks}</p>
               </div>
               <div className="bg-green-50 rounded-xl p-4">
                 <p className="text-xs text-gray-500 mb-1 font-medium">Questions</p>
                 <p className="text-sm font-semibold text-green-700">{detailComp.totalQuestions} questions</p>
               </div>
-              <div className="bg-indigo-50 rounded-xl p-4">
+              <div className="bg-primary-50 rounded-xl p-4">
                 <p className="text-xs text-gray-500 mb-1 font-medium">Created By</p>
-                <p className="text-sm font-semibold text-indigo-700">{detailComp.createdBy?.name || 'Super Admin'}</p>
+                <p className="text-sm font-semibold text-eyDark">{detailComp.createdBy?.name || 'Super Admin'}</p>
               </div>
             </div>
 
@@ -386,7 +386,7 @@ const CollegeCompetitions = () => {
               <h4 className="text-sm font-bold text-gray-700">Status Timeline</h4>
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
-                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-primary-500"></div>
                   <span className="text-sm text-gray-700">Competition published to your college</span>
                 </div>
                 {detailComp.collegeRespondedAt && (
@@ -416,7 +416,7 @@ const CollegeCompetitions = () => {
 
             {/* Approval note */}
             {detailComp.approvalNote && (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div className="bg-primary-50 border border-blue-200 rounded-xl p-4">
                 <p className="text-xs text-blue-600 font-semibold mb-1">Super Admin Note</p>
                 <p className="text-sm text-blue-800">{detailComp.approvalNote}</p>
               </div>

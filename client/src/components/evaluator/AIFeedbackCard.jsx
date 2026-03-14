@@ -3,7 +3,7 @@ import { FiCpu, FiInfo, FiCheckCircle } from 'react-icons/fi';
 
 const AIFeedbackCard = ({ aiScore, maxMarks, reasoning, keywordsHit = [] }) => {
     return (
-        <div className="bg-indigo-50 border border-indigo-100 rounded-xl overflow-hidden mb-6">
+        <div className="bg-primary-50 border border-primary-100 rounded-xl overflow-hidden mb-6">
             <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-white">
                     <FiCpu className="animate-pulse" />
@@ -28,7 +28,7 @@ const AIFeedbackCard = ({ aiScore, maxMarks, reasoning, keywordsHit = [] }) => {
                 </div>
 
                 {keywordsHit.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-indigo-100">
+                    <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-primary-100">
                         <span className="text-[10px] font-black text-indigo-400 uppercase w-full mb-1">Keywords Detected</span>
                         {keywordsHit.map((keyword, i) => (
                             <span key={i} className="flex items-center gap-1 bg-white border border-indigo-200 text-indigo-600 px-2 py-1 rounded-md text-[10px] font-bold">
