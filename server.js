@@ -1,4 +1,11 @@
 require('dotenv').config();
+const dns = require('dns');
+
+// Fix for MongoDB SRV resolution issues on some networks
+if (process.env.NODE_ENV === 'development') {
+  dns.setServers(['8.8.8.8', '8.8.4.4']);
+}
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
